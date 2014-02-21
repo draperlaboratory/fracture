@@ -21,6 +21,6 @@ instruction selection process. It leverages the pre-existing target LLVM
 TableGen definitions, without modification, to provide a generic way to
 abstract LLVM IR efficiently from different target instruction sets.
 
-Fracture currently works with the ARM backend, and is still in the proof of
+Fracture currently works with the ARM backend and is still in the proof of
 concept stage, with several missing pieces before it can be utilitized as we
 intend. See the ROADMAP.md file for more information.
