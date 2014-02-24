@@ -15,8 +15,15 @@
 //===----------------------------------------------------------------------===//
 
 #include "Commands/Commands.h"
+
+#include "config.h"
+#ifdef HAVE_EDITLINE_READLINE_H
+#include <editline/readline.h>
+#else
 #include <readline/readline.h>
 #include <readline/history.h>
+#endif
+
 #include <algorithm>
 #include <stdlib.h>
 #include <string.h>
