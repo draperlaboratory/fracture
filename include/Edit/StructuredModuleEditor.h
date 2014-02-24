@@ -20,7 +20,7 @@
 
 #include "llvm/Linker.h"
 #include "llvm-c/Linker.h"
-#include "llvm/Analysis/Verifier.h"
+#include "llvm/IR/Verifier.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/Analysis/CallGraph.h"
 #include "llvm/ExecutionEngine/GenericValue.h"
