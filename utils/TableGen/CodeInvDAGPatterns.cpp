@@ -884,11 +884,12 @@ void CodeInvDAGPatterns::InlinePatternFragments(InvTreePattern &TP) {
       // Map the tree fragment operands to the nodes from CurNode.
       // Note that frags must have at least as many children as the curnode.
       unsigned NumOps = CurNode->getNumChildren();
-      assert (NumOps <= FragTree->getNumChildren() &&
-        "Not enough children in fragment node!");
-      
+      // NOTE: Removed for compat. with latest LLVM trunk.
+      // assert (NumOps <= FragTree->getNumChildren() &&
+      //   "Not enough children in fragment node!");
       // NOTE: There's no checking here...might need to fix in future.
-      for (unsigned i = 0; i != NumOps; ++i) {
+      for (unsigned i = 0; i != NumOps && i != FragTree->getNumChildren();
+           ++i) {
         // if the Fragment child has a name but the curnode child doesn't, then 
         // use the fragments name
         InvTreePatternNode *CurChild = CurNode->getChild(i);
