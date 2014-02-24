@@ -1,0 +1,5 @@
+sym .text
+dis 0xf0
+dis 0xe8
+dis fastfib
+q

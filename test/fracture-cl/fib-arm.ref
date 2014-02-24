@@ -1,0 +1,236 @@
+[?1034hacture-cl> sym .text
+acture-cl> dis 0xf0
+MCDirector: Using Triple: arm-unknown-unknown
+MCDirector: Using CPU: generic
+MCDirector: Using Features: +v6
+Disassembler: Setting Section .text
+SYMBOL TABLE FOR SECTION .text at 0x00000000
+00000000         	00000000 00000000 
+000000f0         	00000000 000000f0 $a.4
+000000e4         	00000000 000000e4 $d.2
+0000012c l     F 	000000e8 0000012c fastfib
+00000214 l     F 	0000007c 00000214 fastfib_v2
+000000f0 l     F 	0000003c 000000f0 fib
+00000000         	00000000 00000000 __aeabi_unwind_cpp_pr0
+00000000         	00000000 00000000 printf
+Address: 240
+NumInstrs: 0
+240
+<fib>:
+000000F0:   10 40 2D E9                 	push	{r4, lr}
+000000F4:   04 00 2D E5                 	str	r0, [sp, #-4]!
+000000F8:   01 00 50 E3                 	cmp	r0, #0x1
+000000FC:   04 00 9D 94                 	ldrls	r0, [sp], #4
+00000100:   10 80 BD 98                 	popls	{r4, pc}
+00000104:   00 00 9D E5                 	ldr	r0, [sp]
+00000108:   01 00 40 E2                 	sub	r0, r0, #0x1
+0000010C:   FE FF FF EB                 	bl	#-0x8
+00000110:   00 40 A0 E1                 	mov	r4, r0
+00000114:   00 00 9D E5                 	ldr	r0, [sp]
+00000118:   02 00 40 E2                 	sub	r0, r0, #0x2
+0000011C:   FE FF FF EB                 	bl	#-0x8
+00000120:   00 00 84 E0                 	add	r0, r4, r0
+00000124:   04 D0 8D E2                 	add	sp, sp, #0x4
+00000128:   10 80 BD E8                 	pop	{r4, pc}
+0000012C:   04 B0 2D E5                 	str	r11, [sp, #-4]!
+00000130:   0D B0 A0 E1                 	mov	r11, sp
+00000134:   1C D0 4D E2                 	sub	sp, sp, #0x1c
+00000138:   07 D0 CD E3                 	bic	sp, sp, #0x7
+0000013C:   18 00 8D E5                 	str	r0, [sp, #24]
+00000140:   0C 00 8D E2                 	add	r0, sp, #0xc
+00000144:   00 10 A0 E3                 	mov	r1, #0x0
+00000148:   04 10 8D E5                 	str	r1, [sp, #4]
+0000014C:   08 10 80 E2                 	add	r1, r0, #0x8
+00000150:   04 C0 80 E2                 	add	r12, r0, #0x4
+00000154:   08 00 8D E5                 	str	r0, [sp, #8]
+00000158:   07 00 00 EA                 	b	#0x1c
+0000015C:   08 20 9D E5                 	ldr	r2, [sp, #8]
+00000160:   04 20 82 E2                 	add	r2, r2, #0x4
+00000164:   08 20 8D E5                 	str	r2, [sp, #8]
+00000168:   01 00 52 E1                 	cmp	r2, r1
+0000016C:   04 20 9D E5                 	ldr	r2, [sp, #4]
+00000170:   08 00 8D 85                 	strhi	r0, [sp, #8]
+00000174:   01 20 82 E2                 	add	r2, r2, #0x1
+00000178:   04 20 8D E5                 	str	r2, [sp, #4]
+0000017C:   18 30 9D E5                 	ldr	r3, [sp, #24]
+00000180:   04 20 9D E5                 	ldr	r2, [sp, #4]
+00000184:   03 00 52 E1                 	cmp	r2, r3
+00000188:   15 00 00 8A                 	bhi	#0x54
+0000018C:   04 20 9D E5                 	ldr	r2, [sp, #4]
+00000190:   01 00 52 E3                 	cmp	r2, #0x1
+00000194:   03 00 00 8A                 	bhi	#0xc
+00000198:   08 20 9D E5                 	ldr	r2, [sp, #8]
+0000019C:   04 30 9D E5                 	ldr	r3, [sp, #4]
+000001A0:   00 30 82 E5                 	str	r3, [r2]
+000001A4:   EC FF FF EA                 	b	#-0x50
+000001A8:   08 20 9D E5                 	ldr	r2, [sp, #8]
+000001AC:   00 00 52 E1                 	cmp	r2, r0
+000001B0:   02 00 00 1A                 	bne	#0x8
+000001B4:   10 20 9D E5                 	ldr	r2, [sp, #16]
+000001B8:   14 30 9D E5                 	ldr	r3, [sp, #20]
+000001BC:   04 00 00 EA                 	b	#0x10
+000001C0:   08 20 9D E5                 	ldr	r2, [sp, #8]
+000001C4:   0C 00 52 E1                 	cmp	r2, r12
+000001C8:   0C 20 9D E5                 	ldr	r2, [sp, #12]
+000001CC:   10 30 9D 15                 	ldrne	r3, [sp, #16]
+000001D0:   14 30 9D 05                 	ldreq	r3, [sp, #20]
+000001D4:   03 20 82 E0                 	add	r2, r2, r3
+000001D8:   08 30 9D E5                 	ldr	r3, [sp, #8]
+000001DC:   00 20 83 E5                 	str	r2, [r3]
+000001E0:   DD FF FF EA                 	b	#-0x8c
+000001E4:   08 10 9D E5                 	ldr	r1, [sp, #8]
+000001E8:   00 00 51 E1                 	cmp	r1, r0
+000001EC:   03 00 00 0A                 	beq	#0xc
+000001F0:   08 00 9D E5                 	ldr	r0, [sp, #8]
+000001F4:   04 00 40 E2                 	sub	r0, r0, #0x4
+000001F8:   00 00 90 E5                 	ldr	r0, [r0]
+000001FC:   01 00 00 EA                 	b	#0x4
+00000200:   08 00 9D E5                 	ldr	r0, [sp, #8]
+00000204:   08 00 90 E5                 	ldr	r0, [r0, #8]
+00000208:   0B D0 A0 E1                 	mov	sp, r11
+0000020C:   04 B0 9D E4                 	ldr	r11, [sp], #4
+00000210:   1E FF 2F E1                 	bx	lr
+acture-cl> dis 0xe8
+Address: 232
+NumInstrs: 0
+232
+<func_e8>:
+000000E8:   0C 00 00 00                 	andeq	r0, r0, r12
+000000EC:   00 00 00 00                 	andeq	r0, r0, r0
+000000F0:   10 40 2D E9                 	push	{r4, lr}
+000000F4:   04 00 2D E5                 	str	r0, [sp, #-4]!
+000000F8:   01 00 50 E3                 	cmp	r0, #0x1
+000000FC:   04 00 9D 94                 	ldrls	r0, [sp], #4
+00000100:   10 80 BD 98                 	popls	{r4, pc}
+00000104:   00 00 9D E5                 	ldr	r0, [sp]
+00000108:   01 00 40 E2                 	sub	r0, r0, #0x1
+0000010C:   FE FF FF EB                 	bl	#-0x8
+00000110:   00 40 A0 E1                 	mov	r4, r0
+00000114:   00 00 9D E5                 	ldr	r0, [sp]
+00000118:   02 00 40 E2                 	sub	r0, r0, #0x2
+0000011C:   FE FF FF EB                 	bl	#-0x8
+00000120:   00 00 84 E0                 	add	r0, r4, r0
+00000124:   04 D0 8D E2                 	add	sp, sp, #0x4
+00000128:   10 80 BD E8                 	pop	{r4, pc}
+0000012C:   04 B0 2D E5                 	str	r11, [sp, #-4]!
+00000130:   0D B0 A0 E1                 	mov	r11, sp
+00000134:   1C D0 4D E2                 	sub	sp, sp, #0x1c
+00000138:   07 D0 CD E3                 	bic	sp, sp, #0x7
+0000013C:   18 00 8D E5                 	str	r0, [sp, #24]
+00000140:   0C 00 8D E2                 	add	r0, sp, #0xc
+00000144:   00 10 A0 E3                 	mov	r1, #0x0
+00000148:   04 10 8D E5                 	str	r1, [sp, #4]
+0000014C:   08 10 80 E2                 	add	r1, r0, #0x8
+00000150:   04 C0 80 E2                 	add	r12, r0, #0x4
+00000154:   08 00 8D E5                 	str	r0, [sp, #8]
+00000158:   07 00 00 EA                 	b	#0x1c
+0000015C:   08 20 9D E5                 	ldr	r2, [sp, #8]
+00000160:   04 20 82 E2                 	add	r2, r2, #0x4
+00000164:   08 20 8D E5                 	str	r2, [sp, #8]
+00000168:   01 00 52 E1                 	cmp	r2, r1
+0000016C:   04 20 9D E5                 	ldr	r2, [sp, #4]
+00000170:   08 00 8D 85                 	strhi	r0, [sp, #8]
+00000174:   01 20 82 E2                 	add	r2, r2, #0x1
+00000178:   04 20 8D E5                 	str	r2, [sp, #4]
+0000017C:   18 30 9D E5                 	ldr	r3, [sp, #24]
+00000180:   04 20 9D E5                 	ldr	r2, [sp, #4]
+00000184:   03 00 52 E1                 	cmp	r2, r3
+00000188:   15 00 00 8A                 	bhi	#0x54
+0000018C:   04 20 9D E5                 	ldr	r2, [sp, #4]
+00000190:   01 00 52 E3                 	cmp	r2, #0x1
+00000194:   03 00 00 8A                 	bhi	#0xc
+00000198:   08 20 9D E5                 	ldr	r2, [sp, #8]
+0000019C:   04 30 9D E5                 	ldr	r3, [sp, #4]
+000001A0:   00 30 82 E5                 	str	r3, [r2]
+000001A4:   EC FF FF EA                 	b	#-0x50
+000001A8:   08 20 9D E5                 	ldr	r2, [sp, #8]
+000001AC:   00 00 52 E1                 	cmp	r2, r0
+000001B0:   02 00 00 1A                 	bne	#0x8
+000001B4:   10 20 9D E5                 	ldr	r2, [sp, #16]
+000001B8:   14 30 9D E5                 	ldr	r3, [sp, #20]
+000001BC:   04 00 00 EA                 	b	#0x10
+000001C0:   08 20 9D E5                 	ldr	r2, [sp, #8]
+000001C4:   0C 00 52 E1                 	cmp	r2, r12
+000001C8:   0C 20 9D E5                 	ldr	r2, [sp, #12]
+000001CC:   10 30 9D 15                 	ldrne	r3, [sp, #16]
+000001D0:   14 30 9D 05                 	ldreq	r3, [sp, #20]
+000001D4:   03 20 82 E0                 	add	r2, r2, r3
+000001D8:   08 30 9D E5                 	ldr	r3, [sp, #8]
+000001DC:   00 20 83 E5                 	str	r2, [r3]
+000001E0:   DD FF FF EA                 	b	#-0x8c
+000001E4:   08 10 9D E5                 	ldr	r1, [sp, #8]
+000001E8:   00 00 51 E1                 	cmp	r1, r0
+000001EC:   03 00 00 0A                 	beq	#0xc
+000001F0:   08 00 9D E5                 	ldr	r0, [sp, #8]
+000001F4:   04 00 40 E2                 	sub	r0, r0, #0x4
+000001F8:   00 00 90 E5                 	ldr	r0, [r0]
+000001FC:   01 00 00 EA                 	b	#0x4
+00000200:   08 00 9D E5                 	ldr	r0, [sp, #8]
+00000204:   08 00 90 E5                 	ldr	r0, [r0, #8]
+00000208:   0B D0 A0 E1                 	mov	sp, r11
+0000020C:   04 B0 9D E4                 	ldr	r11, [sp], #4
+00000210:   1E FF 2F E1                 	bx	lr
+acture-cl> dis fastfib
+Address: 300
+NumInstrs: 0
+232
+<func_e8+68>:
+0000012C:   04 B0 2D E5                 	str	r11, [sp, #-4]!
+00000130:   0D B0 A0 E1                 	mov	r11, sp
+00000134:   1C D0 4D E2                 	sub	sp, sp, #0x1c
+00000138:   07 D0 CD E3                 	bic	sp, sp, #0x7
+0000013C:   18 00 8D E5                 	str	r0, [sp, #24]
+00000140:   0C 00 8D E2                 	add	r0, sp, #0xc
+00000144:   00 10 A0 E3                 	mov	r1, #0x0
+00000148:   04 10 8D E5                 	str	r1, [sp, #4]
+0000014C:   08 10 80 E2                 	add	r1, r0, #0x8
+00000150:   04 C0 80 E2                 	add	r12, r0, #0x4
+00000154:   08 00 8D E5                 	str	r0, [sp, #8]
+00000158:   07 00 00 EA                 	b	#0x1c
+0000015C:   08 20 9D E5                 	ldr	r2, [sp, #8]
+00000160:   04 20 82 E2                 	add	r2, r2, #0x4
+00000164:   08 20 8D E5                 	str	r2, [sp, #8]
+00000168:   01 00 52 E1                 	cmp	r2, r1
+0000016C:   04 20 9D E5                 	ldr	r2, [sp, #4]
+00000170:   08 00 8D 85                 	strhi	r0, [sp, #8]
+00000174:   01 20 82 E2                 	add	r2, r2, #0x1
+00000178:   04 20 8D E5                 	str	r2, [sp, #4]
+0000017C:   18 30 9D E5                 	ldr	r3, [sp, #24]
+00000180:   04 20 9D E5                 	ldr	r2, [sp, #4]
+00000184:   03 00 52 E1                 	cmp	r2, r3
+00000188:   15 00 00 8A                 	bhi	#0x54
+0000018C:   04 20 9D E5                 	ldr	r2, [sp, #4]
+00000190:   01 00 52 E3                 	cmp	r2, #0x1
+00000194:   03 00 00 8A                 	bhi	#0xc
+00000198:   08 20 9D E5                 	ldr	r2, [sp, #8]
+0000019C:   04 30 9D E5                 	ldr	r3, [sp, #4]
+000001A0:   00 30 82 E5                 	str	r3, [r2]
+000001A4:   EC FF FF EA                 	b	#-0x50
+000001A8:   08 20 9D E5                 	ldr	r2, [sp, #8]
+000001AC:   00 00 52 E1                 	cmp	r2, r0
+000001B0:   02 00 00 1A                 	bne	#0x8
+000001B4:   10 20 9D E5                 	ldr	r2, [sp, #16]
+000001B8:   14 30 9D E5                 	ldr	r3, [sp, #20]
+000001BC:   04 00 00 EA                 	b	#0x10
+000001C0:   08 20 9D E5                 	ldr	r2, [sp, #8]
+000001C4:   0C 00 52 E1                 	cmp	r2, r12
+000001C8:   0C 20 9D E5                 	ldr	r2, [sp, #12]
+000001CC:   10 30 9D 15                 	ldrne	r3, [sp, #16]
+000001D0:   14 30 9D 05                 	ldreq	r3, [sp, #20]
+000001D4:   03 20 82 E0                 	add	r2, r2, r3
+000001D8:   08 30 9D E5                 	ldr	r3, [sp, #8]
+000001DC:   00 20 83 E5                 	str	r2, [r3]
+000001E0:   DD FF FF EA                 	b	#-0x8c
+000001E4:   08 10 9D E5                 	ldr	r1, [sp, #8]
+000001E8:   00 00 51 E1                 	cmp	r1, r0
+000001EC:   03 00 00 0A                 	beq	#0xc
+000001F0:   08 00 9D E5                 	ldr	r0, [sp, #8]
+000001F4:   04 00 40 E2                 	sub	r0, r0, #0x4
+000001F8:   00 00 90 E5                 	ldr	r0, [r0]
+000001FC:   01 00 00 EA                 	b	#0x4
+00000200:   08 00 9D E5                 	ldr	r0, [sp, #8]
+00000204:   08 00 90 E5                 	ldr	r0, [r0, #8]
+00000208:   0B D0 A0 E1                 	mov	sp, r11
+0000020C:   04 B0 9D E4                 	ldr	r11, [sp], #4
+00000210:   1E FF 2F E1                 	bx	lr
+acture-cl> q
