@@ -17,5 +17,8 @@ Makefile.common
 Makefile.llvm.config
 autoconf/aclocal.m4
 autoconf/autom4te.cache
-
 configure
+config.log
+config.status
+include/config.h
+configure.out
