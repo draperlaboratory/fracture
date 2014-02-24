@@ -64,11 +64,11 @@
 #include "CodeInv/MCDirector.h"
 #include "Commands/Commands.h"
 
-#define DEMANGLE  // Do name demangling
-#ifdef DEMANGLE
-#include <cxxabi.h>
-#include <malloc.h>
-#endif
+// #define DEMANGLE  // Do name demangling
+// #ifdef DEMANGLE
+// #include <cxxabi.h>
+// #include <malloc.h>
+// #endif
 
 using namespace llvm;
 using namespace fracture;
