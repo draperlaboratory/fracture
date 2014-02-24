@@ -73,11 +73,11 @@
 #include "CodeInv/MCDirector.h"
 #include "Commands/Commands.h"
 
-#define DEMANGLE  // Do name demangling
-#ifdef DEMANGLE
-#include <cxxabi.h>
-#include <malloc.h>
-#endif
+//#define DEMANGLE  // Do name demangling
+// #ifdef DEMANGLE
+// #include <cxxabi.h>
+// #include <malloc.h>
+//#endif
 
 using namespace llvm;
 using namespace fracture;
@@ -253,10 +253,10 @@ static bool lookupELFName(const object::ELFObjectFile<ELFT>* elf,
          elf->end_symbols(); si != se; ++si) {
     Syms.push_back(*si);
   }
-  for (object::symbol_iterator si = elf->begin_dynamic_symbols(), se =
-         elf->end_dynamic_symbols(); si != se; ++si) {
-    Syms.push_back(*si);
-  }
+  // for (object::symbol_iterator si = elf->begin_dynamic_symbols(), se =
+  //        elf->end_dynamic_symbols(); si != se; ++si) {
+  //   Syms.push_back(*si);
+  // }
 
   for (std::vector<object::SymbolRef>::iterator si = Syms.begin(),
       se = Syms.end();
@@ -408,8 +408,8 @@ static void runSectionsCommand(std::vector<std::string> &CommandLine) {
          << "Idx Name          Size      Address          Type\n";
   error_code ec;
   unsigned i = 1;
-  for (object::section_iterator si = DAS->getExecutable()->begin_sections(),
-         se = DAS->getExecutable()->end_sections(); si != se; ++si) {
+  for (object::section_iterator si = DAS->getExecutable()->section_begin(),
+         se = DAS->getExecutable()->section_end(); si != se; ++si) {
     if (error(ec))
       return;
     StringRef Name;
@@ -569,16 +569,16 @@ runSymbolsCommand(std::vector<std::string> &CommandLine) {
 
   error_code ec;
   uint64_t Address;
-  object::SectionRef Section = *Executable->end_sections();
+  object::SectionRef Section = *Executable->section_end();
   if (SectionNameOrAddress.getAsInteger(0, Address) && Address != 0) {
     Section = DAS->getSectionByAddress(Address);
   }
 
-  if (Section == *Executable->end_sections()) {
+  if (Section == *Executable->section_end()) {
     Section = DAS->getSectionByName(SectionNameOrAddress);
   }
 
-  if (Section == *Executable->end_sections()) {
+  if (Section == *Executable->section_end()) {
     errs() << "Could not find section!\n";
     return res;
   }
@@ -676,7 +676,7 @@ static void runDumpCommand(std::vector<std::string> &CommandLine) {
   if (error(Section.isBSS(BSS)))
     return;
 
-  if (Section == *DAS->getExecutable()->end_sections()) {
+  if (Section == *DAS->getExecutable()->section_end()) {
     outs() << "No section found with that name or containing that address\n";
     return;
   }
