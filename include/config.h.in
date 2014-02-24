@@ -1,0 +1,9 @@
+/* include/llvm/Config/config.h.in.  Generated from autoconf/configure.ac by autoheader.  */
+
+#ifndef CONFIG_H
+#define CONFIG_H
+
+/* editline include directory. */
+#undef HAVE_EDITLINE_READLINE_H
+
+#endif
