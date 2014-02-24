@@ -36,6 +36,13 @@ namespace object {
 
     virtual symbol_iterator begin_symbols() const;
     virtual symbol_iterator end_symbols() const;
+    virtual basic_symbol_iterator symbol_begin_impl() const {
+      return begin_symbols();
+    }
+    virtual basic_symbol_iterator symbol_end_impl() const {
+      return end_symbols();
+    }
+
 
     virtual symbol_iterator begin_dynamic_symbols() const;
     virtual symbol_iterator end_dynamic_symbols() const;
@@ -43,8 +50,21 @@ namespace object {
     virtual section_iterator begin_sections() const;
     virtual section_iterator end_sections() const;
 
+    virtual section_iterator section_begin() const {
+      return begin_sections();
+    }
+    virtual section_iterator section_end() const {
+      return end_sections();
+    }
+
     virtual library_iterator begin_libraries_needed() const;
     virtual library_iterator end_libraries_needed() const;
+    virtual library_iterator needed_library_begin() const {
+      return begin_libraries_needed();
+    }
+    virtual library_iterator needed_library_end() const {
+      return end_libraries_needed();
+    }
 
     /// @brief The number of bytes used to represent an address in this object
     ///        file format.
