@@ -11,3 +11,11 @@
 *.lai
 *.la
 *.a
+
+# LLVM and Makefile cruft
+Makefile.common
+Makefile.llvm.config
+autoconf/aclocal.m4
+autoconf/autom4te.cache
+
+configure
