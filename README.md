@@ -1,5 +1,5 @@
-Fracture
-========
+Fracture (tm)
+=============
 
 Fracture is an architecture-independent decompiler to LLVM IR. It is open source
 software. You may freely distributed it under the terms of the 3-clause BSD
@@ -24,3 +24,10 @@ abstract LLVM IR efficiently from different target instruction sets.
 Fracture currently works with the ARM backend and is still in the proof of
 concept stage, with several missing pieces before it can be utilitized as we
 intend. See the ROADMAP.md file for more information.
+
+Trademark Notice
+================
+
+Fracture is a registered trademark of the Charles Stark Draper
+Laboratory and/or its affiliates. Other names may be trademarks of
+their respective owners.
