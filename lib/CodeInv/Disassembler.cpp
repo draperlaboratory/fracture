@@ -544,8 +544,8 @@ std::string Disassembler::rawBytesToString(StringRef Bytes) {
 const object::SectionRef Disassembler::getSectionByName(StringRef SectionName)
   const {
   error_code ec;
-  for (object::section_iterator si = Executable->begin_sections(), se =
-         Executable->end_sections(); si != se; ++si) {
+  for (object::section_iterator si = Executable->section_begin(), se =
+         Executable->section_end(); si != se; ++si) {
 
     if (ec) {
       printError(ec.message());
@@ -568,14 +568,14 @@ const object::SectionRef Disassembler::getSectionByName(StringRef SectionName)
 
   printError("Unable to find section named \"" + std::string(SectionName.data())
     + "\"");
-  return *Executable->end_sections();
+  return *Executable->section_end();
 }
 
 const object::SectionRef Disassembler::getSectionByAddress(unsigned Address)
   const {
   error_code ec;
-  for (object::section_iterator si = Executable->begin_sections(), se =
-         Executable->end_sections(); si != se; ++si) {
+  for (object::section_iterator si = Executable->section_begin(), se =
+         Executable->section_end(); si != se; ++si) {
 
     if (ec) {
       printError(ec.message());
@@ -595,7 +595,7 @@ const object::SectionRef Disassembler::getSectionByAddress(unsigned Address)
     }
   }
 
-  return *Executable->end_sections();
+  return *Executable->section_end();
 }
 
 uint64_t Disassembler::getDebugOffset(const DebugLoc &Loc) const {
