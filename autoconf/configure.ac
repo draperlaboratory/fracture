@@ -1185,6 +1185,11 @@ AC_LINK_IFELSE(
   AC_DEFINE(HAVE_CRASHREPORTER_INFO, 0,
             Define if __crashreporter_info__ exists.))
 
+dnl editline
+AC_CHECK_HEADERS(editline/readline.h,
+                   AC_SUBST(HAVE_EDITLINE_READLINE_H, 1),
+                   AC_SUBST(HAVE_EDITLINE_READLINE_H, 0))
+
 dnl===-----------------------------------------------------------------------===
 dnl===
 dnl=== SECTION 7: Check for types and structures
@@ -1465,6 +1470,11 @@ dnl **************************************************************************
 dnl End LLVM configure.ac Import
 dnl **************************************************************************
 
+dnl Configure fracture
+configh="include/config.h"
+AC_CONFIG_HEADERS([${configh}:${configh}.in])
+
+
 dnl Configure a common Makefile
 AC_CONFIG_FILES(Makefile.common)
 AC_CONFIG_FILES(Makefile.llvm.config)
@@ -1477,7 +1487,7 @@ AC_CONFIG_MAKEFILE(lib/utils/Makefile)
 AC_CONFIG_MAKEFILE(lib/Commands/Makefile)
 AC_CONFIG_MAKEFILE(tools/Makefile)
 dnl===AC_CONFIG_MAKEFILE(tools/sample/Makefile)
-AC_CONFIG_MAKEFILE(tools/dish/Makefile)
+AC_CONFIG_MAKEFILE(tools/fracture-cl/Makefile)
 AC_CONFIG_MAKEFILE(utils/Makefile)
 AC_CONFIG_MAKEFILE(utils/TableGen/Makefile)
 
