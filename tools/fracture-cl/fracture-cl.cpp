@@ -244,10 +244,10 @@ static bool lookupELFName(const object::ELFObjectFile<ELFT>* elf,
          elf->end_symbols(); si != se; ++si) {
     Syms.push_back(*si);
   }
-  for (object::symbol_iterator si = elf->begin_dynamic_symbols(), se =
-         elf->end_dynamic_symbols(); si != se; ++si) {
-    Syms.push_back(*si);
-  }
+  // for (object::symbol_iterator si = elf->begin_dynamic_symbols(), se =
+  //        elf->end_dynamic_symbols(); si != se; ++si) {
+  //   Syms.push_back(*si);
+  // }
 
   for (std::vector<object::SymbolRef>::iterator si = Syms.begin(),
       se = Syms.end();
@@ -399,8 +399,8 @@ static void runSectionsCommand(std::vector<std::string> &CommandLine) {
          << "Idx Name          Size      Address          Type\n";
   error_code ec;
   unsigned i = 1;
-  for (object::section_iterator si = DAS->getExecutable()->begin_sections(),
-         se = DAS->getExecutable()->end_sections(); si != se; ++si) {
+  for (object::section_iterator si = DAS->getExecutable()->section_begin(),
+         se = DAS->getExecutable()->section_end(); si != se; ++si) {
     if (error(ec))
       return;
     StringRef Name;
@@ -437,10 +437,10 @@ static void dumpELFSymbols(const object::ELFObjectFile<ELFT>* elf,
          elf->end_symbols(); si != se; ++si) {
     Syms.push_back(*si);
   }
-  for (object::symbol_iterator si = elf->begin_dynamic_symbols(), se =
-         elf->end_dynamic_symbols(); si != se; ++si) {
-    Syms.push_back(*si);
-  }
+  // for (object::symbol_iterator si = elf->begin_dynamic_symbols(), se =
+  //        elf->end_dynamic_symbols(); si != se; ++si) {
+  //   Syms.push_back(*si);
+  // }
   for (std::vector<object::SymbolRef>::iterator si = Syms.begin(),
          se = Syms.end();
        si != se; ++si) {
@@ -453,7 +453,7 @@ static void dumpELFSymbols(const object::ELFObjectFile<ELFT>* elf,
     uint32_t Flags = 0;
     uint64_t SectAddr;
     uint64_t Value;
-    object::section_iterator Section = elf->end_sections();
+    object::section_iterator Section = elf->section_end();
     if (error(si->getName(Name)))
       continue;
     if (error(si->getAddress(Address)))
@@ -533,8 +533,8 @@ static void dumpCOFFSymbols(const object::COFFObjectFile *coff,
   int SectionIndex = -1;
   int Index = 1;
   error_code ec;
-  for (object::section_iterator si = coff->begin_sections(), se =
-         coff->end_sections(); si != se; ++si, ++Index) {
+  for (object::section_iterator si = coff->section_begin(), se =
+         coff->section_end(); si != se; ++si, ++Index) {
     uint64_t SectionAddr;
     if (error(si->getAddress(SectionAddr)))
       break;
@@ -609,16 +609,16 @@ static void runSymbolsCommand(std::vector<std::string> &CommandLine) {
 
   error_code ec;
   uint64_t Address;
-  object::SectionRef Section = *Executable->end_sections();
+  object::SectionRef Section = *Executable->section_end();
   if (SectionNameOrAddress.getAsInteger(0, Address) && Address != 0) {
     Section = DAS->getSectionByAddress(Address);
   }
 
-  if (Section == *Executable->end_sections()) {
+  if (Section == *Executable->section_end()) {
     Section = DAS->getSectionByName(SectionNameOrAddress);
   }
 
-  if (Section == *Executable->end_sections()) {
+  if (Section == *Executable->section_end()) {
     errs() << "Could not find section!\n";
     return;
   }
@@ -714,7 +714,7 @@ static void runDumpCommand(std::vector<std::string> &CommandLine) {
   if (error(Section.isBSS(BSS)))
     return;
 
-  if (Section == *DAS->getExecutable()->end_sections()) {
+  if (Section == *DAS->getExecutable()->section_end()) {
     outs() << "No section found with that name or containing that address\n";
     return;
   }
