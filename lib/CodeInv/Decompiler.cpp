@@ -49,7 +49,7 @@ Decompiler::~Decompiler() {
 }
 
 
-Function* Decompiler::decompile(unsigned Address) {
+Function* Decompiler::decompileFunction(unsigned Address) {
   MachineFunction *MF = Dis->disassemble(Address);
 
   // Get Function Name
@@ -233,13 +233,7 @@ void Decompiler::splitBasicBlockIntoBlock(Function::iterator Src,
 
 void Decompiler::printInstructions(formatted_raw_ostream &Out,
   unsigned Address) {
-  Function *F = decompile(Address);
-
-  // Out << "<" << F->getName() << ">:\n";
-  // for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I) {
-  //   Out << *I << "\n";
-  // }
-  Out << *F;
+  Out << *(decompileFunction(Address));
 }
 
 BasicBlock* Decompiler::decompileBasicBlock(MachineBasicBlock *MBB,
