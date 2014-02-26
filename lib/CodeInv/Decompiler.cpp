@@ -48,8 +48,57 @@ Decompiler::~Decompiler() {
   delete Dis;
 }
 
+void Decompiler::decompile(unsigned Address) {
+  std::vector<unsigned> Children;
+  Children.push_back(Address);
+
+  do {
+    Function* CurFunc = decompileFunction(Children.back());
+    Children.pop_back();
+    if (CurFunc == NULL) {
+      continue;
+    }
+    // Scan Current Function for children (should probably record children
+    // during decompile...)
+    for (Function::iterator BI = CurFunc->begin(), BE = CurFunc->end();
+         BI != BE; ++BI) {
+      for (BasicBlock::iterator I = BI->begin(), E = BI->end();
+           I != E; ++I) {
+        CallInst *CI = dyn_cast<CallInst>(I);
+        if (CI == NULL || !CI->getCalledFunction()->hasFnAttribute("Address")) {
+          continue;
+        }
+        StringRef AddrStr =
+          CI->getCalledFunction()->getFnAttribute("Address").getValueAsString();
+        uint64_t Addr;
+        AddrStr.getAsInteger(10, Addr);
+        DEBUG(outs() << "Read Address as: " << format("%1" PRIx64, Addr)
+          << ", " << AddrStr << "\n");
+        StringRef FName = Dis->getFunctionName(Addr);
+        Function *NF = Mod->getFunction(FName);
+        if (Addr != 0 && (NF == NULL || NF->empty())) {
+          Children.push_back(Addr);
+        }
+      }
+    }
+  } while (Children.size() != 0); // While there are children, decompile
+}
 
 Function* Decompiler::decompileFunction(unsigned Address) {
+  // Check that Address is inside the current section.
+  // TODO: Find a better way to do this check. What we really care about is
+  // avoiding reads to library calls and areas of memory we can't "see".
+  const object::SectionRef Sect = Dis->getCurrentSection();
+  uint64_t SectStart, SectEnd;
+  Sect.getAddress(SectStart);
+  Sect.getSize(SectEnd);
+  SectEnd += SectStart;
+  if (Address < SectStart || Address > SectEnd) {
+    errs() << "Address out of bounds for section (is this a library call?): "
+           << format("%1" PRIx64, Address) << "\n";
+    return NULL;
+  }
+
   MachineFunction *MF = Dis->disassemble(Address);
 
   // Get Function Name
