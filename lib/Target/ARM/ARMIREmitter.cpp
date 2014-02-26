@@ -211,14 +211,21 @@ Value* ARMIREmitter::visitCALL(const SDNode *N) {
   Module *Mod = IRB->GetInsertBlock()->getParent()->getParent();
 
   FunctionType *FT =
-    FunctionType::get(Type::getPrimitiveType(getGlobalContext(),
+    FunctionType::get(Type::getPrimitiveType(Mod->getContext(),
         Type::VoidTyID), false);
-  Value* Proto = Mod->getOrInsertFunction(FName, FT);
 
-  // Value* Call =
-  IRB->CreateCall(Proto);
-  VisitMap[N] = NULL;
+  Twine TgtAddr(Tgt);
+
+  AttributeSet AS;
+  AS = AS.addAttribute(Mod->getContext(), AttributeSet::FunctionIndex,
+    "Address", TgtAddr.str());
+  Value* Proto = Mod->getOrInsertFunction(FName, FT, AS);
+
+  // CallInst* Call =
+  IRB->CreateCall(dyn_cast<Value>(Proto));
+
   // TODO: Technically visitCall sets the LR to IP+8. We should return that.
+  VisitMap[N] = NULL;
   return NULL;
 }
 
