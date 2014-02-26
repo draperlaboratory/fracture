@@ -343,6 +343,7 @@ static void runDecompileCommand(std::vector<std::string> &CommandLine) {
   DEC->setViewIRDAGs(ViewIRDAGs);
 
   formatted_raw_ostream Out(outs(), false);
+  DEC->decompile(Address);
   DEC->printInstructions(Out, Address);
 }
 
