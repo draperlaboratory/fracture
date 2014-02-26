@@ -50,7 +50,18 @@ public:
 
   void printInstructions(formatted_raw_ostream &Out, unsigned Address);
 
-
+  ///===-------------------------------------------------------------------===//
+  /// decompile - decompile starting at a given memory address.
+  ///
+  /// This function recursively descends the code to decompile the function
+  /// and all functions called by this function.
+  ///
+  /// Results are cached, so if a function has already been decompiled, we refer
+  /// to the stored result.
+  ///
+  /// @param Address - the address to start decompiling.
+  ///
+  void decompile(unsigned Address);
   Function* decompileFunction(unsigned Address);
   BasicBlock* decompileBasicBlock(MachineBasicBlock *MBB, Function *F);
 
