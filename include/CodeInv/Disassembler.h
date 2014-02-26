@@ -138,6 +138,9 @@ public:
   /// \param Section a pointer to the desired SectionRef
   void setSection(std::string SectionName);
   void setSection(const object::SectionRef Section);
+  const object::SectionRef getCurrentSection() const {
+    return CurSection;
+  }
   const object::SectionRef getSectionByName(StringRef SectionName) const;
   const object::SectionRef getSectionByAddress(unsigned Address) const;
 
