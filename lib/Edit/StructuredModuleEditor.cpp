@@ -35,8 +35,7 @@ StructuredModuleEditor::StructuredModuleEditor(Module *M, raw_ostream &OS) :
 }
 
 StructuredModuleEditor::~StructuredModuleEditor() {
-	if (M)
-		delete M;
+  delete M;
 }
 
 StructuredModuleEditor::FuncList* StructuredModuleEditor::getFuncsWithSameSignature(

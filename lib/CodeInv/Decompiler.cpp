@@ -41,7 +41,7 @@ Decompiler::Decompiler(Disassembler *NewDis, Module *NewMod,
 
 Decompiler::~Decompiler() {
   delete Emitter;
-  if (DAG) delete DAG;
+  delete DAG;
   delete InvISel;
   delete Context;
   delete Mod;
