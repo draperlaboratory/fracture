@@ -471,8 +471,8 @@ StringRef Disassembler::getFunctionName(unsigned Address) {
   // }
 
   if (NameRef.empty()) {
-    std::string FName;
-    raw_string_ostream FOut(FName);
+    std::string *FName = new std::string();
+    raw_string_ostream FOut(*FName);
     FOut << "func_" << format("%1" PRIx64, Address);
     return StringRef(FOut.str());
   }
