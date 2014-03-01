@@ -157,8 +157,6 @@ GAS        := @GAS@
 POD2HTML   := @POD2HTML@
 POD2MAN    := @POD2MAN@
 PDFROFF    := @PDFROFF@
-RUNTEST    := @RUNTEST@
-TCLSH      := @TCLSH@
 ZIP        := @ZIP@
 
 HAVE_PTHREAD := @HAVE_PTHREAD@
@@ -185,6 +183,12 @@ RDYNAMIC := @RDYNAMIC@
 # When ENABLE_LIBCPP is enabled, LLVM uses libc++ by default to build.
 #ENABLE_LIBCPP = 0
 ENABLE_LIBCPP = @ENABLE_LIBCPP@
+
+# When ENABLE_CXX11 is enabled, LLVM uses c++11 mode by default to build.
+ENABLE_CXX11 = @ENABLE_CXX11@
+
+# When ENABLE_WERROR is enabled, we'll pass -Werror on the command line
+ENABLE_WERROR = @ENABLE_WERROR@
 
 # When ENABLE_OPTIMIZED is enabled, LLVM code is optimized and output is put
 # into the "Release" directories. Otherwise, LLVM code is not optimized and
