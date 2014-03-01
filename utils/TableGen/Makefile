@@ -9,11 +9,12 @@
 
 LEVEL = ../..
 TOOLNAME = fracture-tblgen
-# USEDLIBS = LLVMTableGen.a LLVMSupport.a
-
-LINK_COMPONENTS = support tablegen
+LLVMLIBS = LLVMTableGen.a LLVMSupport.a
 
 # This tool has no plugins, optimize startup time.
 #TOOL_NO_EXPORTS = 1
 
 include $(LEVEL)/Makefile.common
+
+print_vars:
+	echo $(LibDir)
