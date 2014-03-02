@@ -1232,6 +1232,17 @@ else
   AC_SUBST(HAVE_LIBZ, 0)
 fi
 
+dnl libeditline is required
+AC_SEARCH_LIBS([readline], [readline edit editline],
+             [AC_DEFINE([HAVE_EDITLINE],
+             [1],[Define if libeditline is available on this platform.])],
+             AC_MSG_ERROR([libeditline not found!! ]))
+
+dnl editline header
+AC_CHECK_HEADERS(editline/readline.h,
+                   AC_SUBST(HAVE_EDITLINE_READLINE_H, 1),
+                   AC_SUBST(HAVE_EDITLINE_READLINE_H, 0))
+
 dnl Try to find ffi.h.
 if test "$llvm_cv_enable_libffi" = "yes" ; then
   AC_CHECK_HEADERS([ffi.h ffi/ffi.h])
