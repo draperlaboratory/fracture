@@ -12,21 +12,20 @@
 // This file is distributed under the University of Illinois Open Source
 // License. See LICENSE.TXT for details.
 //
-// Use "diff" to determine changes made. 
+// Use "diff" to determine changes made.
 //
 //===----------------------------------------------------------------------===//
 //
-// This class creates inverse DAG patterns to convert target-specific 
-// instructions back to LLVM-generic or target-generic instructions. 
+// This class creates inverse DAG patterns to convert target-specific
+// instructions back to LLVM-generic or target-generic instructions.
 //
-// Whereas the compilation infrastructure is trying to match patterns to 
+// Whereas the compilation infrastructure is trying to match patterns to
 // potential instructions, we already have instructions and need to
-// generate the appropriate IR code graphs so that we can recover IR 
+// generate the appropriate IR code graphs so that we can recover IR
 // source information. The following aspects make the process different:
 //   * Types are defined by the target instruction and need no conversion/map
 //   * Side effects need to be recorded
 //   * Memory addresses are hard and so are regs which store them
-//   * 
 //===----------------------------------------------------------------------===//
 
 #include "CodeInvDAGPatterns.h"
@@ -62,7 +61,7 @@ void InvTreePatternNode::print(raw_ostream &OS) const {
   if (!isLeaf()) {
     if (getNumChildren() != 0) {
       OS << " ";
-      getChild(0)->print(OS);  
+      getChild(0)->print(OS);
       for (unsigned i = 1, e = getNumChildren(); i != e; ++i) {
         OS << ", ";
         getChild(i)->print(OS);
@@ -156,7 +155,7 @@ InvTreePatternNode *InvTreePattern::ParseTreePattern(Init *TheInit, StringRef Op
     error("Thye Pattern has an unexpected operator type.");
   }
   Record *OpRec = OpDef->getDef();
-  
+
   if (OpRec->isSubClassOf("ValueType")) {
     // ValueType is the type of a leaf node.
     if (Dag->getNumArgs() != 1) {
@@ -184,7 +183,7 @@ InvTreePatternNode *InvTreePattern::ParseTreePattern(Init *TheInit, StringRef Op
 
   // Unlike Regular treepatterns, we assume all patterns are "input" patterns
   // in the TableGen context
-  if (OpRec->isSubClassOf("Instruction") || 
+  if (OpRec->isSubClassOf("Instruction") ||
     OpRec->isSubClassOf("SDNodeXForm")) {
     error("Cannot use '" + OpRec->getName() + "' in the output pattern.");
   }
@@ -236,7 +235,7 @@ bool InvTreePatternNode::NodeHasProperty(SDNP Property,
   if (Operator->isSubClassOf("SDNode")) {
     return CGP.getSDNodeInfo(Operator).hasProperty(Property);
   }
-  
+
   if (Operator->isSubClassOf("Instruction")) {
     const CodeGenInstruction &CGI = CGP.getTgtNodeInfo(Operator);
     switch (Property) {
@@ -244,7 +243,7 @@ bool InvTreePatternNode::NodeHasProperty(SDNP Property,
         // Objects have chains when they change memory or control flow
         // FIXME: add iscall or isbranch/indirectbranch?
         if (CGI.mayLoad || CGI.mayStore || CGI.isBranch || CGI.isReturn
-            || CGI.isCall) 
+            || CGI.isCall)
           return true;
         break;
       default:
@@ -412,7 +411,7 @@ public:
       isBitcast = IsNodeBitcast(N);
       return;
     }
-    
+
     errs() << N->getRecord()->getName() << "\n";
     std::vector<Record*> classes = N->getRecord()->getSuperClasses();
     errs() << "Superclasses: " << classes.size() << "\n";
@@ -535,7 +534,7 @@ CodeInvDAGPatterns::~CodeInvDAGPatterns() {
 void CodeInvDAGPatterns::ParseInstructions() {
   std::vector<Record*> Instrs = Records.getAllDerivedDefinitions("Instruction");
   Record* setRec = Records.getDef("set");
-  
+
   for (unsigned i = 0, e = Instrs.size(); i != e; ++i) {
     // Generate instruction details
     Record* CurInst = Instrs[i]; 
@@ -579,7 +578,7 @@ void CodeInvDAGPatterns::ParseInstructions() {
 
     if (isa<ListInit>(Instrs[i]->getValueInit("Pattern")))
       InstResPat = Instrs[i]->getValueAsListInit("Pattern");
-    
+ 
 
     if (InstResPat && InstResPat->getSize() != 0) {
       // Extract useful pattern info -- Remember we already know what the
@@ -617,7 +616,7 @@ void CodeInvDAGPatterns::ParseInstructions() {
             errs() << "Couldn't get type!\n";
           }
         }
-        Src = Inst;        
+        Src = Inst;
       }
       if (Dst->getRecord()->getName() == "set") {
         // Set types for the destination
@@ -642,12 +641,12 @@ void CodeInvDAGPatterns::ParseInstructions() {
             errs() << "Couldn't get type!\n";
           }
         }
-        Dst = Inst;        
+        Dst = Inst;
       }
-      Patterns.push_back(new InvPatternToMatch(CurInst, 
+      Patterns.push_back(new InvPatternToMatch(CurInst,
           Src, Dst, i));
       ResultPatterns.push_back(ResultPat);
-    } 
+    }
     // else {
     //   outs() << "OUT: NONE\n";
     // }
@@ -849,7 +848,7 @@ void CodeInvDAGPatterns::VerifyInstructionFlags() {
 void CodeInvDAGPatterns::InlinePatternFragments(InvTreePattern &TP) {
   // if (TP.hasError())
   //   return 0;
-  
+
   // DFS through the tree -- For each child
   //  - If PatFrag, inline it
   //  - Else recurse through it
@@ -871,7 +870,7 @@ void CodeInvDAGPatterns::InlinePatternFragments(InvTreePattern &TP) {
 
     // Nothing to do if we are a leaf.
     if (CurNode->isLeaf()) continue;
-    
+
     Record *NodeRec = CurNode->getRecord();
     assert(NodeRec && "NPE inside of InvTreePatternNode!");
 
@@ -890,7 +889,7 @@ void CodeInvDAGPatterns::InlinePatternFragments(InvTreePattern &TP) {
       // NOTE: There's no checking here...might need to fix in future.
       for (unsigned i = 0; i != NumOps && i != FragTree->getNumChildren();
            ++i) {
-        // if the Fragment child has a name but the curnode child doesn't, then 
+        // if the Fragment child has a name but the curnode child doesn't, then
         // use the fragments name
         InvTreePatternNode *CurChild = CurNode->getChild(i);
         if (CurChild->getName().empty()) {
@@ -903,7 +902,7 @@ void CodeInvDAGPatterns::InlinePatternFragments(InvTreePattern &TP) {
       // Evaluate this node again
       TPS.push(CurNode);
       continue;
-    } 
+    }
 
     // Add all children to the stack in reverse order.
     unsigned i = CurNode->getNumChildren();
@@ -914,14 +913,14 @@ void CodeInvDAGPatterns::InlinePatternFragments(InvTreePattern &TP) {
   }
 }
 
-// Check for the pattern fragment in the map, if it's not there then parse it 
+// Check for the pattern fragment in the map, if it's not there then parse it
 // using the rec object.
-// This memoization strategy is used because we don't need to do extra stuff 
+// This memoization strategy is used because we don't need to do extra stuff
 // with patfrags.
 InvTreePattern* CodeInvDAGPatterns::getPatternFragment(Record *Rec) {
-  std::map<Record*, InvTreePattern*, LessRecordByID>::iterator 
+  std::map<Record*, InvTreePattern*, LessRecordByID>::iterator
     Res = PatFrags.find(Rec);
-  
+
   if (Res != PatFrags.end()) return Res->second;
 
   // Parse the Pattern Fragment, add to list, and return it
