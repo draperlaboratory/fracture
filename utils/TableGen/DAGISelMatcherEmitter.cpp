@@ -33,10 +33,10 @@ OmitComments("omit-comments", cl::desc("Do not generate comments"),
 namespace {
 class MatcherTableEmitter {
   const CodeInvDAGPatterns &CGP;
-  
+vv
   // DenseMap<TreePattern *, unsigned> NodePredicateMap;
   // std::vector<TreePredicateFn> NodePredicates;
-  
+
   StringMap<unsigned> PatternPredicateMap;
   std::vector<std::string> PatternPredicates;
 
@@ -267,6 +267,7 @@ EmitMatcher(const Matcher *N, unsigned Indent, unsigned CurrentIdx,
     StringRef EnumName = cast<CheckOpcodeMatcher>(N)->getEnumName();
     // This hack fixes a specific bug where null chars get emitted in OSX. 
     // Would be best to determine HOW this is happening, but this works for now.
+    outs() << EnumName << "\n";
     OS << "OPC_CheckOpcode, TARGET_VAL(";
     for (unsigned i = 0, e = EnumName.size(); i != e; ++i) {
 	OS << EnumName[i];
@@ -633,10 +634,10 @@ EmitMatcherList(const Matcher *N, unsigned Indent, unsigned CurrentIdx,
 //     for (unsigned i = 0, e = NodePredicates.size(); i != e; ++i) {
 //       // Emit the predicate code corresponding to this pattern.
 //       TreePredicateFn PredFn = NodePredicates[i];
-      
+
 //       assert(!PredFn.isAlwaysTrue() && "No code in this predicate");
 //       OS << "  case " << i << ": { // " << NodePredicates[i].getFnName() <<'\n';
-      
+
 //       OS << PredFn.getCodeToRunOnSDNode() << "\n  }\n";
 //     }
 //     OS << "  }\n";
