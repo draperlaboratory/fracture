@@ -12,7 +12,7 @@
 // This file is distributed under the University of Illinois Open Source
 // License. See LICENSE.TXT for details.
 //
-// Use "diff" to determine changes made. 
+// Use "diff" to determine changes made.
 //
 //===----------------------------------------------------------------------===//
 //
@@ -39,7 +39,7 @@ class FractureInstrMapEmitter {
   Matcher *TheMatcher, *CurNode;
   StringMap<unsigned> VariableMap;
   unsigned NextOpNo;
-  bool MatcherGenFailed; 
+  bool MatcherGenFailed;
 
   /// MatchedComplexPatterns - This maintains a list of all of the
   /// ComplexPatterns that we need to check.  The patterns are known to have
@@ -53,7 +53,7 @@ class FractureInstrMapEmitter {
   SmallVector<unsigned, 2> MatchedChainNodes;
 
 public:
-  explicit FractureInstrMapEmitter(RecordKeeper &R) 
+  explicit FractureInstrMapEmitter(RecordKeeper &R)
     : CIP(R), TheMatcher(0), CurNode(0), NextOpNo(0) {}
   void run(raw_ostream &OS);
 private:
@@ -117,12 +117,12 @@ void EmitInstrMap(RecordKeeper &Records, raw_ostream &OS) {
 } // end namespace fracture
 
 void  FractureInstrMapEmitter::run(raw_ostream &OS) {
-  emitSourceFileHeader("DAG Instruction Deselector for the " + 
+  emitSourceFileHeader("DAG Instruction Deselector for the " +
     CIP.getTargetInfo().getName() + "target", OS);
 
   OS << "// *** NOTE: This file is included into the middle of the decompiler\n"
      << "// *** for the target. These functions are really just methods.\n\n";
-  
+
   const std::vector<const InvPatternToMatch*> Patterns = CIP.getPatterns();
 
   DEBUG(
@@ -168,12 +168,12 @@ void  FractureInstrMapEmitter::run(raw_ostream &OS) {
     MatchedComplexPatterns.clear();
     MatchedChainNodes.clear();
   }
-  
-  Matcher *FinalMatcher = new ScopeMatcher(&PatternMatchers[0], 
+
+  Matcher *FinalMatcher = new ScopeMatcher(&PatternMatchers[0],
     PatternMatchers.size());
 
   // TheMatcher->dump();
-  
+
   outs() << "Fail Count: " << FailCount << "\n";
   outs() << "Number of Matchers: " << PatternMatchers.size() << "\n";
 
@@ -198,7 +198,7 @@ void FractureInstrMapEmitter::EmitResultCode(
   // what all the chained nodes are.
   if (!MatchedChainNodes.empty())
     AddMatcher(new EmitMergeInputChainsMatcher
-               (MatchedChainNodes.data(), MatchedChainNodes.size()));  
+               (MatchedChainNodes.data(), MatchedChainNodes.size()));
 
   SmallVector<unsigned, 8> Results;
   const InvTreePatternNode *N;
@@ -273,8 +273,8 @@ void FractureInstrMapEmitter::EmitResultOfNamedOperand(
   unsigned SlotNo = VariableMap[Name];
   // FIXME: Terrible hack here. SlotNo should never be 0...
   // Unfortunately our pattern matchers don't line up the names.
-  if (SlotNo != 0) { 
-    errs() << "Variable " << Name 
+  if (SlotNo != 0) {
+    errs() << "Variable " << Name
            << " referenced but not defined and not caught earlier!";
     SlotNo -= 1;
   }
@@ -298,7 +298,7 @@ void FractureInstrMapEmitter::EmitResultLeafAsOperand(
   if (DefInit *DI = dyn_cast<DefInit>(N->getLeafVal())) {
     Record *Def = DI->getDef();
     if (Def->isSubClassOf("Register")) {
-      const CodeGenRegister *Reg = 
+      const CodeGenRegister *Reg =
         CIP.getTargetInfo().getRegBank().getReg(Def);
       MVT::SimpleValueType RT = getRegisterValueType(Def, CIP.getTargetInfo());
       AddMatcher(new EmitRegisterMatcher(Reg, RT));
@@ -309,7 +309,7 @@ void FractureInstrMapEmitter::EmitResultLeafAsOperand(
 
   errs() << "Unknown result node to emit code for: " << *N << "\n";
   Init *LeafVal = N->getLeafVal();
-  errs() << "Kind: " << LeafVal->getKind() << "\n"; 
+  errs() << "Kind: " << LeafVal->getKind() << "\n";
 
 
   // Don't handle anything else (for now)
@@ -323,17 +323,17 @@ void FractureInstrMapEmitter::EmitResultInstructionAsOperand(
   const SDNodeInfo &NInfo = CIP.getSDNodeInfo(N->getRecord());
   // Skip ConstantSDNodes, they are not instructions
   // Instead we treat them as unnamed operands
-  if (NInfo.getSDClassName() == "ConstantSDNode" 
+  if (NInfo.getSDClassName() == "ConstantSDNode"
     || NInfo.getSDClassName() == "ConstantFPSDNode") {
     Results.push_back(VariableMap[NInfo.getEnumName()]);
     return;
   }
 
-  // errs() << NInfo.getSDClassName() << " " << NInfo.getEnumName() << " " 
+  // errs() << NInfo.getSDClassName() << " " << NInfo.getEnumName() << " "
   //        << NInfo.getNumResults() << "\n";
-  
+
   // FIXME: Figure out if we need any of these.
-  bool NodeHasChain = false, TreeHasInGlue = false, 
+  bool NodeHasChain = false, TreeHasInGlue = false,
     TreeHasOutGlue = false, NodeHasMemRefs = false;
 
   // unsigned NumResults = NInfo.getNumResults();
@@ -347,16 +347,15 @@ void FractureInstrMapEmitter::EmitResultInstructionAsOperand(
   }
 
   int NumFixedArityOperands = -1;
-    
 
   // Determine the result types
   SmallVector<MVT::SimpleValueType, 4> ResultVTs;
   for (unsigned i = 0, e = N->getNumTypes(); i != e; ++i)
     ResultVTs.push_back(N->getType(i));
 
-  // Chains indicate instructions that enforce running order 
+  // Chains indicate instructions that enforce running order
   // (mem ops, branches, etc)
-  if (NInfo.hasProperty(SDNPHasChain)) { 
+  if (NInfo.hasProperty(SDNPHasChain)) {
     NodeHasChain = true;
   }
   if (NInfo.hasProperty(SDNPMayLoad) || NInfo.hasProperty(SDNPMayStore)
@@ -395,15 +394,15 @@ void FractureInstrMapEmitter::EmitMatchCode(const InvTreePatternNode* N) {
     }
   }
 
-  if (N->isLeaf()) 
+  if (N->isLeaf())
     EmitLeafMatchCode(N);
-  else 
+  else
     EmitOperatorMatchCode(N);
 }
 
 void FractureInstrMapEmitter::EmitMatcherCode(
   const InvTreePatternNode* N) {
-  
+
   EmitMatchCode(N);
 
   // AT this point we've done the structural type match
@@ -452,7 +451,7 @@ void FractureInstrMapEmitter::EmitOperatorMatchCode(
   const InvTreePatternNode* N) {
   assert(!N->isLeaf() && "Not an operator!");
   Record *Rec = N->getRecord();
-  
+
   // FIXME: we are ignoring complex patterns sitting at the root here.
 
   if (Rec->getName() != "set") {
@@ -461,7 +460,7 @@ void FractureInstrMapEmitter::EmitOperatorMatchCode(
       AddMatcher(new CheckOpcodeMatcher(CIP.getTgtNodeInfo(Rec)));
     } else {
       const SDNodeInfo &NInfo = CIP.getSDNodeInfo(Rec);
-      AddMatcher(new CheckOpcodeMatcher(NInfo));
+      AddMatcher(new CheckOpcodeMatcher(CIP.getSDNodeInfo(Rec)));
       if (NInfo.getSDClassName() == "ConstantSDNode"
         || NInfo.getSDClassName() == "ConstantFPSDNode") {
         AddMatcher(new RecordMatcher("constant node",
@@ -512,7 +511,7 @@ void FractureInstrMapEmitter::EmitOperatorMatchCode(
 void FractureInstrMapEmitter::
 EmitComplexPattern(const InvTreePatternNode* N, unsigned ChildBase) {
   Record* CPRec = (dyn_cast<DefInit>(N->getLeafVal()))->getDef();
-  
+
   // FIXME: Maybe put this in the CodeInvDAGPatterns class
   DagInit *DI = CPRec->getValueAsDag("MIOperandInfo");
   unsigned CurOpNo = NextOpNo + 1;
@@ -530,7 +529,7 @@ EmitComplexPattern(const InvTreePatternNode* N, unsigned ChildBase) {
     }
     AddMatcher(new MoveParentMatcher());
   }
-  
+
   // We can't model ComplexPattern uses that don't have their name taken yet.
   // The OPC_CheckComplexPattern operation implicitly records the results.
   if (N->getName().empty()) {
@@ -539,7 +538,7 @@ EmitComplexPattern(const InvTreePatternNode* N, unsigned ChildBase) {
   }
 
   // Set the variable number for the complex pattern to the first operand of that
-  // pattern. 
+  // pattern.
   // NOTE: We are assuming that 2 complex patterns of the same name/type don't exist
   //       inside the same pattern!
   unsigned &VarNo = VariableMap[N->getName()];
@@ -552,7 +551,7 @@ EmitComplexPattern(const InvTreePatternNode* N, unsigned ChildBase) {
   // Remember this ComplexPattern so that we can emit it after all the other
   // structural matches are done.
   MatchedComplexPatterns.push_back(std::make_pair(N, 0));
-  
+
   // NOTE: The complex pattern functions are meant to be called AFTER all the
   // nodes are recorded.
   return;
