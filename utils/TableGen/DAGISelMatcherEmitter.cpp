@@ -33,7 +33,7 @@ OmitComments("omit-comments", cl::desc("Do not generate comments"),
 namespace {
 class MatcherTableEmitter {
   const CodeInvDAGPatterns &CGP;
-vv
+
   // DenseMap<TreePattern *, unsigned> NodePredicateMap;
   // std::vector<TreePredicateFn> NodePredicates;
 
