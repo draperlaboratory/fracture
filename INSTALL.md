@@ -95,6 +95,7 @@ FreeBSD
 
 Tested on RELEASE-9.2 with the latest ports (the first FreeBSD to support the
 newer libraries):
+
     cd /usr/ports/devel/libc++
     sudo make install clean
     ...
@@ -112,6 +113,7 @@ Mac OSX
 
 Tested on Version 10.9.2 with XCode and fink (for unix packages). First, install
 libcxx from the LLVM site, then:
+
     cd llvm
     export CXXFLAGS="-std=c++11 -stdlib=libc++ -nostdinc++ -I[libcxxdir]/include"
     ./configure --enable-debug-symbols --enable-shared --prefix=/sw --build=x86_64-apple-darwin13.0.0 CXX=g++ CC=gcc -enable-libcpp
