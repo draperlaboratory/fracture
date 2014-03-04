@@ -458,8 +458,8 @@ public:
     : Matcher(CheckOpcode), SDOpcode(0), TgtOpcode(&opcode), isSDNode(false) {}
 
   /* const SDNodeInfo &getOpcode() const { return *SDOpcode; } */
-  const StringRef getEnumName() const { 
-    return (isSDNode) ? SDOpcode->getEnumName() : 
+  const std::string getEnumName() const {
+    return (isSDNode) ? SDOpcode->getEnumName() :
       TgtOpcode->Namespace + "::" + TgtOpcode->TheDef->getName();
   }
 
