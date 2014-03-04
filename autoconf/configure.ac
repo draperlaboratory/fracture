@@ -1543,6 +1543,9 @@ dnl **************************************************************************
 dnl End LLVM configure.ac Import
 dnl **************************************************************************
 
+dnl For HAVE_EDITLINE_READLINE_H
+AC_CONFIG_HEADERS([include/config.h])
+
 dnl Configure a common Makefile
 AC_CONFIG_FILES(Makefile.common)
 AC_CONFIG_FILES(Makefile.llvm.config)
