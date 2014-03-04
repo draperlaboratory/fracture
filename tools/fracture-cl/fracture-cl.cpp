@@ -171,15 +171,9 @@ static error_code loadBinary(StringRef FileName) {
 
   TripleName = TT.str();
 
-  if (DEC) {
-    delete DEC;
-  }
-  if (DAS) {
-    delete DAS;
-  }
-  if (MCD) {
-    delete MCD;
-  }
+  delete DEC;
+  delete DAS;
+  delete MCD;
 
   MCD = new MCDirector(TripleName, "generic", FeaturesStr,
     TargetOptions(), Reloc::Default, CodeModel::Default, CodeGenOpt::Default,
@@ -288,7 +282,7 @@ static bool nameLookupAddr(StringRef funcName, uint64_t &Address) {
 
   Address = 0;
 
-  if (const object::COFFObjectFile *coff =
+  if (//const object::COFFObjectFile *coff =
     dyn_cast<const object::COFFObjectFile>(Executable)) {
     // dumpCOFFSymbols(coff, Address);
     errs() << "COFF is Unsupported section type.\n";
@@ -316,7 +310,6 @@ static bool nameLookupAddr(StringRef funcName, uint64_t &Address) {
 /// @param Executable - The executable under analysis.
 ///
 static void runDecompileCommand(std::vector<std::string> &CommandLine) {
-  // uint64_t NumInstrs, Address, NumInstrsPrinted;
   uint64_t Address;
   StringRef FunctionName;
 
@@ -344,6 +337,7 @@ static void runDecompileCommand(std::vector<std::string> &CommandLine) {
   DEC->setViewIRDAGs(ViewIRDAGs);
 
   formatted_raw_ostream Out(outs(), false);
+  DEC->decompile(Address);
   DEC->printInstructions(Out, Address);
 }
 
@@ -437,10 +431,6 @@ static void dumpELFSymbols(const object::ELFObjectFile<ELFT>* elf,
          elf->end_symbols(); si != se; ++si) {
     Syms.push_back(*si);
   }
-  // for (object::symbol_iterator si = elf->begin_dynamic_symbols(), se =
-  //        elf->end_dynamic_symbols(); si != se; ++si) {
-  //   Syms.push_back(*si);
-  // }
   for (std::vector<object::SymbolRef>::iterator si = Syms.begin(),
          se = Syms.end();
        si != se; ++si) {
@@ -469,13 +459,6 @@ static void dumpELFSymbols(const object::ELFObjectFile<ELFT>* elf,
     if (error(si->getSize(Size)))
       continue;
 
-    // Error condition in LLVM, some symbol info only gets set if there are
-    // non-dynamic symbols.
-    // if (elf->begin_symbols() != elf->end_symbols()) {
-    //   if (error(si->getFlags()))
-    //     continue;
-    // }
-
     // Doesn't print symbol information for symbols which aren't in the section
     // specified by the function parameter
     if (SectAddr == Address)
@@ -483,7 +466,6 @@ static void dumpELFSymbols(const object::ELFObjectFile<ELFT>* elf,
 
     bool Global = Flags & object::SymbolRef::SF_Global;
     bool Weak = Flags & object::SymbolRef::SF_Weak;
-    // bool Absolute = Flags & SymbolRef::SF_Absolute;
 
     if (Address == object::UnknownAddressOrSize)
       Address = 0;
@@ -506,8 +488,6 @@ static void dumpELFSymbols(const object::ELFObjectFile<ELFT>* elf,
 
     Fmt = elf->getBytesInAddress() > 4 ? "%016" PRIx64 :
       "%08" PRIx64;
-
-    //errs() << "Func: " << Name.str() << " Addr: " << format(Fmt, Address) << "\n";
 
     outs() << format(Fmt, Address) << " "
            << GlobLoc  // Local -> 'l', Global -> 'g', Neither -> ' '

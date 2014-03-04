@@ -11,8 +11,6 @@
 // to decompile target specific code into LLVM IR and return function objects
 // back to the user.
 //
-// Author: Richard Carback (rtc1032) <rcarback@draper.com>
-// Date: August 28, 2013
 //===----------------------------------------------------------------------===//
 
 #ifndef DECOMPILER_H
@@ -45,20 +43,34 @@ namespace fracture {
 
 class Decompiler {
 public:
+
   Decompiler(Disassembler *NewDis, Module *NewMod = NULL,
     raw_ostream &InfoOut = nulls(), raw_ostream &ErrOut = nulls());
   ~Decompiler();
 
-  Function* decompile(unsigned Address);
-  void sortBasicBlock(BasicBlock *BB);
-  void splitBasicBlockIntoBlock(Function::iterator Src,
-    BasicBlock::iterator FirstInst, BasicBlock *Tgt);
   void printInstructions(formatted_raw_ostream &Out, unsigned Address);
 
+  ///===-------------------------------------------------------------------===//
+  /// decompile - decompile starting at a given memory address.
+  ///
+  /// This function recursively descends the code to decompile the function
+  /// and all functions called by this function.
+  ///
+  /// Results are cached, so if a function has already been decompiled, we refer
+  /// to the stored result.
+  ///
+  /// @param Address - the address to start decompiling.
+  ///
+  void decompile(unsigned Address);
+  Function* decompileFunction(unsigned Address);
   BasicBlock* decompileBasicBlock(MachineBasicBlock *MBB, Function *F);
 
   BasicBlock* getOrCreateBasicBlock(unsigned Address, Function *F);
   BasicBlock* getOrCreateBasicBlock(StringRef BBName, Function *F);
+
+  void sortBasicBlock(BasicBlock *BB);
+  void splitBasicBlockIntoBlock(Function::iterator Src,
+    BasicBlock::iterator FirstInst, BasicBlock *Tgt);
 
   SelectionDAG* createDAGFromMachineBasicBlock(MachineBasicBlock *MBB);
 
