@@ -9,7 +9,7 @@ compiled correctly.
 
 The library is known to compile on various linux versions (Redhat,
 Mageia, Ubuntu, Debian). It should work on Mac OSX and FreeBSD. It
-does not compile on Windows. 
+does not compile on Windows.
 
 Step 1: Installing LLVM
 =======================
@@ -83,8 +83,59 @@ NOTE: On Ubuntu and other systems we have had to add the following flag:
 Note that the compile generates a large amount of debug output from the
 fracture-tblgen tool. There may also be warnings in the output.
 
+Linux
+-----
+
+The most common problem is out of date c++ std libraries. LLVM needs a
+relatively new version of these libs, and the solution is to install a new
+g++ (4.7 or newer).
+
+FreeBSD
+-------
+
+Tested on RELEASE-9.2 with the latest ports (the first FreeBSD to support the
+newer libraries):
+    cd /usr/ports/devel/libc++
+    sudo make install clean
+    ...
+    cd llvm
+    ./configure --enable-debug-symbols --prefix=/usr/local --build=amd64-undermydesk-freebsd --enable-libcpp
+    ... (gmake, gmake install, etc)
+    cd fracture
+    export CXXFLAGS=CXXFLAGS='-std=c++11 -stdlib=libc++ -nostdinc++ -I/usr/local/include/c++/v1'
+    ./autoconf/AutoRegen.sh
+    ./configure --enable-debug-symbols --with-llvmsrc=/llvmdir --with-llvmobj=/llvm
+    gmake -j16
+
+Mac OSX
+-------
+
+Tested on Version 10.9.2 with XCode and fink (for unix packages). First, install
+libcxx from the LLVM site, then:
+    cd llvm
+    export CXXFLAGS="-std=c++11 -stdlib=libc++ -nostdinc++ -I[libcxxdir]/include"
+    ./configure --enable-debug-symbols --enable-shared --prefix=/sw --build=x86_64-apple-darwin13.0.0 CXX=g++ CC=gcc -enable-libcpp
+    ... (make, make install)
+    cd fracture
+    ./autoconf/AutoRegen.sh
+    ./configure --enable-debug-symbols --build=x86_64-apple-darwing13.0.0 --with-llvmsrc=llvm --with-llvmobj=llvm
+    make -j16
+
+Other Systems
+-------------
+
+We expect fracture to compile on other systems that compile LLVM and clang, but
+we have not tested it. If you try it and encounter problems, please let us know
+(fracture@draper.com). If you succeed in compiling it, also let us know so we
+can post the details in this install document.
+
 Step 3: Usage Examples
 ======================
+
+If fracture compiles, you should be able to run it with the following commands.
+Note that the only working architecture right now is ARM, and you have to
+specify machine attribute flags to make the system detect the instructions in
+the sample below.
 
 ```
 $ ./Debug+Asserts/bin/fracture-cl -mattr=v6 ./samples/arm/fib_arm
