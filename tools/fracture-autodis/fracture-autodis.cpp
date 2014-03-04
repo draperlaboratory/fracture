@@ -180,15 +180,9 @@ static error_code loadBinary(StringRef FileName) {
 
   TripleName = TT.str();
 
-  if (DEC) {
-    delete DEC;
-  }
-  if (DAS) {
-    delete DAS;
-  }
-  if (MCD) {
-    delete MCD;
-  }
+  delete DEC;
+  delete DAS;
+  delete MCD;
 
   MCD = new MCDirector(TripleName, "generic", FeaturesStr,
     TargetOptions(), Reloc::Default, CodeModel::Default, CodeGenOpt::Default,
