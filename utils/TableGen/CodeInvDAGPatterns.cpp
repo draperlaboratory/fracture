@@ -286,7 +286,8 @@ bool InvTreePatternNode::UpdateNodeTypeFromInst(unsigned ResNo,
     RC = Operand->getValueAsDef("RegClass");
 
   if (RC != NULL) {
-    const std::vector<MVT::SimpleValueType> VTs = Tgt.getRegisterClass(RC).getValueTypes();
+    const std::vector<MVT::SimpleValueType> VTs =
+      Tgt.getRegisterClass(RC).getValueTypes();
     if (VTs.size() != 0) {
       // FIXME: punting on multiple VTs here...
       setType(ResNo, VTs[0]);
