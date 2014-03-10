@@ -9,7 +9,7 @@
 
 LEVEL = ../..
 #LIBRARYNAME = FractureTarget
-PARALLEL_DIRS = ARM
+PARALLEL_DIRS = ARM X86
 #BUILD_ARCHIVE = 1
 
 # We include this early so we can access the value of TARGETS_TO_BUILD as the

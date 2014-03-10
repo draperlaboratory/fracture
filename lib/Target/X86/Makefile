@@ -8,11 +8,11 @@
 ##===----------------------------------------------------------------------===##
 
 LEVEL = ../../..
-LIBRARYNAME = FractureX86InvISEL
+LIBRARYNAME = FractureX86CodeInv
 TARGET = X86
 
 # Make sure that tblgen is run, first thing.
-BUILT_SOURCES =
+BUILT_SOURCES = X86GenInvISel.inc X86GenRegisterInfo.inc X86GenInstrInfo.inc
 
 DIRS =
 
