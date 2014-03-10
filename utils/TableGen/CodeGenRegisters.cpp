@@ -849,9 +849,10 @@ static bool testSubClass(const CodeGenRegisterClass *A,
 /// Register classes with the same registers, spill size, and alignment form a
 /// clique.  They will be ordered alphabetically.
 ///
-static int TopoOrderRC(const void *PA, const void *PB) {
-  const CodeGenRegisterClass *A = *(const CodeGenRegisterClass* const*)PA;
-  const CodeGenRegisterClass *B = *(const CodeGenRegisterClass* const*)PB;
+static int TopoOrderRC(CodeGenRegisterClass *const *PA,
+                       CodeGenRegisterClass *const *PB) {
+  const CodeGenRegisterClass *A = *PA;
+  const CodeGenRegisterClass *B = *PB;
   if (A == B)
     return 0;
 
@@ -1036,8 +1037,7 @@ CodeGenRegBank::CodeGenRegBank(RecordKeeper &Records) {
   computeInferredRegisterClasses();
 
   // Order register classes topologically and assign enum values.
-  // array_pod_sort(RegClasses.begin(), RegClasses.end(), TopoOrderRC);
-  array_pod_sort(RegClasses.begin(), RegClasses.end());
+  array_pod_sort(RegClasses.begin(), RegClasses.end(), TopoOrderRC);
   for (unsigned i = 0, e = RegClasses.size(); i != e; ++i)
     RegClasses[i]->EnumValue = i;
   CodeGenRegisterClass::computeSubClasses(*this);
