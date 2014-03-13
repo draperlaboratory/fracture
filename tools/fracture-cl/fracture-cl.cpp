@@ -60,8 +60,8 @@
 #include "DummyObjectFile.h"
 #include "CodeInv/Decompiler.h"
 #include "CodeInv/Disassembler.h"
-#include "CodeInv/InvISelDAG.h"
-#include "CodeInv/MCDirector.h"
+//#include "CodeInv/InvISelDAG.h"
+//#include "CodeInv/MCDirector.h"
 #include "Commands/Commands.h"
 
 // #define DEMANGLE  // Do name demangling

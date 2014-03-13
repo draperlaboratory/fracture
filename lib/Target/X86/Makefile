@@ -1,6 +1,6 @@
-##===- lib/Target/X86/Makefile -----------------------------*- Makefile -*-===##
+##===- lib/Target/ARM/Makefile -----------------------------*- Makefile -*-===##
 #
-#                     The LLVM Compiler Infrastructure
+#              Fracture: The Draper Decompiler Infrastructure
 #
 # This file is distributed under the University of Illinois Open Source
 # License. See LICENSE.TXT for details.
@@ -11,9 +11,8 @@ LEVEL = ../../..
 LIBRARYNAME = FractureX86CodeInv
 TARGET = X86
 
-# Make sure that tblgen is run, first thing.
 BUILT_SOURCES = X86GenInvISel.inc X86GenRegisterInfo.inc X86GenInstrInfo.inc
 
-DIRS =
+# DIRS = InstPrinter AsmParser Disassembler TargetInfo MCTargetDesc
 
 include $(LEVEL)/Makefile.common

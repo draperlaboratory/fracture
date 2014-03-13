@@ -14,7 +14,7 @@ TOOLNAME=fracture-cl
 # List libraries that we'll need
 #
 USEDLIBS = Commands.a FractureCodeInv.a FractureARMCodeInv.a \
-           TypeRecovery.a
+           FractureX86CodeInv.a TypeRecovery.a
 
 #
 # LLVM Components we wish to link with.
