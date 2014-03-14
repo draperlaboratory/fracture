@@ -21,7 +21,7 @@
 #include "llvm/Support/CodeGen.h"
 #include "X86ISD.h"
 #include "llvm/CodeGen/ISDOpcodes.h"
-//#include "Target/X86/X86IREmitter.h"
+#include "Target/X86/X86IREmitter.h"
 // #include "ARMRegs.h"
 
 namespace fracture {
@@ -33,12 +33,11 @@ public:
 
   ~X86InvISelDAG() {};
 
-  /*
   //prob not going to work since I don't have this object...
   virtual IREmitter* getEmitter(Decompiler *Dec, raw_ostream &InfoOut = nulls(),
     raw_ostream &ErrOut = nulls())
   { return new X86IREmitter(Dec, InfoOut, ErrOut); }
-  */
+
   SDNode* InvertCode(SDNode *N);
   SDNode* Transmogrify(SDNode *N);
 
