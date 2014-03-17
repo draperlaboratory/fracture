@@ -289,10 +289,25 @@ bool InvTreePatternNode::UpdateNodeTypeFromInst(unsigned ResNo,
     const std::vector<MVT::SimpleValueType> VTs =
       Tgt.getRegisterClass(RC).getValueTypes();
     if (VTs.size() != 0) {
-      // FIXME: punting on multiple VTs here...
       setType(ResNo, VTs[0]);
       return true;
     }
+  }
+
+  if (Operand->isSubClassOf("Register")) {
+    const CodeGenRegister *CGR = Tgt.getRegisterByName(Operand->getName());
+    if (CGR) {
+      std::vector<MVT::SimpleValueType> CGRVTs =
+        Tgt.getRegisterVTs(CGR->TheDef);
+      if (CGRVTs.size() != 0) {
+        setType(ResNo, CGRVTs[0]);
+        return true;
+      }
+    }
+    // NOTE: EFLAGS Register Overload for x86 this may break on other archs.
+    // Not clear why EFLAGS td does not have a discernable type.
+    setType(ResNo, MVT::i32);
+    return true;
   }
 
   return false;
