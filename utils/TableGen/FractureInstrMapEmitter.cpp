@@ -210,8 +210,13 @@ void FractureInstrMapEmitter::EmitResultCode(
 
   EmitResultOperand(N, Results);
 
-  unsigned NumResults = Pattern->getSrcPattern()->getNumTypes();
-  Results.resize(NumResults);
+  unsigned NumResults = Pattern->getDstPattern()->getNumTypes();
+  if (NumResults < Results.size()) {
+    Results.resize(NumResults);
+  }
+  for (unsigned int i = NumResults - Results.size(); i != 0; --i) {
+    Results.push_back(0);
+  }
 
   // TODO: Add implicit defs/uses?
   // FIXME: Should probably add checks to make sure # of args is coherent.
