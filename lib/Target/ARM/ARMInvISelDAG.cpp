@@ -176,7 +176,7 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
     case ARM::MOVr:
     case ARM::MOVi: {
-      // Note: Cannot use dummy arithmetic here becuase it will get folded
+      // Note: Cannot use dummy arithmetic here because it will get folded
       // (removed) from the DAG. Instead we search for a CopyToReg, if it
       // exists we set it's debug location to the Mov, and if it doesn't we
       // print an error and do nothing.

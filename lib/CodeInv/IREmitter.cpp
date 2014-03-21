@@ -339,6 +339,7 @@ Value* IREmitter::visitSUB(const SDNode *N) {
     BaseName = getBaseValueName(Op1->getName());
   }
   StringRef Name = getIndexedValueName(BaseName);
+  //outs() << "IREmitter::visitSUB: " << Name.str() << " op0 op1 " << Op0 << " "<< Op1 << "\n";
   Instruction *Res = dyn_cast<Instruction>(IRB->CreateSub(Op0, Op1, Name));
   Res->setDebugLoc(N->getDebugLoc());
   VisitMap[N] = Res;
