@@ -46,10 +46,10 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
     default:
       outs() << "TargetOpc: " << TargetOpc << "\n";
       break;
-    case X86::JBE_1:{
+    case X86::JBE_1:{   //Jump short if Below or Equal
       SDValue Chain = N->getOperand(0);
       SDValue Target = N->getOperand(1);
-      SDValue EFLAGSCFR = N->getOperand(2);
+      //SDValue EFLAGSCFR = N->getOperand(2);
       SDLoc SL(N);
 
       // Calculate the Branch Target
@@ -64,6 +64,8 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
+    case X86::CMP32rm:
+    case X86::CMP32mr:
     case X86::CMP32mi8:{
       // NOTE: Pattern in ARM DAG Selector is busted as not handling CPSR
       //       not sure how to fix, so this might just be a hack!
@@ -128,6 +130,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       break;
     }
     case X86::JMP_1:{
+      outs() << "X86::JMP_1: " << X86::JMP_1 << "\n";
       SDValue Chain = N->getOperand(0);
       uint64_t TarVal = N->getConstantOperandVal(1);
       SDValue Target = CurDAG->getConstant(TarVal, MVT::i32);
@@ -143,12 +146,161 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       SDValue Chain = N->getOperand(0);
       uint64_t TarVal = N->getConstantOperandVal(1);
       SDValue Target = CurDAG->getConstant(TarVal, MVT::i32);
-      SDValue noReg = N->getOperand(2);
+      //SDValue noReg = N->getOperand(2);
 
       SDLoc SL(N);
 
       SDValue CallNode = CurDAG->getNode(X86ISD::CALL, SL, MVT::Other, Target, Chain);
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), CallNode);
+
+      return NULL;
+      break;
+    }
+    case X86::RETL:{
+      SDValue Chain = N->getOperand(0);
+      SDLoc SL(N);
+      SDValue RetNode = CurDAG->getNode(X86ISD::RET_FLAG, SL, MVT::Other, Chain);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), RetNode);
+
+      return NULL;
+      break;
+    }
+    case X86::POP32r:{
+      EVT LdType = N->getValueType(0);
+      SDValue Chain = N->getOperand(0);
+      SDValue Ptr = N->getOperand(1);   //ESP
+      //SDValue PrevPtr = Ptr;
+      SDValue Offset = CurDAG->getConstant(4, EVT(MVT::i32), false);
+
+      SDLoc SL(N);
+
+      SDVTList VTList = CurDAG->getVTList(MVT::i32);
+      uint16_t MathOpc = ISD::ADD;
+      Ptr = CurDAG->getNode(MathOpc, SL, VTList, Ptr, Offset);  //ESP += 4;
+
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Ptr);
+
+      const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
+      MachineMemOperand *MMO = NULL;
+      if (MN->memoperands_empty()) {
+        errs() << "NO MACHINE OPS for STR_PRE_IMM!\n";
+      } else {
+        MMO = *(MN->memoperands_begin());
+      }
+
+      // Pass the chain to the last chain node
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Chain);
+
+      // Pass the last math operation to any uses of Rn
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Ptr);
+
+      SDValue Load = CurDAG->getLoad(LdType, SL, Chain, Ptr,
+              MachinePointerInfo::getConstantPool(), false, false, true, 0);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Load);
+
+      return NULL;
+      break;
+    }
+    case X86::JA_1:{    //JMP Short if Above
+      SDValue Chain = N->getOperand(0);
+      uint64_t TarVal = N->getConstantOperandVal(1);
+      SDValue Target = CurDAG->getConstant(TarVal, MVT::i32);
+      //SDValue EFLAGSCFR = N->getOperand(2);
+      SDLoc SL(N);
+
+      // Calculate the Branch Target
+      SDValue BT = CurDAG->getConstant(
+          cast<ConstantSDNode>(Target)->getZExtValue(), Target.getValueType());
+
+      // Condition Code is "Below or Equal" <=
+      SDValue CC = CurDAG->getCondCode(ISD::SETGT);
+      SDValue BrNode =
+          CurDAG->getNode(ISD::BRCOND, SL, MVT::Other, CC, BT, Chain);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
+
+      return NULL;
+      break;
+    }
+    case X86::JNE_1:{   //Jump short if Not Equal
+      SDValue Chain = N->getOperand(0);
+      uint64_t TarVal = N->getConstantOperandVal(1);
+      SDValue Target = CurDAG->getConstant(TarVal, MVT::i32);
+      //SDValue EFLAGSCFR = N->getOperand(2);
+      SDLoc SL(N);
+
+      // Calculate the Branch Target
+      SDValue BT = CurDAG->getConstant(
+          cast<ConstantSDNode>(Target)->getZExtValue(), Target.getValueType());
+
+      // Condition Code is "Below or Equal" <=
+      SDValue CC = CurDAG->getCondCode(ISD::SETNE);
+      SDValue BrNode =
+          CurDAG->getNode(ISD::BRCOND, SL, MVT::Other, CC, BT, Chain);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
+
+      return NULL;
+      break;
+    }
+    case X86::ADD32mi8:{
+      SDValue Chain = N->getOperand(0);
+      SDValue EBP = N->getOperand(1);
+      uint64_t C2val = N->getConstantOperandVal(2);
+      SDValue C2 = CurDAG->getConstant(C2val, MVT::i32);
+      //3 is undef
+      uint64_t Cn4val = N->getConstantOperandVal(4);
+      SDValue Cn4 = CurDAG->getConstant(Cn4val, MVT::i32);
+      //4 is undef
+      //6 is Constant 1
+
+      SDLoc SL(N);
+      SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::Other);
+      /* AJG: Not sure how fill in semantics yet.
+      SDValue v2 = N->getOperand(2);
+
+
+      SDValue Node = CurDAG->getNode(ISD::ADD, SL, VTList, v1, v2, Chain);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Node);
+      */
+
+      return NULL;
+      break;
+    }
+    case X86::ADD32mr:{
+      SDValue Chain = N->getOperand(0);
+      SDValue EBP = N->getOperand(1);
+      uint64_t C1val = N->getConstantOperandVal(2);
+      SDValue C1 = CurDAG->getConstant(C1val, MVT::i32);
+      //3 is noReg
+      uint64_t Cn4val = N->getConstantOperandVal(4);
+      SDValue Cn4 = CurDAG->getConstant(Cn4val, MVT::i32);
+      //5 is noReg
+
+      SDLoc SL(N);
+      SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::Other);
+
+      return NULL;
+      break;
+    }
+    case X86::LEAVE:{   //ESP = EBP
+      SDValue Chain = N->getOperand(0);
+      SDValue EBP = N->getOperand(1);
+      SDValue ESP = N->getOperand(2);
+
+      SDLoc SL(N);
+      SDVTList VTList = CurDAG->getVTList(MVT::i32);
+      SDValue Zero = CurDAG->getConstant(0, MVT::i32);
+      //This should potentially be optimized to one instruction
+      SDValue EBPZero = CurDAG->getNode(ISD::MUL, SL, VTList, EBP, Zero);  //EBP = 0;
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), EBPZero);
+      VTList = CurDAG->getVTList(MVT::i32, MVT::i32, MVT::Other);
+      SDValue EBPeqESP = CurDAG->getNode(ISD::ADD, SL, VTList, EBP, ESP, Chain);  //EBP += ESP;
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), EBPeqESP);
+
+      /* AJG: Reduce above to something similar to this...
+      SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::i32, MVT::Other);
+      SDValue EBPeqESP = CurDAG->getNode(ISD::SETEQ, SL, VTList, EBP, ESP, Chain);  //EBP = ESP;
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), EBPeqESP);
+      */
 
       return NULL;
       break;

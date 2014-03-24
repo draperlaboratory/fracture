@@ -47,7 +47,7 @@ Value* X86IREmitter::visit(const SDNode *N) {
   switch (N->getOpcode()) {
     default: return NULL;
     //case X86ISD::BRCOND: return visitBRCOND(N);
-    //case X86ISD::RET_FLAG: return visitRET(N);
+    case X86ISD::RET_FLAG: return visitRET(N);
     case X86ISD::CALL: return visitCALL(N);
   }
 }
@@ -192,45 +192,13 @@ Value* X86IREmitter::visitBRCOND(const SDNode *N) {
 }
 
 Value* X86IREmitter::visitRET(const SDNode *N) {
+  outs() << "X86IREmitter::visitRET\n";
   return IRB->CreateRetVoid();
 }
 
-//Need to add seamantics for visitCall; prob return null in short term...
+//Need to add semantics for visitCall; prob return null in short term...
 Value* X86IREmitter::visitCALL(const SDNode *N) {
-  // Get the address
-  const ConstantSDNode *DestNode = dyn_cast<ConstantSDNode>(N->getOperand(0));
-  if (!DestNode) {
-    printError("visitCALL: Not a constant integer for call!");
-    return NULL;
-  }
-
-  int64_t DestInt = DestNode->getSExtValue();
-  int64_t  PC = Dec->getDisassembler()->getDebugOffset(N->getDebugLoc());
-  // Note: pipeline is 8 bytes
-  int64_t Tgt = PC + 8 + DestInt;
-
-  // TODO: Look up address in symbol table.
-
-  std::string FName = Dec->getDisassembler()->getFunctionName(Tgt);
-
-  Module *Mod = IRB->GetInsertBlock()->getParent()->getParent();
-
-  FunctionType *FT =
-    FunctionType::get(Type::getPrimitiveType(Mod->getContext(),
-        Type::VoidTyID), false);
-
-  Twine TgtAddr(Tgt);
-
-  AttributeSet AS;
-  AS = AS.addAttribute(Mod->getContext(), AttributeSet::FunctionIndex,
-    "Address", TgtAddr.str());
-  Value* Proto = Mod->getOrInsertFunction(FName, FT, AS);
-
-  // CallInst* Call =
-  IRB->CreateCall(dyn_cast<Value>(Proto));
-
-  // TODO: Technically visitCall sets the LR to IP+8. We should return that.
-  VisitMap[N] = NULL;
+  outs() << "X86IREmitter::visitCALL\n";
   return NULL;
 }
 
