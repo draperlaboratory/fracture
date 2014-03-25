@@ -64,6 +64,26 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
+    case X86::JAE_1:{   //Jump short if Above or Equal
+      SDValue Chain = N->getOperand(0);
+      uint64_t TarVal = N->getConstantOperandVal(1);
+      SDValue Target = CurDAG->getConstant(TarVal, MVT::i32);
+      //SDValue EFLAGSCFR = N->getOperand(2);
+      SDLoc SL(N);
+
+      // Calculate the Branch Target
+      SDValue BT = CurDAG->getConstant(
+          cast<ConstantSDNode>(Target)->getZExtValue(), Target.getValueType());
+
+      // Condition Code is "Below or Equal" <=
+      SDValue CC = CurDAG->getCondCode(ISD::SETGE);
+      SDValue BrNode =
+          CurDAG->getNode(ISD::BRCOND, SL, MVT::Other, CC, BT, Chain);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
+
+      return NULL;
+      break;
+    }
     case X86::CMP32rm:
     case X86::CMP32mr:
     case X86::CMP32mi8:{
@@ -110,6 +130,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
+    case X86::MOV32rr_REV:
     case X86::MOV64rr:
     case X86::MOV32rr:{
       // Note: Cannot use dummy arithmetic here because it will get folded
@@ -276,6 +297,19 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
 
       SDLoc SL(N);
       SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::Other);
+
+      return NULL;
+      break;
+    }
+    case X86::ADD32rr_REV:{ //Note: no chain, two input, two output
+      SDValue ESI = N->getOperand(0);
+      SDValue EAX = N->getOperand(1);
+
+      SDLoc SL(N);
+      SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::i32);
+
+      SDValue Node = CurDAG->getNode(ISD::ADD, SL, VTList, EAX, ESI);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Node);
 
       return NULL;
       break;
