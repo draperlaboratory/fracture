@@ -65,8 +65,10 @@ Value* X86IREmitter::visitCALL(const SDNode *N) {
 
   int64_t DestInt = DestNode->getSExtValue();
   int64_t PC = Dec->getDisassembler()->getDebugOffset(N->getDebugLoc());
+  unsigned InstrSize =
+      Dec->getDisassembler()->getMachineInstr(PC)->getDesc().Size;
   // Note: pipeline is 4 bytes
-  int64_t Tgt = PC + 4 + DestInt;
+  int64_t Tgt = PC + InstrSize + DestInt;
 
   // TODO: Look up address in symbol table.
   std::string FName = Dec->getDisassembler()->getFunctionName(Tgt);

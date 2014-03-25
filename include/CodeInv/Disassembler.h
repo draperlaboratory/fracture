@@ -148,6 +148,13 @@ public:
   MCDirector* getMCDirector() const { return MC; }
   Module* getModule() const { return TheModule; }
 
+  MachineInstr* getMachineInstr(unsigned Address) {
+     if (MachineInstructions.find(Address) != MachineInstructions.end()) {
+        return MachineInstructions[Address];
+     }
+     return NULL;
+  }
+
   uint64_t getDebugOffset(const DebugLoc &Loc) const;
   void deleteFunction(MachineFunction* MF);
 private:
@@ -158,6 +165,7 @@ private:
   std::map<unsigned, MachineBasicBlock*> BasicBlocks;
   std::map<unsigned, MachineFunction*> Functions;
   std::map<unsigned, MCInst*> Instructions;
+  std::map<unsigned, MachineInstr*> MachineInstructions;
 
   MachineModuleInfo *MMI;
   GCModuleInfo *GMI;

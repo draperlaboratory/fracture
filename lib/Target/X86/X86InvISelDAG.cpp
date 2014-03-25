@@ -105,13 +105,13 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
 
       //Get the arguments
       SDValue Chain = N->getOperand(0);
-      SDValue Val = N->getOperand(1);	//Arg passes to push
-      SDValue ESP = N->getOperand(2);
+      SDValue Src = N->getOperand(1);	//Arg passes to push
+      SDValue Dest = N->getOperand(2);
 
       SDLoc SL(N);
       SDVTList SubVTList = CurDAG->getVTList(MVT::i32);
       SDValue Width = CurDAG->getConstant(4, MVT::i32);
-      SDValue Addr = CurDAG->getNode(ISD::SUB, SL, SubVTList, ESP, Width);	//ESP -= 4;
+      SDValue Addr = CurDAG->getNode(ISD::SUB, SL, SubVTList, Dest, Width);	//ESP -= 4;
 
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Addr);
 
@@ -124,7 +124,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       }
 
       //Store
-      SDValue Store = CurDAG->getStore(Chain, SL, Val, Addr, MMO);
+      SDValue Store = CurDAG->getStore(Chain, SL, Src, Addr, MMO);
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Store);
 
       return NULL;

@@ -120,10 +120,12 @@ MachineBasicBlock* Disassembler::decodeBasicBlock(unsigned Address,
   // NOTE: Might also need SectAddr...
   Size = 0;
   while (Address+Size < (unsigned) CurSectionEnd) {
-    Size += std::max(unsigned(1), decodeInstruction(Address+Size, MBB));
+    unsigned CurAddr = Address+Size;
+    Size += std::max(unsigned(1), decodeInstruction(CurAddr, MBB));
     MachineInstr* MI = NULL;
     if (MBB->size() != 0) {
       MI = &(*MBB->instr_rbegin());
+      MachineInstructions[CurAddr] = MI;
     }
     if (MI != NULL && MI->isTerminator()) {
       break;
