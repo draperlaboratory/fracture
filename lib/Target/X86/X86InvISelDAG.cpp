@@ -203,7 +203,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
       MachineMemOperand *MMO = NULL;
       if (MN->memoperands_empty()) {
-        errs() << "NO MACHINE OPS for STR_PRE_IMM!\n";
+        errs() << "NO MACHINE OPS for POP32r!\n";
       } else {
         MMO = *(MN->memoperands_begin());
       }
@@ -320,6 +320,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       SDValue ESP = N->getOperand(2);
 
       SDLoc SL(N);
+      /*
       SDVTList VTList = CurDAG->getVTList(MVT::i32);
       SDValue Zero = CurDAG->getConstant(0, MVT::i32);
       //This should potentially be optimized to one instruction
@@ -328,12 +329,11 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       VTList = CurDAG->getVTList(MVT::i32, MVT::i32, MVT::Other);
       SDValue EBPeqESP = CurDAG->getNode(ISD::ADD, SL, VTList, EBP, ESP, Chain);  //EBP += ESP;
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), EBPeqESP);
-
-      /* AJG: Reduce above to something similar to this...
-      SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::i32, MVT::Other);
-      SDValue EBPeqESP = CurDAG->getNode(ISD::SETEQ, SL, VTList, EBP, ESP, Chain);  //EBP = ESP;
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), EBPeqESP);
       */
+      // AJG: Reduce above to one instruction
+      SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::i32, MVT::Other);
+      SDValue EBPeqESP = CurDAG->getNode(ISD::CopyToReg, SL, VTList, EBP, ESP, Chain);  //EBP = ESP;
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), EBPeqESP);
 
       return NULL;
       break;
