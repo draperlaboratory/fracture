@@ -130,7 +130,6 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       break;
     }
     case X86::JMP_1:{
-      outs() << "X86::JMP_1: " << X86::JMP_1 << "\n";
       SDValue Chain = N->getOperand(0);
       uint64_t TarVal = N->getConstantOperandVal(1);
       SDValue Target = CurDAG->getConstant(TarVal, MVT::i32);

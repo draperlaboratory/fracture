@@ -428,7 +428,11 @@ SelectionDAG* Decompiler::createDAGFromMachineBasicBlock(
 
     //assert(Ops.size() && "Number of ops cannot be 0!");
     if(Ops.size() == 0){
-      outs() << "Op Size == 0: " << I->getOpcode() << "\n";
+      //outs() << "Op Size == 0: " << I->getOpcode() << "\n";
+      std::string msg = "Op Size == 0: ";
+      msg += I->getOpcode();
+      msg += "\n";
+      printInfo(msg);
     }
 
     // If we were a chain, add MVT::Other to ResultTypes list
