@@ -153,6 +153,7 @@ protected:
   Value* visitEXTRACT_SUBVECTOR(const SDNode *N);
   Value* visitVECTOR_SHUFFLE(const SDNode *N);
   Value* visitRegister(const SDNode *N);
+  Value* visitCALL(const SDNode *N);
 
   /// Error printing
   raw_ostream &Infos, &Errs;
