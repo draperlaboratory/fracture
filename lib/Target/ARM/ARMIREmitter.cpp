@@ -191,4 +191,40 @@ Value* ARMIREmitter::visitRET(const SDNode *N) {
   return IRB->CreateRetVoid();
 }
 
+Value* ARMIREmitter::visitCALL(const SDNode *N) {
+  const ConstantSDNode *DestNode = dyn_cast<ConstantSDNode>(N->getOperand(0));
+  if (!DestNode) {
+    printError("visitCALL: Not a constant integer for call!");
+    return NULL;
+  }
+
+  int64_t DestInt = DestNode->getSExtValue();
+  int64_t PC = Dec->getDisassembler()->getDebugOffset(N->getDebugLoc());
+  unsigned InstrSize = 8;   // Note: ARM defaults to 4; should be 8.
+  int64_t Tgt = PC + InstrSize + DestInt;
+
+  // TODO: Look up address in symbol table.
+  std::string FName = Dec->getDisassembler()->getFunctionName(Tgt);
+
+  Module *Mod = IRB->GetInsertBlock()->getParent()->getParent();
+
+  FunctionType *FT =
+      FunctionType::get(Type::getPrimitiveType(Mod->getContext(),
+          Type::VoidTyID), false);
+
+  Twine TgtAddr(Tgt);
+
+  AttributeSet AS;
+  AS = AS.addAttribute(Mod->getContext(), AttributeSet::FunctionIndex,
+      "Address", TgtAddr.str());
+  Value* Proto = Mod->getOrInsertFunction(FName, FT, AS);
+
+  // CallInst* Call =
+  IRB->CreateCall(dyn_cast<Value>(Proto));
+
+  // TODO: Technically visitCall sets the LR to IP+8. We should return that.
+  VisitMap[N] = NULL;
+  return NULL;
+}
+
 } // end fracture namespace
