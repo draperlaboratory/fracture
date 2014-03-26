@@ -118,7 +118,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
       MachineMemOperand *MMO = NULL;
       if (MN->memoperands_empty()) {
-        errs() << "NO MACHINE OPS for STR_PRE_IMM!\n";
+        errs() << "NO MACHINE OPS for PUSH32r!\n";
       } else {
         MMO = *(MN->memoperands_begin());
       }
@@ -186,20 +186,19 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       break;
     }
     case X86::POP32r:{
-      EVT LdType = N->getValueType(0);
+      //Input: Chain & ESP
+      //Output: MVT::i32, MVT::i32, MVT::Other
       SDValue Chain = N->getOperand(0);
-      SDValue Ptr = N->getOperand(1);   //ESP
-      //SDValue PrevPtr = Ptr;
+      SDValue Base = N->getOperand(1);
       SDValue Offset = CurDAG->getConstant(4, EVT(MVT::i32), false);
 
       SDLoc SL(N);
+      SDVTList AddVTList = CurDAG->getVTList(MVT::i32);
 
-      SDVTList VTList = CurDAG->getVTList(MVT::i32);
-      uint16_t MathOpc = ISD::ADD;
-      Ptr = CurDAG->getNode(MathOpc, SL, VTList, Ptr, Offset);  //ESP += 4;
+      SDValue Addr = CurDAG->getNode(ISD::ADD, SL, AddVTList, Base, Offset);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Addr);
 
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Ptr);
-
+      // memops might be null here, but not sure if we need to check.
       const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
       MachineMemOperand *MMO = NULL;
       if (MN->memoperands_empty()) {
@@ -207,16 +206,10 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       } else {
         MMO = *(MN->memoperands_begin());
       }
-
-      // Pass the chain to the last chain node
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Chain);
-
-      // Pass the last math operation to any uses of Rn
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Ptr);
-
-      SDValue Load = CurDAG->getLoad(LdType, SL, Chain, Ptr,
-              MachinePointerInfo::getConstantPool(), false, false, true, 0);
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Load);
+      //SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::i32, MVT::Other);
+      //Don't see a getStore that takes a VTList.
+      //SDValue Store = CurDAG->getStore(Chain, SL, Base, Addr, MMO);
+      //CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Store);
 
       return NULL;
       break;
