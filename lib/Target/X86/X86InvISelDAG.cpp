@@ -46,6 +46,116 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
     default:
       outs() << "TargetOpc: " << TargetOpc << "\n";
       break;
+    case X86::RETQ:
+    case X86::RETL:{
+      SDValue Chain = N->getOperand(0);
+      SDLoc SL(N);
+      SDValue RetNode = CurDAG->getNode(X86ISD::RET_FLAG, SL, MVT::Other, Chain);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), RetNode);
+
+      return NULL;
+      break;
+    }
+    case X86::POP32r:{
+      //DEST ← SS:ESP; (* Copy a doubleword *)
+      //ESP ← ESP + 4;
+
+      //Get the arguments
+      SDValue Chain = N->getOperand(0);
+      EVT LdType = N->getValueType(0);
+      SDValue ESP = N->getOperand(1);
+
+      const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
+      MachineMemOperand *MMO = NULL;        //Basically a NOP
+      if (MN->memoperands_empty()) {
+        errs() << "NO MACHINE OPS for POP32r!\n";
+      } else {
+        MMO = *(MN->memoperands_begin());
+      }
+
+      SDLoc SL(N);
+      SDValue Load = CurDAG->getLoad(LdType, SL, Chain, ESP, MMO);  //Load from ESP
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Load);       //Store EBP
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 2), SDValue(Load.getNode(), 1));
+
+      SDValue Width = CurDAG->getConstant(4, LdType);                       //Update ESP
+      SDValue NewESP = CurDAG->getNode(ISD::ADD, SL, LdType, ESP, Width);   //ESP += 4;
+
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), NewESP);             //Store ESP
+
+      return NULL;
+      break;
+    }
+
+    case X86::PUSH32r:{
+      //ESP ← ESP – 4;
+      //Memory[SS:ESP] ← SRC; (* push dword *)
+
+      //Get the arguments
+      SDValue Chain = N->getOperand(0);
+      SDValue EBP = N->getOperand(1);
+      SDValue ESP = N->getOperand(2);
+
+      const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
+      MachineMemOperand *MMO = NULL;
+      if (MN->memoperands_empty()) {
+        errs() << "NO MACHINE OPS for PUSH32r!\n";
+      } else {
+        MMO = *(MN->memoperands_begin());
+      }
+
+
+      SDLoc SL(N);
+      SDVTList SubVTList = CurDAG->getVTList(MVT::i32);
+      SDValue Width = CurDAG->getConstant(4, MVT::i32);
+      SDValue NewESP = CurDAG->getNode(ISD::SUB, SL, SubVTList, ESP, Width); //ESP -= 4;
+
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), NewESP);
+
+
+      //Store
+      SDValue Store = CurDAG->getStore(Chain, SL, EBP, NewESP, MMO);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Store);
+
+      return NULL;
+      break;
+    }
+
+    case X86::MOV32rr:{
+      // Note: Cannot use dummy arithmetic here because it will get folded
+      // (removed) from the DAG. Instead we search for a CopyToReg, if it
+      // exists we set it's debug location to the Mov, and if it doesn't we
+      // print an error and do nothing.
+      SDNode *C2R = NULL;
+      for (SDNode::use_iterator I = N->use_begin(), E = N->use_end(); I != E; ++I) {
+        if (I->getOpcode() == ISD::CopyToReg) {
+          C2R = *I;
+          break;
+        }
+      }
+
+      assert(C2R && "Move instruction without CopytoReg!");
+      C2R->setDebugLoc(N->getDebugLoc());
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N,0), N->getOperand(0));
+
+      return NULL;
+      break;
+    }
+    case X86::CALLpcrel32:{
+      SDValue Chain = N->getOperand(0);
+      uint64_t TarVal = N->getConstantOperandVal(1);
+      SDValue Target = CurDAG->getConstant(TarVal, MVT::i32);
+      //SDValue noReg = N->getOperand(2);
+
+      SDLoc SL(N);
+
+      SDValue CallNode = CurDAG->getNode(X86ISD::CALL, SL, MVT::Other, Target, Chain);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), CallNode);
+
+      return NULL;
+      break;
+    }
+    /*
     case X86::JBE_1:{   //Jump short if Below or Equal
       SDValue Chain = N->getOperand(0);
       SDValue Target = N->getOperand(1);
@@ -63,6 +173,26 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
       return NULL;
       break;
+    }
+    case X86::JNE_1:{   //Jump short if Not Equal
+          SDValue Chain = N->getOperand(0);
+          uint64_t TarVal = N->getConstantOperandVal(1);
+          SDValue Target = CurDAG->getConstant(TarVal, MVT::i32);
+          //SDValue EFLAGSCFR = N->getOperand(2);
+          SDLoc SL(N);
+
+          // Calculate the Branch Target
+          SDValue BT = CurDAG->getConstant(
+              cast<ConstantSDNode>(Target)->getZExtValue(), Target.getValueType());
+
+          // Condition Code is "Below or Equal" <=
+          SDValue CC = CurDAG->getCondCode(ISD::SETNE);
+          SDValue BrNode =
+              CurDAG->getNode(ISD::BRCOND, SL, MVT::Other, CC, BT, Chain);
+          CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
+
+          return NULL;
+          break;
     }
     case X86::JAE_1:{   //Jump short if Above or Equal
       SDValue Chain = N->getOperand(0);
@@ -86,6 +216,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
     }
     case X86::CMP32rm:
     case X86::CMP32mr:
+    case X86::CMP32mi:
     case X86::CMP32mi8:{
       // NOTE: Pattern in ARM DAG Selector is busted as not handling CPSR
       //       not sure how to fix, so this might just be a hack!
@@ -99,57 +230,10 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
-    case X86::PUSH32r:{
-      //Subtract 4 from the stack
-      //Move the new value into place
+    //case X86::MOV32mi:
+    //case X86::MOV32rr_REV:
+    //case X86::MOV64rr:
 
-      //Get the arguments
-      SDValue Chain = N->getOperand(0);
-      SDValue Src = N->getOperand(1);	//Arg passes to push
-      SDValue Dest = N->getOperand(2);
-
-      SDLoc SL(N);
-      SDVTList SubVTList = CurDAG->getVTList(MVT::i32);
-      SDValue Width = CurDAG->getConstant(4, MVT::i32);
-      SDValue Addr = CurDAG->getNode(ISD::SUB, SL, SubVTList, Dest, Width);	//ESP -= 4;
-
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Addr);
-
-      const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
-      MachineMemOperand *MMO = NULL;
-      if (MN->memoperands_empty()) {
-        errs() << "NO MACHINE OPS for PUSH32r!\n";
-      } else {
-        MMO = *(MN->memoperands_begin());
-      }
-
-      //Store
-      SDValue Store = CurDAG->getStore(Chain, SL, Src, Addr, MMO);
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Store);
-
-      return NULL;
-      break;
-    }
-    case X86::MOV32rr_REV:
-    case X86::MOV64rr:
-    case X86::MOV32rr:{
-      // Note: Cannot use dummy arithmetic here because it will get folded
-      // (removed) from the DAG. Instead we search for a CopyToReg, if it
-      // exists we set it's debug location to the Mov, and if it doesn't we
-      // print an error and do nothing.
-      SDNode *C2R = NULL;
-      for (SDNode::use_iterator I = N->use_begin(), E = N->use_end(); I != E; ++I) {
-        if (I->getOpcode() == ISD::CopyToReg) {
-          C2R = *I;
-          break;
-        }
-      }
-      assert(C2R && "Move instruction without CopytoReg!");
-      C2R->setDebugLoc(N->getDebugLoc());
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N,0), N->getOperand(0));
-      return NULL;
-      break;
-    }
     case X86::JMP_1:{
       SDValue Chain = N->getOperand(0);
       uint64_t TarVal = N->getConstantOperandVal(1);
@@ -162,63 +246,11 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
-    case X86::CALLpcrel32:{
-      SDValue Chain = N->getOperand(0);
-      uint64_t TarVal = N->getConstantOperandVal(1);
-      SDValue Target = CurDAG->getConstant(TarVal, MVT::i32);
-      //SDValue noReg = N->getOperand(2);
-
-      SDLoc SL(N);
-
-      SDValue CallNode = CurDAG->getNode(X86ISD::CALL, SL, MVT::Other, Target, Chain);
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), CallNode);
-
-      return NULL;
-      break;
-    }
-    case X86::RETL:{
-      SDValue Chain = N->getOperand(0);
-      SDLoc SL(N);
-      SDValue RetNode = CurDAG->getNode(X86ISD::RET_FLAG, SL, MVT::Other, Chain);
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), RetNode);
-
-      return NULL;
-      break;
-    }
-    case X86::POP32r:{
-      //Input: Chain & ESP
-      //Output: MVT::i32, MVT::i32, MVT::Other
-      SDValue Chain = N->getOperand(0);
-      SDValue Base = N->getOperand(1);
-      SDValue Offset = CurDAG->getConstant(4, EVT(MVT::i32), false);
-
-      SDLoc SL(N);
-      SDVTList AddVTList = CurDAG->getVTList(MVT::i32);
-
-      SDValue Addr = CurDAG->getNode(ISD::ADD, SL, AddVTList, Base, Offset);
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Addr);
-
-      // memops might be null here, but not sure if we need to check.
-      const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
-      MachineMemOperand *MMO = NULL;
-      if (MN->memoperands_empty()) {
-        errs() << "NO MACHINE OPS for POP32r!\n";
-      } else {
-        MMO = *(MN->memoperands_begin());
-      }
-      //SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::i32, MVT::Other);
-      //Don't see a getStore that takes a VTList.
-      //SDValue Store = CurDAG->getStore(Chain, SL, Base, Addr, MMO);
-      //CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Store);
-
-      return NULL;
-      break;
-    }
     case X86::JA_1:{    //JMP Short if Above
       SDValue Chain = N->getOperand(0);
       uint64_t TarVal = N->getConstantOperandVal(1);
       SDValue Target = CurDAG->getConstant(TarVal, MVT::i32);
-      //SDValue EFLAGSCFR = N->getOperand(2);
+      //SDValue EFLAGSCFR = N->getZExtValuegetOperand(2);
       SDLoc SL(N);
 
       // Calculate the Branch Target
@@ -234,26 +266,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
-    case X86::JNE_1:{   //Jump short if Not Equal
-      SDValue Chain = N->getOperand(0);
-      uint64_t TarVal = N->getConstantOperandVal(1);
-      SDValue Target = CurDAG->getConstant(TarVal, MVT::i32);
-      //SDValue EFLAGSCFR = N->getOperand(2);
-      SDLoc SL(N);
 
-      // Calculate the Branch Target
-      SDValue BT = CurDAG->getConstant(
-          cast<ConstantSDNode>(Target)->getZExtValue(), Target.getValueType());
-
-      // Condition Code is "Below or Equal" <=
-      SDValue CC = CurDAG->getCondCode(ISD::SETNE);
-      SDValue BrNode =
-          CurDAG->getNode(ISD::BRCOND, SL, MVT::Other, CC, BT, Chain);
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
-
-      return NULL;
-      break;
-    }
     case X86::ADD32mi8:{
       SDValue Chain = N->getOperand(0);
       SDValue EBP = N->getOperand(1);
@@ -267,13 +280,13 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
 
       SDLoc SL(N);
       SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::Other);
-      /* AJG: Not sure how fill in semantics yet.
-      SDValue v2 = N->getOperand(2);
+      // AJG: Not sure how fill in semantics yet.
+      //SDValue v2 = N->getOperand(2);
 
 
-      SDValue Node = CurDAG->getNode(ISD::ADD, SL, VTList, v1, v2, Chain);
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Node);
-      */
+      //SDValue Node = CurDAG->getNode(ISD::ADD, SL, VTList, v1, v2, Chain);
+      //CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Node);
+
 
       return NULL;
       break;
@@ -281,7 +294,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
     case X86::ADD32mr:{
       SDValue Chain = N->getOperand(0);
       SDValue EBP = N->getOperand(1);
-      uint64_t C1val = N->getConstantOperandVal(2);
+      uint64_t C1val = N->getConstantOperandVal(2);== When to use getStore ==
       SDValue C1 = CurDAG->getConstant(C1val, MVT::i32);
       //3 is noReg
       uint64_t Cn4val = N->getConstantOperandVal(4);
@@ -307,22 +320,70 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
+
+    case X86::ADD32i32:{
+      uint64_t C1val = N->getConstantOperandVal(0);
+      SDValue C1 = CurDAG->getConstant(C1val, MVT::i32);
+      SDValue C2 = N->getOperand(1);
+
+      SDLoc SL(N);
+      SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::i32);
+
+      SDValue Node = CurDAG->getNode(ISD::ADD, SL, VTList, C2, C1);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Node);
+
+      return NULL;
+      break;
+    }
+    case X86::SUB32ri8:
+    case X86::SUB32i32:{
+      uint64_t C1val = N->getConstantOperandVal(0);
+      SDValue C1 = CurDAG->getConstant(C1val, MVT::i32);
+      SDValue C2 = N->getOperand(1);
+
+      SDLoc SL(N);
+      SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::i32);
+
+      SDValue Node = CurDAG->getNode(ISD::SUB, SL, VTList, C2, C1);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Node);
+
+      return NULL;
+      break;
+    }
+    case X86::LEA32r:{ //Load Effective Address
+      //SDValue noReg = N->getOperand(0);
+      uint64_t C1val = N->getConstantOperandVal(1);
+      SDValue C1 = CurDAG->getConstant(C1val, MVT::i32);
+      //SDValue noReg = N->getOperand(2);
+      uint64_t C2val = N->getConstantOperandVal(3);
+      SDValue C2 = CurDAG->getConstant(C1val, MVT::i32);
+      //SDValue noReg = N->getOperand(4);
+
+      SDLoc SL(N);
+
+      SDVTList VTList = CurDAG->getVTList(MVT::i32);
+      SDValue LEANode = CurDAG->getNode(ISD::CopyToReg, SL, VTList, C2, C1);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), LEANode);
+
+      return NULL;
+      break;
+    }
     case X86::LEAVE:{   //ESP = EBP
       SDValue Chain = N->getOperand(0);
       SDValue EBP = N->getOperand(1);
       SDValue ESP = N->getOperand(2);
 
       SDLoc SL(N);
-      /*
-      SDVTList VTList = CurDAG->getVTList(MVT::i32);
-      SDValue Zero = CurDAG->getConstant(0, MVT::i32);
+
+      //SDVTList VTList = CurDAG->getVTList(MVT::i32);
+      //SDValue Zero = CurDAG->getConstant(0, MVT::i32);
       //This should potentially be optimized to one instruction
-      SDValue EBPZero = CurDAG->getNode(ISD::MUL, SL, VTList, EBP, Zero);  //EBP = 0;
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), EBPZero);
-      VTList = CurDAG->getVTList(MVT::i32, MVT::i32, MVT::Other);
-      SDValue EBPeqESP = CurDAG->getNode(ISD::ADD, SL, VTList, EBP, ESP, Chain);  //EBP += ESP;
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), EBPeqESP);
-      */
+      //SDValue EBPZero = CurDAG->getNode(ISD::MUL, SL, VTList, EBP, Zero);  //EBP = 0;
+      //CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), EBPZero);
+      //VTList = CurDAG->getVTList(MVT::i32, MVT::i32, MVT::Other);
+      //SDValue EBPeqESP = CurDAG->getNode(ISD::ADD, SL, VTList, EBP, ESP, Chain);  //EBP += ESP;
+      //CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), EBPeqESP);
+
       // AJG: Reduce above to one instruction
       SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::i32, MVT::Other);
       SDValue EBPeqESP = CurDAG->getNode(ISD::CopyToReg, SL, VTList, EBP, ESP, Chain);  //EBP = ESP;
@@ -331,6 +392,8 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
+    */
+
   }
 
   SDNode* TheRes = InvertCode(N);

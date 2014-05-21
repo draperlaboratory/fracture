@@ -195,6 +195,8 @@ Function* Decompiler::decompileFunction(unsigned Address) {
 
   // Clean up unnecessary stores and loads
   FunctionPassManager FPM(Mod);
+  //Line below adds decompiler optimization.  Function pass manager for optimization.
+  //    This is where to focus for type recovery.
   // FPM.add(createPromoteMemoryToRegisterPass()); // See Scalar.h for more.
   FPM.add(createTypeRecoveryPass());
   FPM.run(*F);
