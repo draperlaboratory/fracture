@@ -125,6 +125,38 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
 
       return NULL;
     }
+    case ARM::STRD_POST: {
+         //
+         SDValue Chain = N->getOperand(0);
+         SDValue Tgt1 = N->getOperand(1);
+         SDValue Tgt2 = N->getOperand(2);
+         SDValue Base = N->getOperand(3);
+         SDValue Offset = N->getOperand(4);
+
+         SDLoc SL(N);
+         SDVTList AddVTList = CurDAG->getVTList(MVT::i32);
+
+         SDValue Addr1 = CurDAG->getNode(ISD::SUB, SL, AddVTList, Base, Offset);
+
+         // memops might be null here, but not sure if we need to check.
+         const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
+         MachineMemOperand *MMO = NULL;
+         if (MN->memoperands_empty()) {
+           errs() << "NO MACHINE OPS for STRD_POST!\n";
+         } else {
+           MMO = *(MN->memoperands_begin());
+         }
+         SDValue Four = CurDAG->getConstant(4, MVT::i32, false, false);
+         SDValue Store = CurDAG->getStore(Chain, SL, Tgt1, Addr1, MMO);
+         SDValue Addr2 = CurDAG->getNode(ISD::ADD, SL, AddVTList, Addr1, Four);
+         SDValue Store2 = CurDAG->getStore(Store, SL, Tgt2, Addr2, MMO);
+         SDValue Addr3 = CurDAG->getNode(ISD::ADD, SL, AddVTList, Addr2, Four);
+         CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Addr3);
+         CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Store2);
+
+
+         return NULL;
+       }
     case ARM::LDMIA:            // Load variations...
                             //   LD?  Inc?   Bef?    WB?
       InvLoadOrStoreMultiple(N, true, true, false, false);
