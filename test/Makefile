@@ -11,10 +11,11 @@ LEVEL = ..
 DIRS  =
 
 all:: check-local
+#all
 
 # Include other test rules
 include Makefile.tests
-
+	
 #===------------------------------------------------------------------------===#
 # DejaGNU testing support
 #===------------------------------------------------------------------------===#
@@ -37,15 +38,51 @@ endif
 
 # Check what to run for -all.
 LIT_ALL_TESTSUITES := $(LIT_TESTSUITE)
-
-extra-site-cfgs::
+  extra-site-cfgs::
 .PHONY: extra-site-cfgs
+
+
+#ADDED MISSING CODE FROM ORIG MAKE --- START
+#
+#ifneq ($(strip $(filter check-local-all,$(MAKECMDGOALS))),)
+#ifndef TESTSUITE
+#ifeq ($(shell test -f $(PROJ_OBJ_DIR)/../tools/clang/Makefile && echo OK), OK)
+#LIT_ALL_TESTSUITES += $(PROJ_OBJ_DIR)/../tools/clang/test
+#
+# Force creation of Clang's lit.site.cfg.
+#clang-site-cfg: FORCE
+#	$(MAKE) -C $(PROJ_OBJ_DIR)/../tools/clang/test lit.site.cfg Unit/lit.site.cfg
+#extra-site-cfgs:: clang-site-cfg
+#endif
+#
+#ifeq ($(shell test -f $(PROJ_OBJ_DIR)/../tools/clang/tools/extra/Makefile && echo OK), OK)
+#LIT_ALL_TESTSUITES += $(PROJ_OBJ_DIR)/../tools/clang/tools/extra/test
+#
+# Force creation of Clang Tools' lit.site.cfg.
+#clang-tools-site-cfg: FORCE
+#	$(MAKE) -C $(PROJ_OBJ_DIR)/../tools/clang/tools/extra/test lit.site.cfg
+#extra-site-cfgs:: clang-tools-site-cfg
+#endif
+#
+#ifeq ($(shell test -f $(PROJ_OBJ_DIR)/../tools/polly/Makefile && echo OK), OK)
+#LIT_ALL_TESTSUITES += $(PROJ_OBJ_DIR)/../tools/polly/test
+#
+# Force creation of Polly's lit.site.cfg.
+#polly-tools-site-cfg: FORCE
+#	$(MAKE) -C $(PROJ_OBJ_DIR)/../tools/polly/test lit.site.cfg
+#extra-site-cfgs:: polly-tools-site-cfg
+#endif
+#endif
+#endif
+#
+# ADDED MISSING CODE FROM ORIG MAKE --- END
+
 
 # ulimits like these are redundantly enforced by the buildbots, so
 # just removing them here won't work.
 # Both AuroraUX & Solaris do not have the -m flag for ulimit
 ifeq ($(HOST_OS),SunOS)
-ULIMIT=ulimit -t 600 ; ulimit -d 512000 ; ulimit -v 512000 ;
+ULIMIT=ulimit -t 6000 ; ulimit -d 512000 ; ulimit -v 512000 ;
 else # !SunOS
 ifeq ($(HOST_OS),AuroraUX)
 ULIMIT=ulimit -t 600 ; ulimit -d 512000 ; ulimit -v 512000 ;
@@ -58,10 +95,14 @@ ULIMIT=ulimit -t 600 ; ulimit -d 512000 ; ulimit -m 512000 ; ulimit -s 8192 ;
 endif # AuroraUX
 endif # SunOS
 
+
+	
+
 check-local:: lit.site.cfg
+	
 	( $(ULIMIT) \
 	  $(PYTHON) $(LLVM_SRC_ROOT)/utils/lit/lit.py $(LIT_ARGS) $(LIT_TESTSUITE) )
-
+	  
 # This is a legacy alias dating from when both DejaGNU and lit were in use.
 check-local-lit:: check-local
 
@@ -94,7 +135,6 @@ ifneq ($(findstring -O4,$(CompileCommonOpts)),)
 LTO_IS_ENABLED := 1
 endif
 endif
-
 lit.site.cfg: FORCE
 	@echo "Making LLVM 'lit.site.cfg' file..."
 	@$(ECHOPATH) s=@LLVM_HOST_TRIPLE@=$(HOST_TRIPLE)=g > lit.tmp

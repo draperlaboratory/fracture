@@ -51,6 +51,11 @@
 #include <inttypes.h>
 #include <signal.h>
 #include <sstream>
+		#include <unistd.h>  //new
+		#include <cstdlib>  //new
+
+
+
 // iostream is frowned upon in LLVM, but
 // we are doing console I/O here.
 #include <iostream>
@@ -72,7 +77,7 @@
 
 using namespace llvm;
 using namespace fracture;
-
+		using std::string;  //new
 //===----------------------------------------------------------------------===//
 // Global Variables and Parameters
 //===----------------------------------------------------------------------===//
@@ -671,7 +676,8 @@ static void runSaveCommand(std::vector<std::string> &CommandLine) {
 /// runQuitCommand - Exits the program
 ///
 static void runQuitCommand(std::vector<std::string> &CommandLine) {
-  exit(130);                    // Note: This is for fork/exec in shell.
+	// was 130 but changed to 0 because this exit is after success
+	exit(0);  //Note: This is for fork/exec in shell.
 }
 
 static void runDumpCommand(std::vector<std::string> &CommandLine) {

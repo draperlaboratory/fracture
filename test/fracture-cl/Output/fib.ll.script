@@ -1,3 +1,3 @@
-set -o pipefail;{ llc -filetype=obj -march=arm -mattr=v6 -o /export/home/rtc1032/workspace/fracture/test/fracture-cl/Output/fib.ll.tmp1 < /export/home/rtc1032/workspace/fracture/test/fracture-cl/fib.ll; } &&
-{ fracture-cl -arch=arm -mattr=v6 /export/home/rtc1032/workspace/fracture/test/fracture-cl/Output/fib.ll.tmp1 < /export/home/rtc1032/workspace/fracture/test/fracture-cl/fib-arm.cmds > /export/home/rtc1032/workspace/fracture/test/fracture-cl/Output/fib.ll.tmp2 2>> /export/home/rtc1032/workspace/fracture/test/fracture-cl/Output/fib.ll.tmp2; } &&
-{ diff -u /export/home/rtc1032/workspace/fracture/test/fracture-cl/Output/fib.ll.tmp2 /export/home/rtc1032/workspace/fracture/test/fracture-cl/fib-arm.ref; }
+set -o pipefail;{ llc -filetype=obj -march=arm -mattr=v6 -o /home/dmf1032/builds/fracture/test/fracture-cl/Output/fib.ll.tmp1 < /home/dmf1032/builds/fracture/test/fracture-cl/fib.ll; } &&
+{ fracture-cl -arch=arm -mattr=v6 /home/dmf1032/builds/fracture/test/fracture-cl/Output/fib.ll.tmp1 < /home/dmf1032/builds/fracture/test/fracture-cl/fib-arm.cmds > /home/dmf1032/builds/fracture/test/fracture-cl/Output/fib.ll.tmp2 2>> /home/dmf1032/builds/fracture/test/fracture-cl/Output/fib.ll.tmp2; } &&
+{ diff -u /home/dmf1032/builds/fracture/test/fracture-cl/Output/fib.ll.tmp2 /home/dmf1032/builds/fracture/test/fracture-cl/fib-arm.ref; }
