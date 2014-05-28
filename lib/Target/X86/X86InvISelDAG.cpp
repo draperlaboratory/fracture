@@ -104,7 +104,6 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
         MMO = *(MN->memoperands_begin());
       }
 
-
       SDLoc SL(N);
       SDVTList SubVTList = CurDAG->getVTList(MVT::i32);
       SDValue Width = CurDAG->getConstant(4, MVT::i32);
@@ -155,6 +154,60 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
+    case X86::LEAVE:{
+      //ESP ← EBP;
+      //EBP ← Pop();
+      const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
+      MachineMemOperand *MMO = NULL;
+      if (MN->memoperands_empty()) {
+        errs() << "NO MACHINE OPS for PUSH32r!\n";
+      } else {
+        MMO = *(MN->memoperands_begin());
+      }
+
+      EVT LdType = N->getValueType(0);
+      SDValue Chain = N->getOperand(0);
+      SDValue EBP = N->getOperand(1);
+      //SDValue ESP = N->getOperand(2);
+
+      SDLoc SL(N);
+      SDValue LoadEBP = CurDAG->getLoad(LdType, SL, Chain, EBP, MMO); //Load from EBP
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), LoadEBP);
+
+      SDValue Width = CurDAG->getConstant(4, MVT::i32);
+      SDValue NewESP = CurDAG->getNode(ISD::ADD, SL, MVT::i32, EBP, Width); //ESP -= 4;
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), NewESP);
+
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 2), SDValue(LoadEBP.getNode(),1));   //Chain
+
+      //For getLoad or getStore
+      FixChainOp(LoadEBP.getNode());
+
+      return NULL;
+      break;
+    }
+    case X86::LEA32r:{ //Load Effective Address
+      //DEST ← EffectiveAddress(SRC); (* 16-bit address *)
+      //From: http://www.ncsa.illinois.edu/People/kindr/teaching/ece190_sp10/files/PS4.pdf
+      //LEA Rx, imm_val | Rx <= PC1+imm_val
+
+      SDValue Base = ConvertNoRegToZero(N->getOperand(0));
+      SDValue Scale = ConvertNoRegToZero(N->getOperand(1));
+      SDValue Index = ConvertNoRegToZero(N->getOperand(2));
+      SDValue Disp = ConvertNoRegToZero(N->getOperand(3));
+      //SDValue Seg = ConvertNoRegToZero(N->getOperand(4)); //Ignore me for now
+
+      SDLoc SL(N);
+      SDValue Mul = CurDAG->getNode(ISD::MUL, SL, MVT::i32, Index, Scale);
+      SDValue Add = CurDAG->getNode(ISD::ADD, SL, MVT::i32, Disp, Base);
+      SDValue Address = CurDAG->getNode(ISD::ADD, SL, MVT::i32, Mul, Add);
+
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Address);
+
+      return NULL;
+      break;
+    }
+
     /*
     case X86::JBE_1:{   //Jump short if Below or Equal
       SDValue Chain = N->getOperand(0);
@@ -195,7 +248,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
           break;
     }
     case X86::JAE_1:{   //Jump short if Above or Equal
-      SDValue Chain = N->getOperand(0);
+      SDValue Chain = X86InvISelDAGN->getOperand(0);
       uint64_t TarVal = N->getConstantOperandVal(1);
       SDValue Target = CurDAG->getConstant(TarVal, MVT::i32);
       //SDValue EFLAGSCFR = N->getOperand(2);
@@ -206,7 +259,9 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
           cast<ConstantSDNode>(Target)->getZExtValue(), Target.getValueType());
 
       // Condition Code is "Below or Equal" <=
-      SDValue CC = CurDAG->getCondCode(ISD::SETGE);
+      SDValue CC = CurDAG->getCoInvISelDAG.cpp:194:42: error: cannot initialize a parameter of type 'llvm::SDValue *' with an rvalue of type
+      'const llvm::SDValue *'
+      ndCode(ISD::SETGE);
       SDValue BrNode =
           CurDAG->getNode(ISD::BRCOND, SL, MVT::Other, CC, BT, Chain);
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
@@ -239,7 +294,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       uint64_t TarVal = N->getConstantOperandVal(1);
       SDValue Target = CurDAG->getConstant(TarVal, MVT::i32);
 
-      SDLoc SL(N);
+      SDLoc SL(N);X86InvISelDAG
       SDValue BrNode = CurDAG->getNode(ISD::BR, SL, MVT::Other, Target, Chain);
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
 
@@ -259,10 +314,10 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
 
       // Condition Code is "Below or Equal" <=
       SDValue CC = CurDAG->getCondCode(ISD::SETGT);
-      SDValue BrNode =
+      SDValue BrNode =ConvertNoRegToUNDEF
           CurDAG->getNode(ISD::BRCOND, SL, MVT::Other, CC, BT, Chain);
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
-
+LdType
       return NULL;
       break;
     }
@@ -350,48 +405,6 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
-    case X86::LEA32r:{ //Load Effective Address
-      //SDValue noReg = N->getOperand(0);
-      uint64_t C1val = N->getConstantOperandVal(1);
-      SDValue C1 = CurDAG->getConstant(C1val, MVT::i32);
-      //SDValue noReg = N->getOperand(2);
-      uint64_t C2val = N->getConstantOperandVal(3);
-      SDValue C2 = CurDAG->getConstant(C1val, MVT::i32);
-      //SDValue noReg = N->getOperand(4);
-
-      SDLoc SL(N);
-
-      SDVTList VTList = CurDAG->getVTList(MVT::i32);
-      SDValue LEANode = CurDAG->getNode(ISD::CopyToReg, SL, VTList, C2, C1);
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), LEANode);
-
-      return NULL;
-      break;
-    }
-    case X86::LEAVE:{   //ESP = EBP
-      SDValue Chain = N->getOperand(0);
-      SDValue EBP = N->getOperand(1);
-      SDValue ESP = N->getOperand(2);
-
-      SDLoc SL(N);
-
-      //SDVTList VTList = CurDAG->getVTList(MVT::i32);
-      //SDValue Zero = CurDAG->getConstant(0, MVT::i32);
-      //This should potentially be optimized to one instruction
-      //SDValue EBPZero = CurDAG->getNode(ISD::MUL, SL, VTList, EBP, Zero);  //EBP = 0;
-      //CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), EBPZero);
-      //VTList = CurDAG->getVTList(MVT::i32, MVT::i32, MVT::Other);
-      //SDValue EBPeqESP = CurDAG->getNode(ISD::ADD, SL, VTList, EBP, ESP, Chain);  //EBP += ESP;
-      //CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), EBPeqESP);
-
-      // AJG: Reduce above to one instruction
-      SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::i32, MVT::Other);
-      SDValue EBPeqESP = CurDAG->getNode(ISD::CopyToReg, SL, VTList, EBP, ESP, Chain);  //EBP = ESP;
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), EBPeqESP);
-
-      return NULL;
-      break;
-    }
     */
 
   }
@@ -399,5 +412,16 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
   SDNode* TheRes = InvertCode(N);
   return TheRes;
 }
+
+SDValue X86InvISelDAG::ConvertNoRegToZero(const SDValue N){
+  if(N.getOpcode() == ISD::CopyFromReg ){
+    const RegisterSDNode *R = dyn_cast<RegisterSDNode>(N.getOperand(1));
+    if (R != NULL && R->getReg() == 0)
+      return CurDAG->getConstant(4, MVT::i32);
+      //return CurDAG->getUNDEF(R->getValueType(0));
+  }
+  return N;
+}
+
 
 }

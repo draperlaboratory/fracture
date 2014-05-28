@@ -40,7 +40,7 @@ public:
 
   SDNode* InvertCode(SDNode *N);
   SDNode* Transmogrify(SDNode *N);
-
+  SDValue ConvertNoRegToZero(const SDValue N);
 };
 
 } // end fracture namespace
