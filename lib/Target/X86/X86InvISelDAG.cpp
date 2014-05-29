@@ -83,6 +83,8 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
 
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), NewESP);             //Store ESP
 
+      FixChainOp(Load.getNode());
+
       return NULL;
       break;
     }
@@ -115,6 +117,8 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       //Store
       SDValue Store = CurDAG->getStore(Chain, SL, EBP, NewESP, MMO);
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Store);
+
+      FixChainOp(Store.getNode());
 
       return NULL;
       break;
