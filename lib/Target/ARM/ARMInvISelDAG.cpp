@@ -182,10 +182,10 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
 
     case ARM::LDR_POST_IMM: {
 
- //           SDValue Chain = N->getOperand(0);
- //           SDValue Tgt1 = N->getOperand(1);
-            SDValue AM2Offset = N->getOperand(3);
- //           SDValue Offset = N->getOperand(4);
+//           SDValue Chain = N->getOperand(0);
+//           SDValue Tgt1 = N->getOperand(1);
+             SDValue AM2Offset = N->getOperand(3);
+//           SDValue Offset = N->getOperand(4);
 
 	    unsigned AM2var = cast<ConstantSDNode>(AM2Offset)->getZExtValue();
 //	    outs() << "offset:" << getAM2Offset(AM2var);
@@ -223,10 +223,11 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
         //the pc with an offset of 12
           	SDValue Chain 	  = N->getOperand(0);
           	SDValue Ptr       = N->getOperand(1);
-          	SDValue Offset = CurDAG->getConstant(4, EVT(MVT::i32), false);
+        //  SDValue Offset = CurDAG->getConstant(4, EVT(MVT::i32), false);
   			SDLoc SL(N);
   			SDValue UsePtr;
-  			SDVTList VTList = CurDAG->getVTList(MVT::i32);
+  		//	SDVTList VTList = CurDAG->getVTList(MVT::i32);
+  			unsigned ImmSum = 0;
 
   			EVT LdType = N->getValueType(0);
 
@@ -234,11 +235,15 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
           	Ptr = CurDAG->getLoad(LdType, SL, Chain, UsePtr,
           	        MachinePointerInfo::getConstantPool(), false, false, true, 0);
 
+          	 MachineMemOperand* MMO =
+          	      new MachineMemOperand(MachinePointerInfo(0, ImmSum),
+          	        MachineMemOperand::MOStore, 4, 0);
+
           	// RegisterSDNode *RegNode =
           	     //  dyn_cast<RegisterSDNode>(Val->getOperand(1));
 
-          	SDValue C2R = CurDAG->getCopyToReg(ResNode.getValue(1), SL,
-  				Ptr = CurDAG->getStore(Chain, SL, Val, UsePtr, MMO);
+          	//SDValue C2R = CurDAG->getCopyToReg(Ptr.getValue(1), SL,
+  			Ptr = CurDAG->getStore(Chain, SL, UsePtr, UsePtr, MMO);
         Chain = Ptr;
 
       FixChainOp(Ptr.getNode());
