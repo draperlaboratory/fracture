@@ -22,6 +22,12 @@ namespace fracture {
 
 #include "X86GenInvISel.inc"
 
+/*! \brief Transmogrify converts Arch specific OpCodes to LLVM IR.
+ *
+ *  Transmogrify is the handles Arch specific OpCodes that are not automatically
+ *      supported.  This method will either emit LLVM IR or in more complicated
+ *      cases call into the IR Emitter.
+ */
 SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
   // Insert fixups here
   if (!N->isMachineOpcode()) {
@@ -48,6 +54,9 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       break;
     case X86::RETQ:
     case X86::RETL:{
+      /**<
+       * RET calls into the IREmitter which passes the default IR return.
+       */
       SDValue Chain = N->getOperand(0);
       SDLoc SL(N);
       SDValue RetNode = CurDAG->getNode(X86ISD::RET_FLAG, SL, MVT::Other, Chain);
@@ -57,8 +66,11 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       break;
     }
     case X86::POP32r:{
-      //DEST ← SS:ESP; (* Copy a doubleword *)
-      //ESP ← ESP + 4;
+      /**<
+       * POP32r Pseudo code
+       * DEST ← SS:ESP; (* Copy a doubleword *)
+       * ESP ← ESP + 4;
+       */
 
       //Get the arguments
       SDValue Chain = N->getOperand(0);
@@ -90,8 +102,11 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
     }
 
     case X86::PUSH32r:{
-      //ESP ← ESP – 4;
-      //Memory[SS:ESP] ← SRC; (* push dword *)
+      /**<
+       * PUSH32r Pseudo code
+       * ESP ← ESP – 4;
+       * Memory[SS:ESP] ← SRC; (* push dword *)
+       */
 
       //Get the arguments
       SDValue Chain = N->getOperand(0);
@@ -125,10 +140,13 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
     }
 
     case X86::MOV32rr:{
-      // Note: Cannot use dummy arithmetic here because it will get folded
-      // (removed) from the DAG. Instead we search for a CopyToReg, if it
-      // exists we set it's debug location to the Mov, and if it doesn't we
-      // print an error and do nothing.
+      /**<
+       * MOV32rr notes
+       * Cannot use dummy arithmetic because it will get folded
+       * (removed) from the DAG. Instead we search for a CopyToReg, if it
+       * exists we set it's debug location to the Mov, and if it doesn't we
+       * print an error and do nothing.
+       */
       SDNode *C2R = NULL;
       for (SDNode::use_iterator I = N->use_begin(), E = N->use_end(); I != E; ++I) {
         if (I->getOpcode() == ISD::CopyToReg) {
@@ -145,6 +163,11 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       break;
     }
     case X86::CALLpcrel32:{
+      /**<
+       * CALLpcrel32 notes
+       * Calls into X86ISD, which is between the OpCode and IR.  This instruction is
+       *    more easily handled later on.
+       */
       SDValue Chain = N->getOperand(0);
       uint64_t TarVal = N->getConstantOperandVal(1);
       SDValue Target = CurDAG->getConstant(TarVal, MVT::i32);
@@ -159,8 +182,11 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       break;
     }
     case X86::LEAVE:{
-      //ESP ← EBP;
-      //EBP ← Pop();
+      /**<
+       * LEAVE Pseudo code
+       * ESP ← EBP;
+       * EBP ← Pop();
+       */
       const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
       MachineMemOperand *MMO = NULL;
       if (MN->memoperands_empty()) {
@@ -190,11 +216,13 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
-    case X86::LEA32r:{ //Load Effective Address
-      //DEST ← EffectiveAddress(SRC); (* 16-bit address *)
-      //From: http://www.ncsa.illinois.edu/People/kindr/teaching/ece190_sp10/files/PS4.pdf
-      //LEA Rx, imm_val | Rx <= PC1+imm_val
-
+    case X86::LEA32r:{
+      /**<
+       * LEA32r (Load Effective Address) Pseudo code
+       * DEST ← EffectiveAddress(SRC); (* 16-bit address *)
+       * From: http://www.ncsa.illinois.edu/People/kindr/teaching/ece190_sp10/files/PS4.pdf
+       * LEA Rx, imm_val | Rx <= PC1+imm_val
+       */
       SDValue Base = ConvertNoRegToZero(N->getOperand(0));
       SDValue Scale = ConvertNoRegToZero(N->getOperand(1));
       SDValue Index = ConvertNoRegToZero(N->getOperand(2));
@@ -211,7 +239,87 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
+    case X86::CMP32mi:{
+       /**<
+        * 6 inputs & 2 outputs (i32, ch)
+        *
+        * CMP32mi Manual Description
+        * Compares the first source operand with the second source operand and sets the status flags in the EFLAGS register
+        * according to the results. The comparison is performed by subtracting the second operand from the first operand
+        * and then setting the status flags in the same manner as the SUB instruction. When an immediate value is used as
+        * an operand, it is sign-extended to the length of the first operand.
+        *
+        */
 
+      EVT LdType = N->getValueType(0);
+      SDValue Chain = N->getOperand(0);
+      SDValue EBP = N->getOperand(1);
+      SDValue C1 = N->getOperand(2);
+      /*
+      SDValue NoReg1 = N->getOperand(3);
+      SDValue C8 = N->getOperand(4);
+      SDValue NoReg2 = N->getOperand(5);
+      SDValue C10 = N->getOperand(6);
+      */
+
+      const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
+      MachineMemOperand *MMO = NULL;        //Basically a NOP
+      if (MN->memoperands_empty()) {
+        errs() << "NO MACHINE OPS for POP32r!\n";
+      } else {
+        MMO = *(MN->memoperands_begin());
+      }
+
+      SDLoc SL(N);
+      SDValue LoadEBP = CurDAG->getLoad(LdType, SL, Chain, EBP, MMO);  //Load from EBP
+
+      SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::Other);
+      SDValue NewESP = CurDAG->getNode(X86ISD::CMP , SL, VTList, SDValue(LoadEBP.getNode(),1), LoadEBP, C1); //EBP == C1;
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), NewESP);
+
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), SDValue(NewESP.getNode(),1));   //Chain
+
+      FixChainOp(LoadEBP.getNode());
+
+      return NULL;
+      break;
+    }
+    //case X86::JNE_1:{
+      /**<
+       * JNE_1 (Jump short if Not Equal) Pseudo code
+       * IF condition
+       *    THEN
+       *        tempEIP ← EIP + SignExtend(DEST);
+       *        IF OperandSize = 16
+       *            THEN tempEIP ← tempEIP AND 0000FFFFH;
+       *        FI;
+       *    IF tempEIP is not within code segment limit
+       *        THEN #GP(0);
+       *        ELSE EIP ← tempEIP
+       *    FI;
+       * FI;
+       */
+/*
+      SDValue Chain = N->getOperand(0);
+      uint64_t TarVal = N->getConstantOperandVal(1);
+      SDValue tempEIP = CurDAG->getConstant(TarVal, MVT::i32);
+      //SDValue EFLAGSCFR = N->getOperand(2);
+      SDLoc SL(N);
+
+      // Calculate the Branch Target
+      SDValue TempEIPval = CurDAG->getConstant(
+          cast<ConstantSDNode>(tempEIP)->getZExtValue(), tempEIP.getValueType());
+
+      // Condition Code is "Below or Equal" <=
+      SDValue CondNE = CurDAG->getCondCode(ISD::SETNE);
+      SDValue BrNode =
+          CurDAG->getNode(ISD::BRCOND, SL, MVT::Other, CondNE, TempEIPval, Chain);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
+
+      return NULL;
+      break;
+    }
+   */
     /*
     case X86::JBE_1:{   //Jump short if Below or Equal
       SDValue Chain = N->getOperand(0);
@@ -231,27 +339,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
-    case X86::JNE_1:{   //Jump short if Not Equal
-          SDValue Chain = N->getOperand(0);
-          uint64_t TarVal = N->getConstantOperandVal(1);
-          SDValue Target = CurDAG->getConstant(TarVal, MVT::i32);
-          //SDValue EFLAGSCFR = N->getOperand(2);
-          SDLoc SL(N);
-
-          // Calculate the Branch Target
-          SDValue BT = CurDAG->getConstant(
-              cast<ConstantSDNode>(Target)->getZExtValue(), Target.getValueType());
-
-          // Condition Code is "Below or Equal" <=
-          SDValue CC = CurDAG->getCondCode(ISD::SETNE);
-          SDValue BrNode =
-              CurDAG->getNode(ISD::BRCOND, SL, MVT::Other, CC, BT, Chain);
-          CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
-
-          return NULL;
-          break;
-    }
-    case X86::JAE_1:{   //Jump short if Above or Equal
+    case X86::JAE_1:{chain   //Jump short if Above or Equal
       SDValue Chain = X86InvISelDAGN->getOperand(0);
       uint64_t TarVal = N->getConstantOperandVal(1);
       SDValue Target = CurDAG->getConstant(TarVal, MVT::i32);
@@ -333,7 +421,7 @@ LdType
       SDValue C2 = CurDAG->getConstant(C2val, MVT::i32);
       //3 is undef
       uint64_t Cn4val = N->getConstantOperandVal(4);
-      SDValue Cn4 = CurDAG->getConstant(Cn4val, MVT::i32);
+      SDValue Cn4 = CurDAG->getConstant(C      //return CurDAG->getUNDEF(R->getValueType(0));n4val, MVT::i32);
       //4 is undef
       //6 is Constant 1
 
@@ -417,12 +505,16 @@ LdType
   return TheRes;
 }
 
+/*! \brief ConvertNoRegToZero handles the NoReg input case.
+ *
+ *  ConvertNoRegToZero NoReg inputs were causing fracture to crash.  This
+ *      method converts those cases to an i32 constant.
+ */
 SDValue X86InvISelDAG::ConvertNoRegToZero(const SDValue N){
   if(N.getOpcode() == ISD::CopyFromReg ){
     const RegisterSDNode *R = dyn_cast<RegisterSDNode>(N.getOperand(1));
     if (R != NULL && R->getReg() == 0)
       return CurDAG->getConstant(4, MVT::i32);
-      //return CurDAG->getUNDEF(R->getValueType(0));
   }
   return N;
 }
