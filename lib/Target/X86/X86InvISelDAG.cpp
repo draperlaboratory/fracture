@@ -315,6 +315,76 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
+    case X86::JL_1:{
+      /**<
+       * JL_1 - Jump if less than
+       */
+
+      JumpOnCondition(N, ISD::SETLT);
+
+      return NULL;
+      break;
+    }
+    case X86::JLE_1:{
+      /**<
+       * JLE_1 - Jump if less or equal
+       */
+
+      JumpOnCondition(N, ISD::SETLE);
+
+      return NULL;
+      break;
+    }
+    case X86::JG_1:{
+      /**<
+       * JG_1 - Jump if Greater/not less or equal
+       */
+
+      JumpOnCondition(N, ISD::SETGT);
+
+      return NULL;
+      break;
+    }
+    case X86::JGE_1:{
+      /**<
+       * JGE_1 - Jump if Greater or equal
+       */
+
+      JumpOnCondition(N, ISD::SETGE);
+
+      return NULL;
+      break;
+    }
+    case X86::JBE_1:{
+      /**<
+       * JBE_1 - Jump if Below or Equal
+       */
+
+      JumpOnCondition(N, ISD::SETLE);
+
+      return NULL;
+      break;
+    }
+    case X86::JAE_1:{
+      /**<
+       * JAE_1 - Jump if Above or Equal
+       */
+
+      JumpOnCondition(N, ISD::SETGE);
+
+      return NULL;
+      break;
+    }
+    case X86::JA_1:{
+      /**<
+       * JA_1 - Jump if Above
+       */
+
+      JumpOnCondition(N, ISD::SETGT);
+
+      return NULL;
+      break;
+    }
     case X86::JMP_1:{
       /*
        *    IF OperandSize = 32
@@ -351,47 +421,90 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
+    //case X86::SHLD32rri8:{
+      /*
+       * The SHLD instruction is used for multi-precision shifts of 64 bits or more.
+       *
+       * The instruction shifts the first operand (destination operand) to the left the number of bits specified by the third
+       * operand (count operand). The second operand (source operand) provides bits to shift in from the right (starting
+       * with bit 0 of the destination operand).
+       *
+       * The destination operand can be a register or a memory location; the source operand is a register. The count
+       * operand is an unsigned integer that can be stored in an immediate byte or in the CL register. If the count operand
+       * is CL, the shift count is the logical AND of CL and a count mask. In non-64-bit modes and default 64-bit mode; only
+       * bits 0 through 4 of the count are used. This masks the count to a value between 0 and 31. If a count is greater than
+       * the operand size, the result is undefined.
+       *
+       * If the count is 1 or greater, the CF flag is filled with the last bit shifted out of the destination operand. For a 1-bit
+       * shift, the OF flag is set if a sign change occurred; otherwise, it is cleared. If the count operand is 0, flags are not
+       * affected.
+       *
+       *    Inputs 0 = EDX, 1 = EAX, 2 = Constant<31>
+       *    Outputs i32, i32
+       *
+       *    C Code:
+       *    int myCtr(int inp){
+       *        if(inp == 10)
+       *            return inp;
+       *        return (inp + myCtr(inp+1));
+       *    }
+       *    Compiler generated IR - clang -m32 -O1 testing.c -emit-llvm -S -o testing_clang_01.ll
+       *    tailrecurse.return_crit_edge:                     ; preds = %entry
+       *        %0 = sub i32 9, %inp
+       *        %1 = sub i32 8, %inp
+       *        %2 = zext i32 %1 to i33
+       *        %3 = zext i32 %0 to i33
+       *        %4 = mul i33 %3, %2
+       *        %5 = add i32 %inp, 1
+       *        %6 = lshr i33 %4, 1
+       *        %7 = mul i32 %0, %5
+       *        %8 = trunc i33 %6 to i32
+       *        %9 = add i32 %7, %inp
+       *        %10 = add i32 %9, %8
+       *        %11 = add i32 %10, 10
+       *        br label %return
+       */
+      /*
+      EVT LdType = N->getValueType(0);
+      SDValue EDX = N->getOperand(0);
+      SDValue EAX = N->getOperand(1);
+      SDValue Constant = N->getOperand(2);
+
+      SDLoc SL(N);
+
+
+      SDValue EDXShl = CurDAG->getNode(ISD::SHL , SL, MVT::i32, EDX, Constant ); //Shift EDX by Constant;
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), EDXShl);
+
+      //Note: This is obviously incorrect, I'm not sure what the correct approach is to get this working...
+      SDValue NotCorrect = CurDAG->getNode(ISD::MUL , SL, MVT::i32, EAX, Constant );
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), NotCorrect);
+
+      return NULL;
+      break;
+    } */
+    //case X86::MUL32r:{
+      /*
+       * 2 Inputs (EDX, EAX) and 3 i32 outputs. 3 outputs seem odd...
+       *    Each goto CopyToReg arg 2.  Each CopyToReg is in the chain.
+       *    Therefore assuming each i32 is the same.
+       */
     /*
-    case X86::JBE_1:{   //Jump short if Below or Equal
-      SDValue Chain = N->getOperand(0);
-      SDValue Target = N->getOperand(1);
-      //SDValue EFLAGSCFR = N->getOperand(2);
+      SDValue EDX = N->getOperand(0);
+      SDValue EAX = N->getOperand(1);
+
       SDLoc SL(N);
-
-      // Calculate the Branch Target
-      SDValue BT = CurDAG->getConstant(
-          cast<CondNEConstantSDNode>(Target)->getZExtValue(), Target.getValueType());
-
-      // Condition Code is "Below or Equal" <=
-      SDValue CC = CurDAG->getCondCode(ISD::SETLE);
-      SDValue BrNode =
-          CurDAG->getNode(ISD::BRCOND, SL, MVT::Other, CC, BT, Chain);
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
-      return NULL;
-      break;
-    }
-    case X86::JAE_1:{chain   //Jump short if Above or Equal
-      SDValue Chain = X86InvISelDAGN->getOperand(0);
-      uint64_t TarVal = N->getConstantOperandVal(1);
-      SDValue Target = CurDAG->getConstant(TarVal, MVT::i32);
-      //SDValue EFLAGSCFR = N->getOperand(2);
-      SDLoc SL(N);
-
-      // Calculate the Branch Target
-      SDValue BT = CurDAG->getConstant(
-          cast<ConstantSDNode>(Target)->getZExtValue(), Target.getValueType());
-
-      // Condition Code is "Below or Equal" <=
-      SDValue CC = CurDAG->getCoInvISelDAG.cpp:194:42: error: cannot initialize a parameter of type 'llvm::SDValue *' with an rvalue of type
-      'const llvm::SDValue *'
-      ndCode(ISD::SETGE);
-      SDValue BrNode =
-          CurDAG->getNode(ISD::BRCOND, SL, MVT::Other, CC, BT, Chain);
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
+      SDValue MulOut = CurDAG->getNode(ISD::MUL , SL, MVT::i32, EDX, EAX); //EBP * EAX;
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), MulOut);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), MulOut);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 2), MulOut);
 
       return NULL;
       break;
-    }
+    }*/
+    /*
+
+
     case X86::CMP32rm:
     case X86::CMP32mr:{
       To Do...
