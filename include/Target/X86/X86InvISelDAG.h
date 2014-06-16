@@ -40,6 +40,7 @@ public:
 
   SDNode* InvertCode(SDNode *N);
   SDNode* Transmogrify(SDNode *N);
+  bool JumpOnCondition(SDNode *N, ISD::CondCode cond);
   SDValue ConvertNoRegToZero(const SDValue N);
 };
 

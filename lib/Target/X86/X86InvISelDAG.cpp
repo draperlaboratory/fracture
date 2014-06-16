@@ -300,23 +300,17 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
        *    FI;
        * FI;
        */
+      JumpOnCondition(N, ISD::SETNE);
 
-      //Only seem to have enough arguments to do tempEIP is not within code segment limit
-      //Comparison should be before this instruction, result stored in EFLAGS
-      SDValue Chain = N->getOperand(0);
-      uint64_t TarVal = N->getConstantOperandVal(1);
-      SDValue tempEIP = CurDAG->getConstant(TarVal, MVT::i32);
-      //SDValue EFLAGSCFR = N->getOperand(2);
+      return NULL;
+      break;
+    }
+    case X86::JE_1:{
+      /**<
+       * JE_1 - Jump if Equal/zero
+       */
 
-
-      SDLoc SL(N);
-      // Calculate the Branch Target
-      SDValue TempEIPval = CurDAG->getConstant(cast<ConstantSDNode>(tempEIP)->getZExtValue(), tempEIP.getValueType());
-
-      // Condition Code is "Below or Equal" <=
-      SDValue CondNE = CurDAG->getCondCode(ISD::SETNE);
-      SDValue BrNode = CurDAG->getNode(ISD::BRCOND, SL, MVT::Other, CondNE, TempEIPval, Chain);
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
+      JumpOnCondition(N, ISD::SETEQ);
 
       return NULL;
       break;
@@ -336,6 +330,13 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
        *    FI;
        */
 
+      //Calling Jump On Condition with the always true variable.
+      //EFLAGS isn't used in JumpOnCondition, so this should work, however there may be
+      //    subtle differences if compiled back...
+      JumpOnCondition(N, ISD::SETTRUE2);
+
+      //Original logic if differences are a concern.
+      /*
       SDValue Chain = N->getOperand(0);
       uint64_t TarVal = N->getConstantOperandVal(1);
       SDValue tempEIP = CurDAG->getConstant(TarVal, MVT::i32);
@@ -346,7 +347,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
 
       SDValue BrNode = CurDAG->getNode(ISD::BR, SL, MVT::Other, TempEIPval, Chain);
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
-
+      */
       return NULL;
       break;
     }
@@ -359,7 +360,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
 
       // Calculate the Branch Target
       SDValue BT = CurDAG->getConstant(
-          cast<ConstantSDNode>(Target)->getZExtValue(), Target.getValueType());
+          cast<CondNEConstantSDNode>(Target)->getZExtValue(), Target.getValueType());
 
       // Condition Code is "Below or Equal" <=
       SDValue CC = CurDAG->getCondCode(ISD::SETLE);
@@ -509,6 +510,31 @@ LdType
 
   SDNode* TheRes = InvertCode(N);
   return TheRes;
+}
+
+/*! \brief JumpOnCondition Jump on a specific condition.
+ *
+ *  This method applies when a Jump opcode has a condition and three inputs.
+ */
+bool X86InvISelDAG::JumpOnCondition(SDNode *N, ISD::CondCode cond) {
+  //Only seem to have enough arguments to do tempEIP is not within code segment limit
+  //Comparison should be before this instruction, result stored in EFLAGS
+  SDValue Chain = N->getOperand(0);
+  uint64_t TarVal = N->getConstantOperandVal(1);
+  SDValue tempEIP = CurDAG->getConstant(TarVal, MVT::i32);
+  //SDValue EFLAGSCFR = N->getOperand(2);
+
+
+  SDLoc SL(N);
+  // Calculate the Branch Target
+  SDValue TempEIPval = CurDAG->getConstant(cast<ConstantSDNode>(tempEIP)->getZExtValue(), tempEIP.getValueType());
+
+  // Condition Code is "Below or Equal" <=
+  SDValue Condition = CurDAG->getCondCode(cond);
+  SDValue BrNode = CurDAG->getNode(ISD::BRCOND, SL, MVT::Other, Condition, TempEIPval, Chain);
+  CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
+
+  return true;
 }
 
 /*! \brief ConvertNoRegToZero handles the NoReg input case.
