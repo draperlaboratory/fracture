@@ -239,6 +239,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
+    case X86::CMP32mi8:
     case X86::CMP32mi:{
        /**<
         * 6 inputs & 2 outputs (i32, ch)
@@ -284,7 +285,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
-    //case X86::JNE_1:{
+    case X86::JNE_1:{
       /**<
        * JNE_1 (Jump short if Not Equal) Pseudo code
        * IF condition
@@ -299,27 +300,56 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
        *    FI;
        * FI;
        */
-/*
+
+      //Only seem to have enough arguments to do tempEIP is not within code segment limit
+      //Comparison should be before this instruction, result stored in EFLAGS
       SDValue Chain = N->getOperand(0);
       uint64_t TarVal = N->getConstantOperandVal(1);
       SDValue tempEIP = CurDAG->getConstant(TarVal, MVT::i32);
       //SDValue EFLAGSCFR = N->getOperand(2);
-      SDLoc SL(N);
 
+
+      SDLoc SL(N);
       // Calculate the Branch Target
-      SDValue TempEIPval = CurDAG->getConstant(
-          cast<ConstantSDNode>(tempEIP)->getZExtValue(), tempEIP.getValueType());
+      SDValue TempEIPval = CurDAG->getConstant(cast<ConstantSDNode>(tempEIP)->getZExtValue(), tempEIP.getValueType());
 
       // Condition Code is "Below or Equal" <=
       SDValue CondNE = CurDAG->getCondCode(ISD::SETNE);
-      SDValue BrNode =
-          CurDAG->getNode(ISD::BRCOND, SL, MVT::Other, CondNE, TempEIPval, Chain);
+      SDValue BrNode = CurDAG->getNode(ISD::BRCOND, SL, MVT::Other, CondNE, TempEIPval, Chain);
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
 
       return NULL;
       break;
     }
-   */
+    case X86::JMP_1:{
+      /*
+       *    IF OperandSize = 32
+       *        THEN
+       *            EIP ← tempEIP;
+       *        ELSE
+       *            IF OperandSize = 16
+       *                THEN (* OperandSize = 16 *)
+       *                    EIP ← tempEIP AND 0000FFFFH;
+       *                ELSE (* OperandSize = 64)
+       *                    RIP ← tempRIP;
+       *            FI;
+       *    FI;
+       */
+
+      SDValue Chain = N->getOperand(0);
+      uint64_t TarVal = N->getConstantOperandVal(1);
+      SDValue tempEIP = CurDAG->getConstant(TarVal, MVT::i32);
+
+      SDLoc SL(N);
+      // Calculate the Branch Target
+      SDValue TempEIPval = CurDAG->getConstant(cast<ConstantSDNode>(tempEIP)->getZExtValue(), tempEIP.getValueType());
+
+      SDValue BrNode = CurDAG->getNode(ISD::BR, SL, MVT::Other, TempEIPval, Chain);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
+
+      return NULL;
+      break;
+    }
     /*
     case X86::JBE_1:{   //Jump short if Below or Equal
       SDValue Chain = N->getOperand(0);
@@ -362,37 +392,13 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       break;
     }
     case X86::CMP32rm:
-    case X86::CMP32mr:
-    case X86::CMP32mi:
-    case X86::CMP32mi8:{
-      // NOTE: Pattern in ARM DAG Selector is busted as not handling CPSR
-      //       not sure how to fix, so this might just be a hack!
-      // Pattern: (CMPri:int32 GPR:$Rn, (imm:i32):$i, pred:$p, pred:%noreg)
-      // Emits: (ARMcmp GPR:$Rn, (imm:i32):$i)
-      unsigned Opc = X86ISD::CMP;
-      SDValue N0 = N->getOperand(1);
-      SDValue N1 = N->getOperand(2);
-      SDValue ResNode = CurDAG->getNode(Opc, SDLoc(N), MVT::Other, N0, N1);
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), ResNode);
-      return NULL;
-      break;
+    case X86::CMP32mr:{
+      To Do...
     }
     //case X86::MOV32mi:
     //case X86::MOV32rr_REV:
     //case X86::MOV64rr:
 
-    case X86::JMP_1:{
-      SDValue Chain = N->getOperand(0);
-      uint64_t TarVal = N->getConstantOperandVal(1);
-      SDValue Target = CurDAG->getConstant(TarVal, MVT::i32);
-
-      SDLoc SL(N);X86InvISelDAG
-      SDValue BrNode = CurDAG->getNode(ISD::BR, SL, MVT::Other, Target, Chain);
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
-
-      return NULL;
-      break;
-    }
     case X86::JA_1:{    //JMP Short if Above
       SDValue Chain = N->getOperand(0);
       uint64_t TarVal = N->getConstantOperandVal(1);
