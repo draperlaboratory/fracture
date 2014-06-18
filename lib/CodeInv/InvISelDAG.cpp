@@ -37,6 +37,8 @@ InvISelDAG* getTargetInvISelDAG(const TargetMachine *T) {
 		res = new ARMInvISelDAG(*T);
 	} else if(triple.str().find("i386") == 0 || triple.str().find("x86_64") == 0) {
 		res = new X86InvISelDAG(*T);
+	} else if(triple.str().find("powerpc64") == 0) {
+	  res = new PPCInvISelDAG(*T);
 	} else {
 		outs() << "Decompiler doesn't support: " << triple.str().c_str() << cpu.str().c_str() << "\n";
 	}
