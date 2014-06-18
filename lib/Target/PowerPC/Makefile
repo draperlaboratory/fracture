@@ -9,7 +9,7 @@
 
 LEVEL = ../../..
 LIBRARYNAME = FracturePowerPCCodeInv
-TARGET = PPC
+TARGET = PowerPC
 
 BUILT_SOURCES = PowerPCGenInvISel.inc PowerPCGenRegisterInfo.inc PowerPCGenInstrInfo.inc
 
