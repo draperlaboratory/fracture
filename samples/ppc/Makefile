@@ -1,14 +1,19 @@
-CC = powerpc64-unknown-linux-gnu-gcc-4.8.2
-CC_Path = /opt/x-tools/powerpc64-unknown-linux-gnu/bin
+CC = powerpc-unknown-linux-gnu-gcc-4.8.2
+CC_Path = /opt/x-tools/powerpc-unknown-linux-gnu/bin
+CC64 = powerpc64-unknown-linux-gnu-gcc-4.8.2
+CC_Path64 = /opt/x-tools/powerpc64-unknown-linux-gnu/bin
 
-FNAME = fib.c
+FNAME = fib
 
 all: fib
 
 fib:
-	$(CC_Path)/$(CC) -O0 $(FNAME) -o fib_O0_gcc_ppc64
-	$(CC_Path)/$(CC) -O1 $(FNAME) -o fib_O1_gcc_ppc64
-	$(CC_Path)/$(CC) -O2 $(FNAME) -o fib_O2_gcc_ppc64
+	$(CC_Path)/$(CC) -O0 $(FNAME).c -o $(FNAME)_O0_gcc_ppc32
+	$(CC_Path)/$(CC) -O1 $(FNAME).c -o $(FNAME)_O1_gcc_ppc32
+	$(CC_Path)/$(CC) -O2 $(FNAME).c -o $(FNAME)_O2_gcc_ppc32
+	$(CC_Path64)/$(CC64) -O0 $(FNAME).c -o $(FNAME)_O0_gcc_ppc64
+	$(CC_Path64)/$(CC64) -O1 $(FNAME).c -o $(FNAME)_O1_gcc_ppc64
+	$(CC_Path64)/$(CC64) -O2 $(FNAME).c -o $(FNAME)_O2_gcc_ppc64
 
 clean:
 	rm -f *.o *_ppc*
