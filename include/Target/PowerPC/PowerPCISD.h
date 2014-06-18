@@ -1,4 +1,4 @@
-//===- PPCISD.h - SDNode Enums for X86 Decompiler  ===========-*- C++ -*-=//
+//===- PowerPCISD.h - SDNode Enums for PowerPC Decompiler  ===========-*- C++ -*-=//
 //
 //              Fracture: The Draper Decompiler Infrastructure
 //
@@ -9,17 +9,17 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// Provides ISD SDNode enums for PPC targets.
+// Provides ISD SDNode enums for PowerPC targets.
 //  This file originates from - llvm/lib/Target/PowerPC/PPCISelLowering.h
 //  the include files from the origin are not needed and removed.
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef PPCISD_H
-#define PPCISD_H
+#ifndef POWERPCISD_H
+#define POWERPCISD_H
 
 namespace llvm {
-  namespace PPCISD {
+  namespace PowerPCISD {
     enum NodeType {
       // Start the numbering where the builtin ops and target ops leave off.
       FIRST_NUMBER = ISD::BUILTIN_OP_END,

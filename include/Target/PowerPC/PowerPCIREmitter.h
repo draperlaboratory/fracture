@@ -1,4 +1,4 @@
-//===- PPCIREmitter.h - Generalize PPCISD Instrs  ==============-*- C++ -*-=//
+//===- PowerPCIREmitter.h - Generalize PowerPCISD Instrs  ==============-*- C++ -*-=//
 //
 //              Fracture: The Draper Decompiler Infrastructure
 //
@@ -9,15 +9,15 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// Implements visitors for PPCISD SDNodes.
+// Implements visitors for PowerPCISD SDNodes.
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef PPCIREMITTER_H
-#define PPCIREMITTER_H
+#ifndef POWERPCIREMITTER_H
+#define POWERPCIREMITTER_H
 
 #include "llvm/CodeGen/ISDOpcodes.h"
-#include "PPCISD.h"
+#include "PowerPCISD.h"
 
 #include "CodeInv/IREmitter.h"
 
@@ -25,11 +25,11 @@ namespace fracture {
 
 class Decompiler;
 
-class PPCIREmitter : public IREmitter {
+class PowerPCIREmitter : public IREmitter {
 public:
-  PPCIREmitter(Decompiler *TheDec, raw_ostream &InfoOut = nulls(),
+  PowerPCIREmitter(Decompiler *TheDec, raw_ostream &InfoOut = nulls(),
     raw_ostream &ErrOut = nulls());
-  ~PPCIREmitter();
+  ~PowerPCIREmitter();
 private:
   virtual Value* visit(const SDNode *N);
   Value* visitRET(const SDNode *N);

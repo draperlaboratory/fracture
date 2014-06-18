@@ -1,4 +1,4 @@
-//===- PPCInvISelDAG.h - Interface for PPC Inv ISel ==============-*- C++ -*-=//
+//===- PowerPCInvISelDAG.h - Interface for PowerPC Inv ISel ==============-*- C++ -*-=//
 //
 //              Fracture: The Draper Decompiler Infrastructure
 //
@@ -9,29 +9,29 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// Provides inverse DAG selector functionality for PPC targets.
+// Provides inverse DAG selector functionality for PowerPC targets.
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef PPCINVISELDAG_H
-#define PPCINVISELDAG_H
+#ifndef POWERPCINVISELDAG_H
+#define POWERPCINVISELDAG_H
 
 #include "CodeInv/InvISelDAG.h"
 #include "llvm/CodeGen/SelectionDAGNodes.h"
 #include "llvm/Support/CodeGen.h"
-#include "PPCISD.h"
+#include "PowerPCISD.h"
 #include "llvm/CodeGen/ISDOpcodes.h"
-#include "Target/X86/PPCIREmitter.h"
+#include "Target/X86/PowerPCIREmitter.h"
 // #include "ARMRegs.h"
 
 namespace fracture {
 
-class PPCInvISelDAG : public InvISelDAG {
+class PowerPCInvISelDAG : public InvISelDAG {
 public:
-  PPCInvISelDAG(const TargetMachine &TMC,
+  PowerPCInvISelDAG(const TargetMachine &TMC,
     CodeGenOpt::Level OL = CodeGenOpt::Default) : InvISelDAG(TMC, OL) {};
 
-  ~PPCInvISelDAG() {};
+  ~PowerPCInvISelDAG() {};
 
   //prob not going to work since I don't have this object...
   virtual IREmitter* getEmitter(Decompiler *Dec, raw_ostream &InfoOut = nulls(),

@@ -14,19 +14,19 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef PPCBASEINFO_H
-#define PPCBASEINFO_H
+#ifndef POWERPCBASEINFO_H
+#define POWERPCBASEINFO_H
 
 // #include "ARMMCTargetDesc.h"
 #include "llvm/Support/ErrorHandling.h"
 #define GET_REGINFO_ENUM
 #define GET_INSTRINFO_ENUM
-#include "PPCGenRegisterInfo.inc"
-#include "PPCGenInstrInfo.inc"
+#include "PowerPCGenRegisterInfo.inc"
+#include "PowerPCGenInstrInfo.inc"
 
 namespace llvm {
 // Enums corresponding to PPC condition codes
-namespace PPCCC {
+namespace PowerPCCC {
   // The CondCodes constants map directly to the 4-bit encoding of the
   // condition field for predicated instructions.
   enum CondCodes { // Meaning (integer)          Meaning (floating-point)
@@ -68,23 +68,23 @@ namespace PPCCC {
   }
 } // namespace X86CC
 
-inline static const char *PPCCondCodeToString(PPCCC::CondCodes CC) {
+inline static const char *PowerPCCondCodeToString(PPCCC::CondCodes CC) {
   switch (CC) {
-  case PPCCC::EQ:  return "eq";
-  case PPCCC::NE:  return "ne";
-  case PPCCC::HS:  return "hs";
-  case PPCCC::LO:  return "lo";
-  case PPCCC::MI:  return "mi";
-  case PPCCC::PL:  return "pl";
-  case PPCCC::VS:  return "vs";
-  case PPCCC::VC:  return "vc";
-  case PPCCC::HI:  return "hi";
-  case PPCCC::LS:  return "ls";
-  case PPCCC::GE:  return "ge";
-  case PPCCC::LT:  return "lt";
-  case PPCCC::GT:  return "gt";
-  case PPCCC::LE:  return "le";
-  case PPCCC::AL:  return "al";
+  case PowerPCCC::EQ:  return "eq";
+  case PowerPCCC::NE:  return "ne";
+  case PowerPCCC::HS:  return "hs";
+  case PowerPCCC::LO:  return "lo";
+  case PowerPCCC::MI:  return "mi";
+  case PowerPCCC::PL:  return "pl";
+  case PowerPCCC::VS:  return "vs";
+  case PowerPCCC::VC:  return "vc";
+  case PowerPCCC::HI:  return "hi";
+  case PowerPCCC::LS:  return "ls";
+  case PowerPCCC::GE:  return "ge";
+  case PowerPCCC::LT:  return "lt";
+  case PowerPCCC::GT:  return "gt";
+  case PowerPCCC::LE:  return "le";
+  case PowerPCCC::AL:  return "al";
   }
   llvm_unreachable("Unknown condition code");
 }

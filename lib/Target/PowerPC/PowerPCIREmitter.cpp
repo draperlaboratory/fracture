@@ -1,4 +1,4 @@
-//===- PPCIREmitter - Generalize PPCISD Instrs  ================-*- C++ -*-=//
+//===- raw_ostream - Generalize PowerPCISD Instrs  ================-*- C++ -*-=//
 //
 //              Fracture: The Draper Decompiler Infrastructure
 //
@@ -9,28 +9,28 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// Implements visitors for PPCISD SDNodes.
+// Implements visitors for PowerPCISD SDNodes.
 //
 //===----------------------------------------------------------------------===//
 
-#include "Target/PPC/PPCIREmitter.h"
+#include "Target/PowerPC/PowerPCIREmitter.h"
 #include "CodeInv/Decompiler.h"
-#include "PPCBaseInfo.h"
+#include "PowerPCBaseInfo.h"
 
 using namespace llvm;
 
 namespace fracture {
 
-PPCIREmitter::PPCIREmitter(Decompiler *TheDec, raw_ostream &InfoOut,
+PowerPCIREmitter::PowerPCIREmitter(Decompiler *TheDec, raw_ostream &InfoOut,
   raw_ostream &ErrOut) : IREmitter(TheDec, InfoOut, ErrOut) {
   // Nothing to do here
 }
 
-PPCIREmitter::~PPCIREmitter() {
+PowerPCIREmitter::~PowerPCIREmitter() {
   // Nothing to do here
 }
 
-Value* PPCIREmitter::visit(const SDNode *N) {
+Value* PowerPCIREmitter::visit(const SDNode *N) {
   // return the parent if we are in IR only territory
   if (N->getOpcode() <= ISD::BUILTIN_OP_END){
     return IREmitter::visit(N);
@@ -51,7 +51,7 @@ Value* PPCIREmitter::visit(const SDNode *N) {
   }
 }
 
-Value* PPCIREmitter::visitRET(const SDNode *N) {
+Value* PowerPCIREmitter::visitRET(const SDNode *N) {
   return IRB->CreateRetVoid();
 }
 

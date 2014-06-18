@@ -14,7 +14,7 @@ TOOLNAME=fracture-autodis
 # List libraries that we'll need
 #
 USEDLIBS = Commands.a FractureCodeInv.a FractureTarget.a FractureARMCodeInv.a \
-           FractureX86CodeInv.a FracturePPCCodeInv.a TypeRecovery.a
+           FractureX86CodeInv.a FracturePowerPCCodeInv.a TypeRecovery.a
 
 #
 # LLVM Components we wish to link with.
