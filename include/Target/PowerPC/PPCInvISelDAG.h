@@ -26,12 +26,12 @@
 
 namespace fracture {
 
-class PowerPCInvISelDAG : public InvISelDAG {
+class PPCInvISelDAG : public InvISelDAG {
 public:
-  PowerPCInvISelDAG(const TargetMachine &TMC,
+  PPCInvISelDAG(const TargetMachine &TMC,
     CodeGenOpt::Level OL = CodeGenOpt::Default) : InvISelDAG(TMC, OL) {};
 
-  ~PowerPCInvISelDAG() {};
+  ~PPCInvISelDAG() {};
 
   //prob not going to work since I don't have this object...
   virtual IREmitter* getEmitter(Decompiler *Dec, raw_ostream &InfoOut = nulls(),

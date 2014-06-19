@@ -13,7 +13,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "Target/PowerPC/PowerPCInvISelDAG.h"
+#include "Target/PowerPC/PPCInvISelDAG.h"
 #include "PowerPCBaseInfo.h"
 
 using namespace llvm;
@@ -28,7 +28,7 @@ namespace fracture {
  *      supported.  This method will either emit LLVM IR or in more complicated
  *      cases call into the IR Emitter.
  */
-SDNode* PowerPCInvISelDAG::Transmogrify(SDNode *N) {
+SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
   // Insert fixups here
   if (!N->isMachineOpcode()) {
     // Drop noreg registers
@@ -64,7 +64,7 @@ SDNode* PowerPCInvISelDAG::Transmogrify(SDNode *N) {
  *  ConvertNoRegToZero NoReg inputs were causing fracture to crash.  This
  *      method converts those cases to an i32 constant.
  */
-SDValue PowerPCInvISelDAG::ConvertNoRegToZero(const SDValue N){
+SDValue PPCInvISelDAG::ConvertNoRegToZero(const SDValue N){
   if(N.getOpcode() == ISD::CopyFromReg ){
     const RegisterSDNode *R = dyn_cast<RegisterSDNode>(N.getOperand(1));
     if (R != NULL && R->getReg() == 0)
