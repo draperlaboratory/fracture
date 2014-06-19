@@ -19,7 +19,7 @@
 #include "CodeInv/InvISelDAG.h"
 #include "llvm/CodeGen/SelectionDAGNodes.h"
 #include "llvm/Support/CodeGen.h"
-#include "PowerPCISD.h"
+#include "PPCISD.h"
 #include "llvm/CodeGen/ISDOpcodes.h"
 #include "Target/PowerPC/PowerPCIREmitter.h"
 // #include "ARMRegs.h"
