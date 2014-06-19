@@ -36,7 +36,7 @@ public:
   //prob not going to work since I don't have this object...
   virtual IREmitter* getEmitter(Decompiler *Dec, raw_ostream &InfoOut = nulls(),
     raw_ostream &ErrOut = nulls())
-  { return new X86IREmitter(Dec, InfoOut, ErrOut); }
+  { return new PowerPCIREmitter(Dec, InfoOut, ErrOut); }
 
   SDNode* InvertCode(SDNode *N);
   SDNode* Transmogrify(SDNode *N);
