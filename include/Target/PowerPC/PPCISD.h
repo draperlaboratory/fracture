@@ -287,6 +287,7 @@ namespace llvm {
       ADDI_TOC_L
     };
   }
+}
 /*
   /// Define some predicates that are used for node matching.
   namespace PPC {
