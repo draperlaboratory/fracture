@@ -1,4 +1,4 @@
-//===- raw_ostream - Generalize PowerPCISD Instrs  ================-*- C++ -*-=//
+//===- PowerPCIREmitter - Generalize PowerPCISD Instrs  ================-*- C++ -*-=//
 //
 //              Fracture: The Draper Decompiler Infrastructure
 //
@@ -42,12 +42,12 @@ Value* PowerPCIREmitter::visit(const SDNode *N) {
   }
 
   IRB->SetCurrentDebugLocation(N->getDebugLoc());
-  DEBUG(Infos << "Visiting PPC specific Opcode.\n");
+  DEBUG(Infos << "Visiting PowerPC specific Opcode.\n");
   switch (N->getOpcode()) {
     default: return NULL;
-    //case X86ISD::BRCOND: return visitBRCOND(N);
-    //case X86ISD::RET_FLAG: return visitRET(N);
-    //case X86ISD::CALL: return visitCALL(N);
+    //case PowerPCISD::BRCOND: return visitBRCOND(N);
+    //case PowerPCISD::RET_FLAG: return visitRET(N);
+    //case PowerPCISD::CALL: return visitCALL(N);
   }
 }
 

@@ -25,7 +25,7 @@
 #include "PowerPCGenInstrInfo.inc"
 
 namespace llvm {
-// Enums corresponding to PPC condition codes
+// Enums corresponding to PowerPC condition codes
 namespace PowerPCCC {
   // The CondCodes constants map directly to the 4-bit encoding of the
   // condition field for predicated instructions.
@@ -68,7 +68,7 @@ namespace PowerPCCC {
   }
 } // namespace X86CC
 
-inline static const char *PowerPCCondCodeToString(PPCCC::CondCodes CC) {
+inline static const char *PowerPCCondCodeToString(PowerPCCC::CondCodes CC) {
   switch (CC) {
   case PowerPCCC::EQ:  return "eq";
   case PowerPCCC::NE:  return "ne";

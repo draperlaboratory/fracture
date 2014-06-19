@@ -21,7 +21,7 @@
 #include "llvm/Support/CodeGen.h"
 #include "PowerPCISD.h"
 #include "llvm/CodeGen/ISDOpcodes.h"
-#include "Target/X86/PowerPCIREmitter.h"
+#include "Target/PowerPC/PowerPCIREmitter.h"
 // #include "ARMRegs.h"
 
 namespace fracture {
