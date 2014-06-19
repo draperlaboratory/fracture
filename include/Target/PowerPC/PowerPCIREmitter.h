@@ -17,7 +17,7 @@
 #define POWERPCIREMITTER_H
 
 #include "llvm/CodeGen/ISDOpcodes.h"
-#include "PowerPCISD.h"
+#include "PPCISD.h"
 
 #include "CodeInv/IREmitter.h"
 
@@ -32,7 +32,7 @@ public:
   ~PowerPCIREmitter();
 private:
   virtual Value* visit(const SDNode *N);
-  Value* visitRET(const SDNode *N);
+  //Value* visitRET(const SDNode *N);
 };
 
 } // end fracture namespace

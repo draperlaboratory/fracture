@@ -1,4 +1,4 @@
-//===- PowerPCISD.h - SDNode Enums for PowerPC Decompiler  ===========-*- C++ -*-=//
+//===- PPCISD.h - SDNode Enums for PowerPC Decompiler  ===========-*- C++ -*-=//
 //
 //              Fracture: The Draper Decompiler Infrastructure
 //
@@ -15,11 +15,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef POWERPCISD_H
-#define POWERPCISD_H
+#ifndef PPCISD_H
+#define PPCISD_H
 
 namespace llvm {
-  namespace PowerPCISD {
+  namespace PPCISD {
     enum NodeType {
       // Start the numbering where the builtin ops and target ops leave off.
       FIRST_NUMBER = ISD::BUILTIN_OP_END,

@@ -45,14 +45,14 @@ Value* PowerPCIREmitter::visit(const SDNode *N) {
   DEBUG(Infos << "Visiting PowerPC specific Opcode.\n");
   switch (N->getOpcode()) {
     default: return NULL;
-    //case PowerPCISD::BRCOND: return visitBRCOND(N);
-    //case PowerPCISD::RET_FLAG: return visitRET(N);
-    //case PowerPCISD::CALL: return visitCALL(N);
+    //case PPCISD::BRCOND: return visitBRCOND(N);
+    //case PPCISD::RET_FLAG: return visitRET(N);
+    //case PPCISD::CALL: return visitCALL(N);
   }
 }
 
-Value* PowerPCIREmitter::visitRET(const SDNode *N) {
-  return IRB->CreateRetVoid();
-}
+//Value* PowerPCIREmitter::visitRET(const SDNode *N) {
+//  return IRB->CreateRetVoid();
+//}
 
 } // end fracture namespace
