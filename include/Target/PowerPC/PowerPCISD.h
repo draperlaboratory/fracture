@@ -287,7 +287,7 @@ namespace llvm {
       ADDI_TOC_L
     };
   }
-
+/*
   /// Define some predicates that are used for node matching.
   namespace PPC {
     /// isVPKUHUMShuffleMask - Return true if this is the shuffle mask for a
@@ -331,7 +331,8 @@ namespace llvm {
     /// the number of bytes of each element [124] -> [bhw].
     SDValue get_VSPLTI_elt(SDNode *N, unsigned ByteSize, SelectionDAG &DAG);
   }
-
+*/
+  /*
   class PPCTargetLowering : public TargetLowering {
     const PPCSubtarget &PPCSubTarget;
 
@@ -631,7 +632,8 @@ namespace llvm {
 
     CCAssignFn *useFastISelCCs(unsigned Flag) const;
   };
-
+*/
+  /*
   namespace PPC {
     FastISel *createFastISel(FunctionLoweringInfo &FuncInfo,
                              const TargetLibraryInfo *LibInfo);
@@ -654,5 +656,5 @@ namespace llvm {
                                            ISD::ArgFlagsTy &ArgFlags,
                                            CCState &State);
 }
-
+*/
 #endif   // LLVM_TARGET_POWERPC_PPC32ISELLOWERING_H
