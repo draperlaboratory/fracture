@@ -15,5 +15,5 @@ fib:
 	$(LLC_Path)/$(LLC) -O2 $(FNAME).c -o $(FNAME)_O2_clang_arm
 	
 clean:
-        rm -f *.o *_arm*
+	rm -f *.o *_arm*
 
