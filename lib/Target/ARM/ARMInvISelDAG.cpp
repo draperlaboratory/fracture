@@ -218,37 +218,26 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
        }
 
     case ARM::LDRi12: {
-        //ldr  r0, [pc, #12]
-        //Here we are loading whatever is in r0 into the register indicated by
-        //the pc with an offset of 12
+        	//load immediate with an increment of 12
           	SDValue Chain 	  = N->getOperand(0);
           	SDValue Ptr       = N->getOperand(1);
-        //  SDValue Offset = CurDAG->getConstant(4, EVT(MVT::i32), false);
+            SDValue Offset    = N->getOperand(2);
   			SDLoc SL(N);
-  			SDValue UsePtr;
-  		//	SDVTList VTList = CurDAG->getVTList(MVT::i32);
+  			SDVTList VTList = CurDAG->getVTList(MVT::i32);
   			unsigned ImmSum = 0;
 
   			EVT LdType = N->getValueType(0);
 
+  			SDValue Addr = CurDAG->getNode(ISD::ADD, SL, VTList, Ptr, Offset);
+          	SDValue Ldr = CurDAG->getLoad(LdType, SL, Chain, Addr,
+          	        MachinePointerInfo::getConstantPool(), false, false, true, 0, 0);
+          	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Ldr);
+          	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), SDValue(Ldr.getNode(),1));
+          	FixChainOp(Ldr.getNode());
 
-          	Ptr = CurDAG->getLoad(LdType, SL, Chain, UsePtr,
-          	        MachinePointerInfo::getConstantPool(), false, false, true, 0);
-
-          	 MachineMemOperand* MMO =
-          	      new MachineMemOperand(MachinePointerInfo(0, ImmSum),
-          	        MachineMemOperand::MOStore, 4, 0);
-
-          	// RegisterSDNode *RegNode =
-          	     //  dyn_cast<RegisterSDNode>(Val->getOperand(1));
-
-          	//SDValue C2R = CurDAG->getCopyToReg(Ptr.getValue(1), SL,
-  			Ptr = CurDAG->getStore(Chain, SL, UsePtr, UsePtr, MMO);
-        Chain = Ptr;
-
-      FixChainOp(Ptr.getNode());
-          	break;
+          	return NULL;
           }
+
 
 
     case ARM::LDMIA:            // Load variations...
