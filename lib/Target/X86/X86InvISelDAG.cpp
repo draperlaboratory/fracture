@@ -642,9 +642,13 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
-    //case X86::IMUL32rr:{
+    case X86::IMUL32rr:{
       /**<
        * Two inputs and two i32 outputs
+       *    Question - how do I spread the register output?
+       *
+       * Pseudo Code:
+       *    EDX:EAX ← EAX ∗ SRC (* Signed multiplication *)
        *
        * ASM
        *    0804846E:   89 C8                               movl    %ecx, %eax
@@ -655,17 +659,32 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
        *    0804847C:   01 F7                               addl    %esi, %edi
        *
        */
-    /*
+
       SDValue EDI = N->getOperand(0);
       SDValue ECX = N->getOperand(0);
 
       SDLoc SL(N);
       SDValue MulOut = CurDAG->getNode(ISD::MUL , SL, MVT::i32, EDI, ECX); //EDI * ECX;
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), MulOut);
+
+      //EDX
+      uint64_t HighBytes = N->getConstantOperandVal(0xFFFF0000);                    //High 2 bytes
+      SDValue HighVal = CurDAG->getConstant(HighBytes, MVT::i32);
+      SDValue MulHigh = CurDAG->getNode(ISD::AND , SL, MVT::i32, MulOut, HighVal);
+      uint64_t DownShift = N->getConstantOperandVal(8);
+      SDValue DownVal = CurDAG->getConstant(DownShift, MVT::i32);
+      SDValue MulHighShift = CurDAG->getNode(ISD::SRL , SL, MVT::i32, MulHigh, DownVal );
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), MulHighShift);
+
+      //EAX
+      uint64_t LowBytes = N->getConstantOperandVal(0x0000FFFF);                     //Low 2 bytes
+      SDValue LowVal = CurDAG->getConstant(LowBytes, MVT::i32);
+      SDValue MulLow = CurDAG->getNode(ISD::AND , SL, MVT::i32, MulOut, LowVal);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), MulLow);
+
 
       return NULL;
       break;
-    }*/
+    }
     //case X86::MUL32r:{
       /*
        * 2 Inputs (EDX, EAX) and 3 i32 outputs. 3 outputs seem odd...
