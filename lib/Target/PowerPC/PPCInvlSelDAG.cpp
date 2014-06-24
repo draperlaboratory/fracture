@@ -48,6 +48,8 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
   }
 
   uint16_t TargetOpc = N->getMachineOpcode();
+
+  errs() << "opcode " << TargetOpc << " is coming.\n";
   switch(TargetOpc) {
     default:
       outs() << "TargetOpc: " << TargetOpc << "\n";
@@ -77,33 +79,20 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
       if (MN->memoperands_empty()) {
         errs() << "NO MACHINE OPS for LEAVE!\n";
       } else {
-        MMO = *(MN->memoperands_begin());
+      	MMO = new MachineMemOperand(
+      			MachinePointerInfo(0, 0), MachineMemOperand::MOStore, 8, 0);	//MCO.getImm()
       }
 
-      EVT LdType = N->getValueType(0);
       SDLoc SL(N);
 
-      /* SDValue B;  TODO: branch condition
-      if (RA == 0)
-      	B = CurDAG->getConstant(0x0, LdType);
-      else*/
-      SDValue	B = CurDAG->getLoad(LdType, SL, Chain, RA, MMO); //Load from RA
+    	SDValue EA = CurDAG->getNode(ISD::ADD, SL, MVT::i32, DS, RA);
+    	SDValue EAext = CurDAG->getZExtOrTrunc(EA, SL, MVT::i64);
+      SDValue Store = CurDAG->getStore(Chain, SL, X9, EAext, MMO);
 
-    	SDValue C1 = CurDAG->getConstant(0xb00, LdType);
-    	SDValue EA_or = CurDAG->getNode(ISD::OR, SL, LdType, SDValue(B.getNode(),1), DS, C1);   // DS || 0xb00
-    	// TODO: sign extend EA_or
 
-    	SDValue EA = CurDAG->getNode(ISD::ADD, SL, LdType, SDValue(EA_or.getNode(),1), EA_or, B);
-
-    	SDValue X9_val = CurDAG->getLoad(LdType, SL, SDValue(EA.getNode(),1), X9, MMO); //Load from X9
-      SDValue Store = CurDAG->getStore(SDValue(X9_val.getNode(),1), SL, X9_val, EA, MMO);
-
-    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), SDValue(Store.getNode(),1));   //Chain
-
-      //For getLoad or getStore
-      FixChainOp(B.getNode());
-      FixChainOp(X9_val.getNode());
+    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Store);   //Chain
       FixChainOp(Store.getNode());
+
 
     	return NULL;
     	break;
@@ -140,8 +129,9 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
       if (RA == 0)
       	B = CurDAG->getConstant(0x0, LdType);
       else*/
+      /*
       SDValue	B = CurDAG->getLoad(LdType, SL, Chain, RA, MMO); //Load from RA
-      SDValue	D_val = CurDAG->getLoad(LdType, SL, Chain, D, MMO); //Load from RA
+      SDValue	D_val = CurDAG->getLoad(LdType, SL, Chain, D, MMO); //Load from D
 
     	// TODO: sign extend D_val
 
@@ -157,6 +147,13 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
       FixChainOp(B.getNode());
       FixChainOp(X9_val.getNode());
       FixChainOp(Store.getNode());
+			*/
+    	SDValue EA = CurDAG->getNode(ISD::ADD, SL, LdType, SDValue(D.getNode(),1), D, RA);
+      SDValue Store = CurDAG->getStore(SDValue(X9.getNode(),1), SL, X9, EA, MMO);
+    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), SDValue(Store.getNode(),1));   //Chain
+
+      FixChainOp(Store.getNode());
+
 
     	return NULL;
     	break;
@@ -164,18 +161,25 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
 
     case PPC::B:{
 
-    	SDValue Chain = N->getOperand(0);
-    	SDValue Offset = N->getOperand(1); // branch value (58)
+      SDValue Chain = N->getOperand(0);
+      uint64_t Offset = N->getConstantOperandVal(1);
 
+      SDValue tempOffset = CurDAG->getConstant(Offset, MVT::i32);
 
+      SDLoc SL(N);
+
+      // Condition Code is "Below or Equal" <=
+      SDValue Condition = CurDAG->getCondCode(ISD::SETTRUE2);
+      SDValue BrNode = CurDAG->getNode(ISD::BRCOND, SL, MVT::Other, Condition, tempOffset, Chain);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
 
 
     	return NULL;
     	break;
     }
 
-
-    case PPC::RLDICL:
+/*
+    case PPC::RLDICL:{
     	 /*
     	  * n <- sh5 || sh0:4
 				  r <- ROTL64((RS), n)
@@ -192,7 +196,7 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
 					MASK(x, y) Mask having 1s in positions x through y
 					(wrapping if x > y) and 0s elsewhere
     	 */
-
+/*
 
 
       SDValue RS = N->getOperand(0);	// register x9
@@ -208,7 +212,8 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
 
     	return NULL;
     	break;
-
+    }
+*/
   }
 
 
