@@ -54,6 +54,7 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
     default:
       outs() << "TargetOpc: " << TargetOpc << "\n";
       break;
+
     case PPC::STD:{
 
     	/*
@@ -80,7 +81,7 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
         errs() << "NO MACHINE OPS for LEAVE!\n";
       } else {
       	MMO = new MachineMemOperand(
-      			MachinePointerInfo(0, 0), MachineMemOperand::MOStore, 8, 0);	//MCO.getImm()
+      			MachinePointerInfo(0, 0), MachineMemOperand::MOStore, 8, 0);	// need 8bytes for ppc64
       }
 
       SDLoc SL(N);
@@ -97,8 +98,54 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
     	return NULL;
     	break;
     }
+    case PPC::STDU:{
+
+    	/*
+    	 *
+    	 * EA <- (RA) + EXTS(DS || 0b00)
+				MEM(EA, 8) <- (RS)
+				RA <- EA
+
+				Let the effective address (EA) be the sum
+				(RA)+ (DS||0b00). (RS) is stored into the doubleword in
+				storage addressed by EA.
+				EA is placed into register RA.
+				If RA=0, the instruction form is invalid.
+    	 *
+    	 *
+    	 */
+
+    	SDValue Chain = N->getOperand(0);
+    	SDValue X1 = N->getOperand(1);	// register x1 a.k.a. RS, 64bit
+    	SDValue DS = N->getOperand(2);	// const -96, 32bit
+    	//SDValue RA = N->getOperand(3);	// r1, 32bit
+
+      const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
+      MachineMemOperand *MMO = NULL;
+      if (MN->memoperands_empty()) {
+        errs() << "NO MACHINE OPS for LEAVE!\n";
+      } else {
+      	MMO = new MachineMemOperand(
+      			MachinePointerInfo(0, 0), MachineMemOperand::MOStore, 8, 0);	// need 8bytes for ppc64
+      }
+
+      SDLoc SL(N);
+
+    	SDValue DSext = CurDAG->getZExtOrTrunc(DS, SL, MVT::i64);
+    	SDValue EA = CurDAG->getNode(ISD::ADD, SL, MVT::i64, DSext, X1);
+      SDValue Store = CurDAG->getStore(Chain, SL, X1, EA, MMO);
+
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Store);
+    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), SDValue(Store.getNode(), 1));   //Chain
+      FixChainOp(Store.getNode());
+
+
+    	return NULL;
+    	break;
+    }
     case PPC::STW:{
     	/*
+    	 * opcode 645
     	 * if RA = 0 then b <- 0
 				else b <- (RA)
 				EA <- b + EXTS(D)
@@ -119,38 +166,16 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
       if (MN->memoperands_empty()) {
         errs() << "NO MACHINE OPS for LEAVE!\n";
       } else {
-        MMO = *(MN->memoperands_begin());
+      	MMO = new MachineMemOperand(
+      			MachinePointerInfo(0, 0), MachineMemOperand::MOStore, 4, 0);	//MCO.getImm()
       }
 
-      EVT LdType = N->getValueType(0);
       SDLoc SL(N);
 
-      /* SDValue B;  TODO: branch condition
-      if (RA == 0)
-      	B = CurDAG->getConstant(0x0, LdType);
-      else*/
-      /*
-      SDValue	B = CurDAG->getLoad(LdType, SL, Chain, RA, MMO); //Load from RA
-      SDValue	D_val = CurDAG->getLoad(LdType, SL, Chain, D, MMO); //Load from D
+    	SDValue EA = CurDAG->getNode(ISD::ADD, SL, MVT::i32, D, RA);
 
-    	// TODO: sign extend D_val
-
-    	SDValue EA = CurDAG->getNode(ISD::ADD, SL, LdType, SDValue(D_val.getNode(),1), D_val, B);
-
-    	SDValue X9_val = CurDAG->getLoad(LdType, SL, SDValue(EA.getNode(),1), X9, MMO); //Load from X9
-    	//TODO: we want only bits 32-63 of X9
-      SDValue Store = CurDAG->getStore(SDValue(X9_val.getNode(),1), SL, X9_val, EA, MMO);
-
-    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), SDValue(Store.getNode(),1));   //Chain
-
-      //For getLoad or getStore
-      FixChainOp(B.getNode());
-      FixChainOp(X9_val.getNode());
-      FixChainOp(Store.getNode());
-			*/
-    	SDValue EA = CurDAG->getNode(ISD::ADD, SL, LdType, SDValue(D.getNode(),1), D, RA);
-      SDValue Store = CurDAG->getStore(SDValue(X9.getNode(),1), SL, X9, EA, MMO);
-    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), SDValue(Store.getNode(),1));   //Chain
+      SDValue Store = CurDAG->getStore(Chain, SL, X9, EA, MMO);
+    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Store);   //Chain
 
       FixChainOp(Store.getNode());
 
@@ -168,11 +193,43 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
 
       SDLoc SL(N);
 
-      // Condition Code is "Below or Equal" <=
+      // Condition Code is TRUE
       SDValue Condition = CurDAG->getCondCode(ISD::SETTRUE2);
       SDValue BrNode = CurDAG->getNode(ISD::BRCOND, SL, MVT::Other, Condition, tempOffset, Chain);
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
 
+
+    	return NULL;
+    	break;
+    }
+    case PPC::LI:{
+
+    	/*
+    	 * Load a 16-bit signed immediate value into register Rx.
+				li Rx,value (equivalent to: addi Rx,0,value)
+
+				addi:
+					RT <- (RA) + EXTS(SI)
+    	 */
+    	SDValue RT = N->getOperand(1);	// 64bit
+    	SDValue SI = N->getOperand(2);	// 32bit
+
+      const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
+      MachineMemOperand *MMO = NULL;
+      if (MN->memoperands_empty()) {
+        errs() << "NO MACHINE OPS for LEAVE!\n";
+      } else {
+      	MMO = new MachineMemOperand(
+      			MachinePointerInfo(0, 0), MachineMemOperand::MOStore, 8, 0);	// need 8bytes for ppc64
+      }
+
+      SDLoc SL(N);
+
+    	SDValue SISext = CurDAG->getZExtOrTrunc(SI, SL, MVT::i64);
+      SDValue Store = CurDAG->getStore(RT, SL, RT, SISext, MMO);
+
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Store);
+      FixChainOp(Store.getNode());
 
     	return NULL;
     	break;
