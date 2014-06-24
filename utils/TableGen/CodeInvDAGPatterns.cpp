@@ -260,9 +260,6 @@ bool InvTreePatternNode::NodeHasProperty(SDNP Property,
 bool InvTreePatternNode::UpdateNodeTypeFromInst(unsigned ResNo,
                                                 Record *Operand,
                                                 CodeGenTarget &Tgt) {
-
-  Operand->print(errs());
-
   // The 'unknown' operand indicates that types should be inferred from the
   // context.
   if (Operand->isSubClassOf("unknown_class"))
@@ -310,6 +307,11 @@ bool InvTreePatternNode::UpdateNodeTypeFromInst(unsigned ResNo,
     // NOTE: EFLAGS Register Overload for x86 this may break on other archs.
     // Not clear why EFLAGS td does not have a discernable type.
     setType(ResNo, MVT::i32);
+    return true;
+  }
+
+  if (Operand->isSubClassOf("ValueType")) {
+    setType(ResNo, getValueType(Operand));
     return true;
   }
 
