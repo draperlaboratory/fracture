@@ -260,6 +260,9 @@ bool InvTreePatternNode::NodeHasProperty(SDNP Property,
 bool InvTreePatternNode::UpdateNodeTypeFromInst(unsigned ResNo,
                                                 Record *Operand,
                                                 CodeGenTarget &Tgt) {
+
+  Operand->print(errs());
+
   // The 'unknown' operand indicates that types should be inferred from the
   // context.
   if (Operand->isSubClassOf("unknown_class"))
@@ -629,7 +632,9 @@ void CodeInvDAGPatterns::ParseInstructions() {
           }
 
           if(!Inst->UpdateNodeTypeFromInst(i, VTOp, Target)) {
-            errs() << "Couldn't get type!\n";
+            errs() << "Couldn't get source type for ";
+            Inst->print(errs());
+            errs() << "!\n";
           }
         }
         Src = Inst;
@@ -654,7 +659,7 @@ void CodeInvDAGPatterns::ParseInstructions() {
           }
 
           if(!Inst->UpdateNodeTypeFromInst(i, VTOp, Target)) {
-            errs() << "Couldn't get type for ";
+            errs() << "Couldn't get dest type for ";
             Inst->print(errs());
             errs() << "!\n";
           }
