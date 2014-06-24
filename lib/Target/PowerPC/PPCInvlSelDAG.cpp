@@ -108,28 +108,107 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
     	return NULL;
     	break;
     }
+    case PPC::STW:{
     	/*
-    case PPC::RLDICL:
+    	 * if RA = 0 then b <- 0
+				else b <- (RA)
+				EA <- b + EXTS(D)
+				MEM(EA, 4) <- (RS)32:63
+				Let the effective address (EA) be the sum (RA|0)+ D.
+				(RS)32:63 are stored into the word in storage addressed
+				by EA.
 
-
-    	 * 	n <- sh5 || sh0:4
-				  r <- ROTL64((RS), n)
-					b <- mb5 || mb0:4
-					m <- MASK(b, 63)
-					RA <- r & m
     	 */
 
+    	SDValue Chain = N->getOperand(0);
+    	SDValue X9 = N->getOperand(1);	// register x9 a.k.a. RS
+    	SDValue D = N->getOperand(2);		//
+    	SDValue RA = N->getOperand(3);	// r31
 
-    	/*
-      SDValue RS = N->getOperand(0);	// register x9
-      SDValue SH = N->getOperand(1);	// const: 0
-      SDValue MB = N->getOperand(2);	// const: 32
+      const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
+      MachineMemOperand *MMO = NULL;
+      if (MN->memoperands_empty()) {
+        errs() << "NO MACHINE OPS for LEAVE!\n";
+      } else {
+        MMO = *(MN->memoperands_begin());
+      }
+
+      EVT LdType = N->getValueType(0);
+      SDLoc SL(N);
+
+      /* SDValue B;  TODO: branch condition
+      if (RA == 0)
+      	B = CurDAG->getConstant(0x0, LdType);
+      else*/
+      SDValue	B = CurDAG->getLoad(LdType, SL, Chain, RA, MMO); //Load from RA
+      SDValue	D_val = CurDAG->getLoad(LdType, SL, Chain, D, MMO); //Load from RA
+
+    	// TODO: sign extend D_val
+
+    	SDValue EA = CurDAG->getNode(ISD::ADD, SL, LdType, SDValue(D_val.getNode(),1), D_val, B);
+
+    	SDValue X9_val = CurDAG->getLoad(LdType, SL, SDValue(EA.getNode(),1), X9, MMO); //Load from X9
+    	//TODO: we want only bits 32-63 of X9
+      SDValue Store = CurDAG->getStore(SDValue(X9_val.getNode(),1), SL, X9_val, EA, MMO);
+
+    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), SDValue(Store.getNode(),1));   //Chain
+
+      //For getLoad or getStore
+      FixChainOp(B.getNode());
+      FixChainOp(X9_val.getNode());
+      FixChainOp(Store.getNode());
+
+    	return NULL;
+    	break;
+    }
+
+    case PPC::B:{
+
+    	SDValue Chain = N->getOperand(0);
+    	SDValue Offset = N->getOperand(1); // branch value (58)
+
 
 
 
     	return NULL;
     	break;
-    	*/
+    }
+
+
+    case PPC::RLDICL:
+    	 /*
+    	  * n <- sh5 || sh0:4
+				  r <- ROTL64((RS), n)
+					b <- mb5 || mb0:4
+					m <- MASK(b, 63)
+					RA <- r & m
+
+					The contents of register RS are rotated64 left SH bits.
+					A mask is generated having 1-bits from bit MB through
+					bit 63 and 0-bits elsewhere. The rotated data are
+					ANDed with the generated mask and the result is
+					placed into register RA.
+
+					MASK(x, y) Mask having 1s in positions x through y
+					(wrapping if x > y) and 0s elsewhere
+    	 */
+
+
+
+      SDValue RS = N->getOperand(0);	// register x9
+      SDValue SH = N->getOperand(1);	// const: 0
+      SDValue MB = N->getOperand(2);	// const: 32
+
+      //ISD::OR
+      //ISD::ROTL, getLoad
+      //ISD::OR
+      //getConstant
+      //ISD::AND
+
+
+    	return NULL;
+    	break;
+
   }
 
 
