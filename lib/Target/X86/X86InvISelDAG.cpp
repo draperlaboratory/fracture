@@ -48,6 +48,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
   }
 
   uint16_t TargetOpc = N->getMachineOpcode();
+  outs() << "Next OpC: " << TargetOpc << "\n";
   switch(TargetOpc) {
     default:
       outs() << "TargetOpc: " << TargetOpc << "\n";
@@ -503,18 +504,15 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       SDValue AddOut = CurDAG->getNode(ISD::ADD , SL, MVT::i32, EDI, ESI); //EDI * ESI;
 
       //EDX
-      uint64_t HighBytes = N->getConstantOperandVal(0xFFFF0000);                    //High 2 bytes
-      SDValue HighVal = CurDAG->getConstant(HighBytes, MVT::i32);
-      SDValue AddHigh = CurDAG->getNode(ISD::AND , SL, MVT::i32, AddOut, HighVal);
-      uint64_t DownShift = N->getConstantOperandVal(8);
+      uint64_t DownShift = N->getConstantOperandVal(8);                                     //High 2 bytes
       SDValue DownVal = CurDAG->getConstant(DownShift, MVT::i32);
-      SDValue AddHighShift = CurDAG->getNode(ISD::SRL , SL, MVT::i32, AddHigh, DownVal );
+      SDValue AddHighShift = CurDAG->getNode(ISD::SRL , SL, MVT::i32, AddOut, DownVal );    //Right Shift (2 MSBs in 2 LSBs)
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), AddHighShift);
 
       //EAX
-      uint64_t LowBytes = N->getConstantOperandVal(0x0000FFFF);                     //Low 2 bytes
+      uint64_t LowBytes = N->getConstantOperandVal(65535);                                  //Low 2 bytes
       SDValue LowVal = CurDAG->getConstant(LowBytes, MVT::i32);
-      SDValue AddLow = CurDAG->getNode(ISD::AND , SL, MVT::i32, AddOut, LowVal);
+      SDValue AddLow = CurDAG->getNode(ISD::AND , SL, MVT::i32, AddOut, LowVal);            //Remove 2 MSBs
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), AddLow);
 
       return NULL;
