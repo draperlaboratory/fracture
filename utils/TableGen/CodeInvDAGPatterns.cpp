@@ -654,7 +654,9 @@ void CodeInvDAGPatterns::ParseInstructions() {
           }
 
           if(!Inst->UpdateNodeTypeFromInst(i, VTOp, Target)) {
-            errs() << "Couldn't get type!\n";
+            errs() << "Couldn't get type for ";
+            Inst->print(errs());
+            errs() << "!\n";
           }
         }
         Dst = Inst;
