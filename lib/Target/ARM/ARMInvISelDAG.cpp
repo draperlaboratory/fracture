@@ -255,9 +255,8 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
 
       SDLoc SL(N);
       SDVTList AddVTList = CurDAG->getVTList(MVT::i32);
-
       SDValue Addr = CurDAG->getNode(ISD::ADD, SL, AddVTList, Base, Offset);
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Addr);
+
 
       // memops might be null here, but not sure if we need to check.
       const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
@@ -268,10 +267,11 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
     	      MMO = *(MN->memoperands_begin());
     	    }
       SDValue Store = CurDAG->getStore(Chain, SL, Tgt, Addr, MMO);
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Store);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Store);
       FixChainOp(Store.getNode());
 
    	      return NULL;
+
 
     	  }
 
