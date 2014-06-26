@@ -131,12 +131,14 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
 
       SDLoc SL(N);
 
-    	SDValue DSext = CurDAG->getZExtOrTrunc(DS, SL, MVT::i64);
+    	SDValue DSext = CurDAG->getSExtOrTrunc(DS, SL, MVT::i64);
     	SDValue EA = CurDAG->getNode(ISD::ADD, SL, MVT::i64, DSext, X1);
+    	SDValue DStrunc = CurDAG->getSExtOrTrunc(EA, SL, MVT::i32);
+
       SDValue Store = CurDAG->getStore(Chain, SL, X1, EA, MMO);
 
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Store);
-    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), SDValue(Store.getNode(), 1));   //Chain
+    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), DStrunc);   //Chain
       FixChainOp(Store.getNode());
 
 
@@ -202,38 +204,30 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
     	return NULL;
     	break;
     }
-    case PPC::LI:{
-
-    	/*
-    	 * Load a 16-bit signed immediate value into register Rx.
-				li Rx,value (equivalent to: addi Rx,0,value)
-
-				addi:
-					RT <- (RA) + EXTS(SI)
-    	 */
-    	SDValue RT = N->getOperand(1);	// 64bit
-    	SDValue SI = N->getOperand(2);	// 32bit
-
-      const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
-      MachineMemOperand *MMO = NULL;
-      if (MN->memoperands_empty()) {
-        errs() << "NO MACHINE OPS for LEAVE!\n";
-      } else {
-      	MMO = new MachineMemOperand(
-      			MachinePointerInfo(0, 0), MachineMemOperand::MOStore, 8, 0);	// need 8bytes for ppc64
-      }
-
-      SDLoc SL(N);
-
-    	SDValue SISext = CurDAG->getZExtOrTrunc(SI, SL, MVT::i64);
-      SDValue Store = CurDAG->getStore(RT, SL, RT, SISext, MMO);
-
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Store);
-      FixChainOp(Store.getNode());
-
-    	return NULL;
-    	break;
-    }
+//    case PPC::LI:{
+//
+//    	/*
+//    	 *
+//    	 * opcode 434
+//    	 * Load a 16-bit signed immediate value into register Rx.
+//				li Rx,value (equivalent to: addi Rx,0,value)
+//
+//				addi:
+//					RT <- (RA) + EXTS(SI)
+//    	 */
+//    	SDValue Value = N->getOperand(0);
+//      SDLoc SL(N);
+//
+////      uint64_t Zero = N->getConstantOperandVal(0);
+////      SDValue C1 = CurDAG->getConstant(Zero, MVT::i32);
+//
+//    	SDValue Nop = CurDAG->getNode(ISD::AND, SL, MVT::i32, Value, Value);
+//
+//    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Nop);
+//
+//    	return NULL;
+//    	break;
+//    }
 
 /*
     case PPC::RLDICL:{

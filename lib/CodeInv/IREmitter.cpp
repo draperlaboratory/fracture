@@ -378,8 +378,22 @@ Value* IREmitter::visitSELECT(const SDNode *N) { return NULL; }
 Value* IREmitter::visitVSELECT(const SDNode *N) { return NULL; }
 Value* IREmitter::visitSELECT_CC(const SDNode *N) { return NULL; }
 Value* IREmitter::visitSETCC(const SDNode *N) { return NULL; }
-Value* IREmitter::visitSIGN_EXTEND(const SDNode *N) { return NULL; }
-Value* IREmitter::visitZERO_EXTEND(const SDNode *N) { return NULL; }
+Value* IREmitter::visitSIGN_EXTEND(const SDNode *N) {
+	Value* Source = visit(N->getOperand(0).getNode());
+  StringRef BaseName = getBaseValueName(Source->getName());
+  StringRef Name = getIndexedValueName(BaseName);
+  Type* DstTy = N->getValueType(0).getTypeForEVT(getGlobalContext());
+	Value* SExt = IRB->CreateSExt(Source, DstTy, Name);
+	return SExt;
+}
+Value* IREmitter::visitZERO_EXTEND(const SDNode *N) {
+	Value *Source = visit(N->getOperand(0).getNode());
+  StringRef BaseName = getBaseValueName(Source->getName());
+  StringRef Name = getIndexedValueName(BaseName);
+  Type* DstTy = N->getValueType(0).getTypeForEVT(getGlobalContext());
+	Value* ZExt = IRB->CreateZExt(Source, DstTy, Name);
+	return ZExt;
+}
 Value* IREmitter::visitANY_EXTEND(const SDNode *N) { return NULL; }
 Value* IREmitter::visitSIGN_EXTEND_INREG(const SDNode *N) { return NULL; }
 Value* IREmitter::visitTRUNCATE(const SDNode *N) { return NULL; }
