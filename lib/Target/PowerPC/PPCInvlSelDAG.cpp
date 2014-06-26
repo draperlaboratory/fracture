@@ -189,49 +189,24 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
     case PPC::B:{
 
       SDValue Chain = N->getOperand(0);
-      uint64_t Offset = N->getConstantOperandVal(1);
-
-      SDValue tempOffset = CurDAG->getConstant(Offset, MVT::i32);
+      SDValue Offset = CurDAG->getConstant(1, MVT::i32);
 
       SDLoc SL(N);
 
       // Condition Code is TRUE
       SDValue Condition = CurDAG->getCondCode(ISD::SETTRUE2);
-      SDValue BrNode = CurDAG->getNode(ISD::BRCOND, SL, MVT::Other, Condition, tempOffset, Chain);
+      SDValue BrNode = CurDAG->getNode(ISD::BRCOND, SL, MVT::Other, Condition, Offset, Chain);
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
 
 
     	return NULL;
     	break;
     }
-//    case PPC::LI:{
-//
-//    	/*
-//    	 *
-//    	 * opcode 434
-//    	 * Load a 16-bit signed immediate value into register Rx.
-//				li Rx,value (equivalent to: addi Rx,0,value)
-//
-//				addi:
-//					RT <- (RA) + EXTS(SI)
-//    	 */
-//    	SDValue Value = N->getOperand(0);
-//      SDLoc SL(N);
-//
-////      uint64_t Zero = N->getConstantOperandVal(0);
-////      SDValue C1 = CurDAG->getConstant(Zero, MVT::i32);
-//
-//    	SDValue Nop = CurDAG->getNode(ISD::AND, SL, MVT::i32, Value, Value);
-//
-//    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Nop);
-//
-//    	return NULL;
-//    	break;
-//    }
 
-/*
+
     case PPC::RLDICL:{
     	 /*
+    	  * Rotate Left Double Word Immediate then Clear Left
     	  * n <- sh5 || sh0:4
 				  r <- ROTL64((RS), n)
 					b <- mb5 || mb0:4
@@ -247,7 +222,7 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
 					MASK(x, y) Mask having 1s in positions x through y
 					(wrapping if x > y) and 0s elsewhere
     	 */
-/*
+
 
 
       SDValue RS = N->getOperand(0);	// register x9
@@ -264,7 +239,7 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
     	return NULL;
     	break;
     }
-*/
+
   }
 
 
