@@ -216,7 +216,7 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
 //
           return NULL;
        }
-
+      /*
     case ARM::LDRi12: {
         //ldr  r0, [pc, #12]
         //Here we are loading whatever is in r0 into the register indicated by
@@ -250,7 +250,7 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
           	break;
           }
 
-
+      */
     case ARM::LDMIA:            // Load variations...
                             //   LD?  Inc?   Bef?    WB?
       InvLoadOrStoreMultiple(N, true, true, false, false);
