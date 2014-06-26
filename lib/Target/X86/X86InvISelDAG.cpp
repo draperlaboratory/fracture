@@ -408,7 +408,6 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       /**<
        * JG_1 - Jump if Greater/not less or equal
        */
-
       JumpOnCondition(N, ISD::SETGT);
 
       return NULL;
