@@ -490,6 +490,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
+    /*
     case X86::ADD32rr:{
       /**<
        * Takes two inputs - a constant and a register and has two outputs.
@@ -497,7 +498,8 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
        * Pseudo Code (from: llvm/trunk/lib/Target/X86/X86ISelSimple.cpp)
        *    AH*BL+(AL*BL >> 32)
        */
-      SDValue EDI = N->getOperand(0);
+    /*
+    SDValue EDI = N->getOperand(0);
       SDValue ESI = N->getOperand(0);
 
       SDLoc SL(N);
@@ -517,7 +519,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
 
       return NULL;
       break;
-    }
+    }*/
     case X86::ADD32i32:{
       /**<
        * Takes two inputs - a constant and a register and has two outputs.
@@ -736,17 +738,12 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       SDValue MulOut = CurDAG->getNode(ISD::MUL , SL, MVT::i32, EDI, ECX); //EDI * ECX;
 
       //EDX
-      uint64_t HighBytes = N->getConstantOperandVal(0xFFFF0000);                    //High 2 bytes
-      SDValue HighVal = CurDAG->getConstant(HighBytes, MVT::i32);
-      SDValue MulHigh = CurDAG->getNode(ISD::AND , SL, MVT::i32, MulOut, HighVal);
-      uint64_t DownShift = N->getConstantOperandVal(8);
-      SDValue DownVal = CurDAG->getConstant(DownShift, MVT::i32);
-      SDValue MulHighShift = CurDAG->getNode(ISD::SRL , SL, MVT::i32, MulHigh, DownVal );
+      SDValue DownVal = CurDAG->getConstant(4, MVT::i32);
+      SDValue MulHighShift = CurDAG->getNode(ISD::SRL , SL, MVT::i32, MulOut, DownVal );
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), MulHighShift);
 
       //EAX
-      uint64_t LowBytes = N->getConstantOperandVal(0x0000FFFF);                     //Low 2 bytes
-      SDValue LowVal = CurDAG->getConstant(LowBytes, MVT::i32);
+      SDValue LowVal = CurDAG->getConstant(65535, MVT::i32);                //Low 2 bytes (0x0000FFFF)
       SDValue MulLow = CurDAG->getNode(ISD::AND , SL, MVT::i32, MulOut, LowVal);
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), MulLow);
 
