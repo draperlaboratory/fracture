@@ -193,9 +193,7 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
 
       SDLoc SL(N);
 
-      // Condition Code is TRUE
-      SDValue Condition = CurDAG->getCondCode(ISD::SETTRUE2);
-      SDValue BrNode = CurDAG->getNode(ISD::BRCOND, SL, MVT::Other, Condition, Offset, Chain);
+      SDValue BrNode = CurDAG->getNode(ISD::BR, SL, MVT::Other, Offset, Chain);
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
 
 
@@ -228,12 +226,28 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
       SDValue RS = N->getOperand(0);	// register x9
       SDValue SH = N->getOperand(1);	// const: 0
       SDValue MB = N->getOperand(2);	// const: 32
+      SDLoc SL(N);
 
+      SDValue R = CurDAG->getNode(ISD::ROTL, SL, MVT::i64, RS, SH);
+
+      uint64_t MBVal = N->getConstantOperandVal(2);	// get value of MB
+      //build bitmask
+      uint64_t C1 = 0;
+      for (uint64_t i = 0; i < MBVal; ++i) {
+      		C1 += 1ULL << i;
+      }
+      C1 = C1 << (64 - MBVal);
+
+      SDValue M = CurDAG->getConstant(C1, MVT::i64);
+
+      SDValue RA = CurDAG->getNode(ISD::ADD, SL, MVT::i64, R, M);
       //ISD::OR
-      //ISD::ROTL, getLoad
+      //ISD::ROTL
       //ISD::OR
       //getConstant
       //ISD::AND
+
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), RA);
 
 
     	return NULL;
