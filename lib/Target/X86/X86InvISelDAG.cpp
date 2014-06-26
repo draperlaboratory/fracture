@@ -700,8 +700,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       SDValue EDXShl = CurDAG->getNode(ISD::SHL , SL, MVT::i32, EDX, Constant );    //EAX = EAX << Constant;
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), EDXShl);
 
-      uint64_t SizeOperand = N->getConstantOperandVal(32);
-      SDValue SizeVal = CurDAG->getConstant(SizeOperand, MVT::i32);                 //SizeVal = (sizeof(EDX)*8)
+      SDValue SizeVal = CurDAG->getConstant(32, MVT::i32);                          //SizeVal = (sizeof(EDX)*8)
       SDValue SubInst = CurDAG->getNode(ISD::SUB, SL, MVT::i32, SizeVal, Constant); //SubInst = (SizeVal - Constant)
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), SubInst);
 
