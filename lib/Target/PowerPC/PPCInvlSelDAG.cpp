@@ -200,8 +200,23 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
     	return NULL;
     	break;
     }
+    case PPC::BL:{
+    	// opcode 161
+    	//TODO:LR <-iea CIA + 4
+    	// CIA == current instruction address
+      SDValue Chain = N->getOperand(0);
+      SDValue Offset = CurDAG->getConstant(1, MVT::i32);
+
+      SDLoc SL(N);
+
+      SDValue BrNode = CurDAG->getNode(ISD::BR, SL, MVT::Other, Offset, Chain);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
 
 
+    	return NULL;
+    	break;
+
+    }
     case PPC::RLDICL:{
     	 /*
     	  * Rotate Left Double Word Immediate then Clear Left
@@ -231,12 +246,14 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
       SDValue R = CurDAG->getNode(ISD::ROTL, SL, MVT::i64, RS, SH);
 
       uint64_t MBVal = N->getConstantOperandVal(2);	// get value of MB
+      // TODO: MASK(x, y) Mask having 1s in positions x through y (wrapping if x > y)
       //build bitmask
       uint64_t C1 = 0;
       for (uint64_t i = 0; i < MBVal; ++i) {
       		C1 += 1ULL << i;
       }
-      C1 = C1 << (64 - MBVal);
+      uint64_t Shift = 64 - MBVal;
+      C1 = C1 << Shift;		// FIXME: this is being treated as a 32bit operation
 
       SDValue M = CurDAG->getConstant(C1, MVT::i64);
 
