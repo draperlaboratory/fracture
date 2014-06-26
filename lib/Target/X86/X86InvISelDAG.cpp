@@ -139,7 +139,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
-
+    case X86::MOV8ri:   //1 i32 in, 1 i8 out.  I think the down conversion is causing an issue.
     case X86::MOV32rr:{
       /**<
        * MOV32rr notes
