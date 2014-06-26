@@ -468,6 +468,16 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
+    case X86::JB_1:{
+      /**<
+       * JB_1 - Jump if Below
+       */
+
+      JumpOnCondition(N, ISD::SETLT);
+
+      return NULL;
+      break;
+    }
     case X86::JAE_1:{
       /**<
        * JAE_1 - Jump if Above or Equal
@@ -657,7 +667,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       }
 
       SDLoc SL(N);
-      SDValue LoadEBP = CurDAG->getLoad(LdType, SL, Chain, EBP, MMO);  //Load from EBP
+      SDValue LoadEBP = CurDAG->getLoad(LdType, SL, Chain, EBP, MMO);  //Load from EBP; This line has issues...
 
       SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::Other);
       SDValue NewESP = CurDAG->getNode(X86ISD::ADD , SL, VTList, SDValue(LoadEBP.getNode(),1), LoadEBP, C1); //EBP == C1;
