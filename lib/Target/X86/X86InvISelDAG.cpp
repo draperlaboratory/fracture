@@ -354,6 +354,41 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
+    case X86::CMP32mr:{
+      EVT LdType = N->getValueType(0);
+      SDValue Chain = N->getOperand(0);
+      SDValue EBP = N->getOperand(1);
+      SDValue EAX = N->getOperand(6);
+
+      /*
+      SDValue C1 = N->getOperand(2);
+      SDValue NoReg1 = N->getOperand(3);
+      SDValue C2 = N->getOperand(4);
+      SDValue NoReg2 = N->getOperand(5);
+       */
+
+      const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
+      MachineMemOperand *MMO = NULL;        //Basically a NOP
+      if (MN->memoperands_empty()) {
+        errs() << "NO MACHINE OPS for CMP32rm!\n";
+      } else {
+        MMO = *(MN->memoperands_begin());
+      }
+
+      SDLoc SL(N);
+      SDValue LoadEBP = CurDAG->getLoad(LdType, SL, Chain, EBP, MMO);  //Load from EBP
+
+      SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::Other);
+      SDValue NewESP = CurDAG->getNode(X86ISD::CMP , SL, VTList, SDValue(LoadEBP.getNode(),1), EAX, LoadEBP); //EAX == EBP;
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), NewESP);
+
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), SDValue(NewESP.getNode(),1));   //Chain
+
+      FixChainOp(LoadEBP.getNode());
+
+      return NULL;
+      break;
+    }
     case X86::JNE_1:{
       /**<
        * JNE_1 (Jump short if Not Equal) Pseudo code
@@ -749,13 +784,13 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
-    //case X86::MUL32r:{
+    case X86::MUL32r:{
       /*
-       * 2 Inputs (EDX, EAX) and 3 i32 outputs. 3 outputs seem odd...
+       * 2 i32 Inputs (EDX, EAX) and 3 i32 outputs. 3 outputs seem odd...
        *    Each goto CopyToReg arg 2.  Each CopyToReg is in the chain.
-       *    Therefore assuming each i32 is the same.
+       *    Therefore assuming each i32 is the same?
        */
-    /*
+
       SDValue EDX = N->getOperand(0);
       SDValue EAX = N->getOperand(1);
 
@@ -767,7 +802,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
 
       return NULL;
       break;
-    }*/
+    }
     /*
 
     case X86::CMP32mr:{
