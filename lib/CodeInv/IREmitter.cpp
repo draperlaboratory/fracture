@@ -350,7 +350,26 @@ Value* IREmitter::visitADDC(const SDNode *N) { return NULL; }
 Value* IREmitter::visitSUBC(const SDNode *N) { return NULL; }
 Value* IREmitter::visitADDE(const SDNode *N) { return NULL; }
 Value* IREmitter::visitSUBE(const SDNode *N) { return NULL; }
-Value* IREmitter::visitMUL(const SDNode *N) { return NULL; }
+
+Value* IREmitter::visitMUL(const SDNode *N) {
+  // Operand 0 and 1 are values to sub
+  Value *Op0 = visit(N->getOperand(0).getNode());
+  Value *Op1 = visit(N->getOperand(1).getNode());
+  StringRef BaseName = getInstructionName(N);
+  if (BaseName.empty()) {
+    BaseName = getBaseValueName(Op0->getName());
+  }
+  if (BaseName.empty()) {
+    BaseName = getBaseValueName(Op1->getName());
+  }
+  StringRef Name = getIndexedValueName(BaseName);
+  //outs() << "IREmitter::visitSUB: " << Name.str() << " op0 op1 " << Op0 << " "<< Op1 << "\n";
+  Instruction *Res = dyn_cast<Instruction>(IRB->CreateMul(Op0, Op1, Name));
+  Res->setDebugLoc(N->getDebugLoc());
+  VisitMap[N] = Res;
+  return Res;
+}
+
 Value* IREmitter::visitSDIV(const SDNode *N) { return NULL; }
 Value* IREmitter::visitUDIV(const SDNode *N) { return NULL; }
 Value* IREmitter::visitSREM(const SDNode *N) { return NULL; }
