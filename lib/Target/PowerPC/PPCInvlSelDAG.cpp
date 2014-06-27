@@ -217,6 +217,53 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
     	break;
 
     }
+    case PPC::gBC:{
+    	/* opcode 877
+
+    	 this is not mentioned anywhere - I am assuming it's related to branch conditional
+
+			 4 inputs, 1 output: all i32
+
+    	 bc BO,BI,target_addr
+
+				if ¬BO2 then CTR <- CTR - 1
+				ctr_ok <- BO2 | ((CTR != 0) XOR BO3)
+				cond_ok <- BO0 | (CRBI === BO1) // CR is condition register
+				if ctr_ok & cond_ok then
+					NIA <-iea EXTS(BD || 0b00)
+
+
+		 The BI field specifies the Condition Register bit to be
+		 tested. The BO field is used to resolve the branch as
+		 described in Figure 21. target_addr specifies the
+		 branch target address.
+		 If AA=0 then the branch target address is the sum of
+		 BD || 0b00 sign-extended and the address of this
+		 instruction, with the high-order 32 bits of the branch target
+		 address set to 0 in 32-bit mode.
+    	*/
+
+      SDValue Chain = N->getOperand(0);
+      uint64_t TarVal = N->getConstantOperandVal(0);	// this index was arbitrary... didn't compile with 1
+      SDValue tempEIP = CurDAG->getConstant(TarVal, MVT::i32);
+      //SDValue EFLAGSCFR = N->getOperand(2);
+
+
+      SDLoc SL(N);
+      // Calculate the Branch Target
+      SDValue TempEIPval = CurDAG->getConstant(cast<ConstantSDNode>(tempEIP)->getZExtValue(), tempEIP.getValueType());
+
+      // Condition Code is "Equal", for no good reason
+      SDValue Condition = CurDAG->getCondCode(ISD::SETEQ);
+      SDValue BrNode = CurDAG->getNode(ISD::BRCOND, SL, MVT::Other, Condition, TempEIPval, Chain);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
+
+
+
+    	return NULL;
+    	break;
+
+    }
     case PPC::RLDICL:{
     	 /*
     	  * Rotate Left Double Word Immediate then Clear Left
@@ -240,7 +287,7 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
 
       SDValue RS = N->getOperand(0);	// register x9
       SDValue SH = N->getOperand(1);	// const: 0
-      SDValue MB = N->getOperand(2);	// const: 32
+      //SDValue MB = N->getOperand(2);	// const: 32
       SDLoc SL(N);
 
       SDValue R = CurDAG->getNode(ISD::ROTL, SL, MVT::i64, RS, SH);
