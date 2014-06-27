@@ -253,7 +253,9 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
       		C1 += 1ULL << i;
       }
       uint64_t Shift = 64 - MBVal;
-      C1 = C1 << Shift;		// FIXME: this is being treated as a 32bit operation
+      C1 = C1 << Shift;
+      // if MBVal == 32, Windows Calculator won't convert decimal->binary
+      // outputs correctly for unsigned ints.
 
       SDValue M = CurDAG->getConstant(C1, MVT::i64);
 
