@@ -33,7 +33,7 @@ Decompiler::Decompiler(Disassembler *NewDis, Module *NewMod, raw_ostream &InfoOu
   Context = Dis->getMCDirector()->getContext();
 
   //Where is the getTargetInvISelDAG method?
-  InvISel = getTargetInvISelDAG(Dis->getMCDirector()->getTargetMachine());
+  InvISel = getTargetInvISelDAG(Dis->getMCDirector()->getTargetMachine(), this);
   Emitter = InvISel->getEmitter(this, Infos, Errs);
 }
 

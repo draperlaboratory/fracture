@@ -130,7 +130,7 @@ public:
 
   /// \brief Symbol accessors
   std::string getSymbolName(unsigned Address);
-  StringRef getFunctionName(unsigned Address);
+  const StringRef getFunctionName(unsigned Address) const;
 
   /// \brief Set the current section reference in the Disassembler
   ///
@@ -148,9 +148,9 @@ public:
   MCDirector* getMCDirector() const { return MC; }
   Module* getModule() const { return TheModule; }
 
-  MachineInstr* getMachineInstr(unsigned Address) {
+  const MachineInstr* getMachineInstr(unsigned Address) const {
      if (MachineInstructions.find(Address) != MachineInstructions.end()) {
-        return MachineInstructions[Address];
+        return MachineInstructions.at(Address);
      }
      return NULL;
   }
@@ -165,7 +165,7 @@ private:
   std::map<unsigned, MachineBasicBlock*> BasicBlocks;
   std::map<unsigned, MachineFunction*> Functions;
   std::map<unsigned, MCInst*> Instructions;
-  std::map<unsigned, MachineInstr*> MachineInstructions;
+  std::map<unsigned, const MachineInstr*> MachineInstructions;
 
   MachineModuleInfo *MMI;
   GCModuleInfo *GMI;

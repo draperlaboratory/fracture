@@ -24,6 +24,7 @@
 #include "Target/X86/X86IREmitter.h"
 // #include "ARMRegs.h"
 #include "CodeInv/Decompiler.h"
+#include "CodeInv/Disassembler.h"
 
 namespace fracture {
 

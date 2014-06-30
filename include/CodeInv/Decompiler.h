@@ -79,7 +79,7 @@ public:
   uint64_t getBasicBlockAddress(BasicBlock *BB);
 
   SelectionDAG* getCurrentDAG() { return DAG; }
-  Disassembler* getDisassembler() { return Dis; }
+  const Disassembler* getDisassembler() const { return Dis; }
   void setViewMCDAGs(bool Setting) { ViewMCDAGs = Setting; }
   void setViewIRDAGs(bool Setting) { ViewIRDAGs = Setting; }
   Module* getModule() { return Mod; }

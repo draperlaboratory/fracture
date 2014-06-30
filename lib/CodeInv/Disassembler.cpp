@@ -425,7 +425,7 @@ std::string Disassembler::getSymbolName(unsigned Address) {
   return "";
 }
 
-StringRef Disassembler::getFunctionName(unsigned Address) {
+const StringRef Disassembler::getFunctionName(unsigned Address) const {
   uint64_t SymAddr;
   error_code ec;
   StringRef NameRef;

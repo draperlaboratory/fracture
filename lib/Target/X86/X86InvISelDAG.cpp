@@ -421,45 +421,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
-    case X86::JL_1:{
-      /**<
-       * JL_1 - Jump if less than
-       */
-
-      JumpOnCondition(N, ISD::SETLT);
-
-      return NULL;
-      break;
-    }
-    case X86::JLE_1:{
-      /**<
-       * JLE_1 - Jump if less or equal
-       */
-
-      JumpOnCondition(N, ISD::SETLE);
-
-      return NULL;
-      break;
-    }
-    case X86::JG_1:{
-      /**<
-       * JG_1 - Jump if Greater/not less or equal
-       */
-      JumpOnCondition(N, ISD::SETGT);
-
-      return NULL;
-      break;
-    }
-    case X86::JGE_1:{
-      /**<
-       * JGE_1 - Jump if Greater or equal
-       */
-
-      JumpOnCondition(N, ISD::SETGE);
-
-      return NULL;
-      break;
-    }
+    case X86::JLE_1:
     case X86::JBE_1:{
       /**<
        * JBE_1 - Jump if Below or Equal
@@ -470,6 +432,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
+    case X86::JL_1:
     case X86::JB_1:{
       /**<
        * JB_1 - Jump if Below
@@ -480,6 +443,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
+    case X86::JGE_1:
     case X86::JAE_1:{
       /**<
        * JAE_1 - Jump if Above or Equal
@@ -490,6 +454,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
+    case X86::JG_1:
     case X86::JA_1:{
       /**<
        * JA_1 - Jump if Above
@@ -874,12 +839,14 @@ bool X86InvISelDAG::JumpOnCondition(SDNode *N, ISD::CondCode cond) {
   //SDValue EFLAGSCFR = N->getOperand(2);
 
   // Recover Instruction information
-  const MCInstrInfo *MII = TM->getTarget().createMCInstrInfo();
-  MCInstrDesc *MCID = new MCInstrDesc(MII->get(N->getMachineOpcode()));
-  uint64_t InstSize = MCID->Size;
+  //const MCInstrInfo *MII = TM->getTarget().createMCInstrInfo();
+  //MCInstrDesc *MCID = new MCInstrDesc(MII->get(N->getMachineOpcode()));
+  //uint64_t InstSize = MCID->Size;
 
+  const Disassembler *Dis = Dec->getDisassembler();
+  uint64_t InstSize = Dis->getMachineInstr(Dis->getDebugOffset(N->getDebugLoc()))->getDesc().Size;
   //AJG - Comment out when working...
-  outs() << "----- INST SIZE ----- " <<  InstSize << "\n";
+  //outs() << "----- INST SIZE ----- " <<  InstSize << "\n";
   TarVal += InstSize;
   SDValue tempEIP = CurDAG->getConstant(TarVal, MVT::i32);
 

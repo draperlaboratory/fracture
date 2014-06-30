@@ -225,7 +225,7 @@ public:
 /// \param T a pointer to the target.
 ///
 /// \returns InvISelDAG engine for Target, or null. 
-InvISelDAG* getTargetInvISelDAG(const TargetMachine *T);
+InvISelDAG* getTargetInvISelDAG(const TargetMachine *T, const Decompiler *TheDec = NULL);
 
 } // end fracture namespace
 
