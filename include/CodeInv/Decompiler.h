@@ -37,6 +37,8 @@
 #include "CodeInv/Disassembler.h"
 #include "Transforms/TypeRecovery.h"
 
+#include "CodeInv/InvISelDAG.h"
+
 using namespace llvm;
 
 namespace fracture {

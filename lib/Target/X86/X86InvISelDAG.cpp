@@ -140,6 +140,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       break;
     }
     //case X86::MOV8ri:   //1 i32 in, 1 i8 out.  I think the down conversion is causing an issue.
+    case X86::MOV32ri:
     case X86::MOV32rr:{
       /**<
        * MOV32rr notes
@@ -210,7 +211,6 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       //SDValue noReg = N->getOperand(2);
 
       SDLoc SL(N);
-
       SDValue CallNode = CurDAG->getNode(X86ISD::CALL, SL, MVT::Other, Target, Chain);
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), CallNode);
 
@@ -564,7 +564,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), AddLow);
 
       return NULL;
-      break;
+      break;Decompiler
     }*/
     case X86::ADD32i32:{
       /**<
@@ -760,7 +760,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       break;
     }
     case X86::IMUL32rr:{
-      /**<
+      /**<Decompiler
        * Two inputs and two i32 outputs
        *
        * Pseudo Code:
@@ -799,7 +799,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
     case X86::MUL32r:{
       /*
        * 2 i32 Inputs (EDX, EAX) and 3 i32 outputs. 3 outputs seem odd...
-       *    Each goto CopyToReg arg 2.  Each CopyToReg is in the chain.
+       *    Each goto CopyToReDecompilerg arg 2.  Each CopyToReg is in the chain.
        *    Therefore assuming each i32 is the same?
        */
 
@@ -871,9 +871,17 @@ bool X86InvISelDAG::JumpOnCondition(SDNode *N, ISD::CondCode cond) {
   //Comparison should be before this instruction, result stored in EFLAGS
   SDValue Chain = N->getOperand(0);
   uint64_t TarVal = N->getConstantOperandVal(1);
-  SDValue tempEIP = CurDAG->getConstant(TarVal, MVT::i32);
   //SDValue EFLAGSCFR = N->getOperand(2);
 
+  // Recover Instruction information
+  const MCInstrInfo *MII = TM->getTarget().createMCInstrInfo();
+  MCInstrDesc *MCID = new MCInstrDesc(MII->get(N->getMachineOpcode()));
+  uint64_t InstSize = MCID->Size;
+
+  //AJG - Comment out when working...
+  outs() << "----- INST SIZE ----- " <<  InstSize << "\n";
+  TarVal += InstSize;
+  SDValue tempEIP = CurDAG->getConstant(TarVal, MVT::i32);
 
   SDLoc SL(N);
   // Calculate the Branch Target

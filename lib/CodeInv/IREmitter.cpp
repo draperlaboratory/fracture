@@ -171,8 +171,7 @@ Value* IREmitter::visit(const SDNode *N) {
     // Do nothing nodes
     case ISD::EntryToken:
     case ISD::HANDLENODE:
-    case ISD::UNDEF:
-      return NULL;
+    case ISD::UNDEF:              return NULL;
     case ISD::CopyFromReg:        return visitCopyFromReg(N);
     case ISD::CopyToReg:          return visitCopyToReg(N);
     case ISD::Constant:           return visitConstant(N);
@@ -306,8 +305,8 @@ Value* IREmitter::visitConstant(const SDNode *N) {
 }
 
 
-Value* IREmitter::visitTokenFactor(const SDNode *N) { return NULL; }
-Value* IREmitter::visitMERGE_VALUES(const SDNode *N) { return NULL; }
+Value* IREmitter::visitTokenFactor(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitMERGE_VALUES(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
 
 Value* IREmitter::visitADD(const SDNode *N) {
   // Operand 0 and 1 are values to add
@@ -346,10 +345,10 @@ Value* IREmitter::visitSUB(const SDNode *N) {
   return Res;
 }
 
-Value* IREmitter::visitADDC(const SDNode *N) { return NULL; }
-Value* IREmitter::visitSUBC(const SDNode *N) { return NULL; }
-Value* IREmitter::visitADDE(const SDNode *N) { return NULL; }
-Value* IREmitter::visitSUBE(const SDNode *N) { return NULL; }
+Value* IREmitter::visitADDC(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitSUBC(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitADDE(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitSUBE(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
 
 Value* IREmitter::visitMUL(const SDNode *N) {
   // Operand 0 and 1 are values to sub
@@ -370,61 +369,81 @@ Value* IREmitter::visitMUL(const SDNode *N) {
   return Res;
 }
 
-Value* IREmitter::visitSDIV(const SDNode *N) { return NULL; }
-Value* IREmitter::visitUDIV(const SDNode *N) { return NULL; }
-Value* IREmitter::visitSREM(const SDNode *N) { return NULL; }
-Value* IREmitter::visitUREM(const SDNode *N) { return NULL; }
-Value* IREmitter::visitMULHU(const SDNode *N) { return NULL; }
-Value* IREmitter::visitMULHS(const SDNode *N) { return NULL; }
-Value* IREmitter::visitSMUL_LOHI(const SDNode *N) { return NULL; }
-Value* IREmitter::visitUMUL_LOHI(const SDNode *N) { return NULL; }
-Value* IREmitter::visitSMULO(const SDNode *N) { return NULL; }
-Value* IREmitter::visitUMULO(const SDNode *N) { return NULL; }
-Value* IREmitter::visitSDIVREM(const SDNode *N) { return NULL; }
-Value* IREmitter::visitUDIVREM(const SDNode *N) { return NULL; }
-Value* IREmitter::visitAND(const SDNode *N) { return NULL; }
-Value* IREmitter::visitOR(const SDNode *N) { return NULL; }
-Value* IREmitter::visitXOR(const SDNode *N) { return NULL; }
-Value* IREmitter::visitSHL(const SDNode *N) { return NULL; }
-Value* IREmitter::visitSRA(const SDNode *N) { return NULL; }
-Value* IREmitter::visitSRL(const SDNode *N) { return NULL; }
-Value* IREmitter::visitCTLZ(const SDNode *N) { return NULL; }
-Value* IREmitter::visitCTLZ_ZERO_UNDEF(const SDNode *N) { return NULL; }
-Value* IREmitter::visitCTTZ(const SDNode *N) { return NULL; }
-Value* IREmitter::visitCTTZ_ZERO_UNDEF(const SDNode *N) { return NULL; }
-Value* IREmitter::visitCTPOP(const SDNode *N) { return NULL; }
-Value* IREmitter::visitSELECT(const SDNode *N) { return NULL; }
-Value* IREmitter::visitVSELECT(const SDNode *N) { return NULL; }
-Value* IREmitter::visitSELECT_CC(const SDNode *N) { return NULL; }
-Value* IREmitter::visitSETCC(const SDNode *N) { return NULL; }
-Value* IREmitter::visitSIGN_EXTEND(const SDNode *N) { return NULL; }
-Value* IREmitter::visitZERO_EXTEND(const SDNode *N) { return NULL; }
-Value* IREmitter::visitANY_EXTEND(const SDNode *N) { return NULL; }
-Value* IREmitter::visitSIGN_EXTEND_INREG(const SDNode *N) { return NULL; }
-Value* IREmitter::visitTRUNCATE(const SDNode *N) { return NULL; }
-Value* IREmitter::visitBITCAST(const SDNode *N) { return NULL; }
-Value* IREmitter::visitBUILD_PAIR(const SDNode *N) { return NULL; }
-Value* IREmitter::visitFADD(const SDNode *N) { return NULL; }
-Value* IREmitter::visitFSUB(const SDNode *N) { return NULL; }
-Value* IREmitter::visitFMUL(const SDNode *N) { return NULL; }
-Value* IREmitter::visitFMA(const SDNode *N) { return NULL; }
-Value* IREmitter::visitFDIV(const SDNode *N) { return NULL; }
-Value* IREmitter::visitFREM(const SDNode *N) { return NULL; }
-Value* IREmitter::visitFCOPYSIGN(const SDNode *N) { return NULL; }
-Value* IREmitter::visitSINT_TO_FP(const SDNode *N) { return NULL; }
-Value* IREmitter::visitUINT_TO_FP(const SDNode *N) { return NULL; }
-Value* IREmitter::visitFP_TO_SINT(const SDNode *N) { return NULL; }
-Value* IREmitter::visitFP_TO_UINT(const SDNode *N) { return NULL; }
-Value* IREmitter::visitFP_ROUND(const SDNode *N) { return NULL; }
-Value* IREmitter::visitFP_ROUND_INREG(const SDNode *N) { return NULL; }
-Value* IREmitter::visitFP_EXTEND(const SDNode *N) { return NULL; }
-Value* IREmitter::visitFNEG(const SDNode *N) { return NULL; }
-Value* IREmitter::visitFABS(const SDNode *N) { return NULL; }
-Value* IREmitter::visitFCEIL(const SDNode *N) { return NULL; }
-Value* IREmitter::visitFTRUNC(const SDNode *N) { return NULL; }
-Value* IREmitter::visitFFLOOR(const SDNode *N) { return NULL; }
-Value* IREmitter::visitBRCOND(const SDNode *N) { return NULL; }
-Value* IREmitter::visitBR_CC(const SDNode *N) { return NULL; }
+Value* IREmitter::visitSDIV(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitUDIV(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitSREM(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitUREM(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitMULHU(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitMULHS(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitSMUL_LOHI(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitUMUL_LOHI(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitSMULO(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitUMULO(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitSDIVREM(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitUDIVREM(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitAND(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitOR(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitXOR(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitSHL(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitSRA(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitSRL(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitCTLZ(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitCTLZ_ZERO_UNDEF(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitCTTZ(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitCTTZ_ZERO_UNDEF(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitCTPOP(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitSELECT(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitVSELECT(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitSELECT_CC(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitSETCC(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitSIGN_EXTEND(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitZERO_EXTEND(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitANY_EXTEND(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitSIGN_EXTEND_INREG(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitTRUNCATE(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitBITCAST(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitBUILD_PAIR(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitFADD(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitFSUB(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitFMUL(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitFMA(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitFDIV(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitFREM(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitFCOPYSIGN(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitSINT_TO_FP(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitUINT_TO_FP(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitFP_TO_SINT(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitFP_TO_UINT(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitFP_ROUND(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitFP_ROUND_INREG(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitFP_EXTEND(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitFNEG(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitFABS(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitFCEIL(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitFTRUNC(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitFFLOOR(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
+
+// Note: branch conditions, by definition, only have a chain user.
+// This is why it should not be saved in a map for recall.
+Value* IREmitter::visitBRCOND(const SDNode *N) {
+  // Get the address
+  const ConstantSDNode *DestNode = dyn_cast<ConstantSDNode>(N->getOperand(1));
+  if (!DestNode) {
+    printError("visitBRCOND: Not a constant integer for branch!");
+    return NULL;
+  }
+
+  uint64_t DestInt = DestNode->getSExtValue();
+  uint64_t PC = Dec->getDisassembler()->getDebugOffset(N->getDebugLoc());
+  // Note: pipeline is 8 bytes
+  uint64_t Tgt = PC + DestInt;
+
+  //AJG - Comment out when working...
+  outs() << "------TARGET----: " << Tgt << "\n";
+  return NULL;
+}
+
+Value* IREmitter::visitBR_CC(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
 
 Value* IREmitter::visitLOAD(const SDNode *N) { 
   // Operand 0 - Addr to load, should be a pointer

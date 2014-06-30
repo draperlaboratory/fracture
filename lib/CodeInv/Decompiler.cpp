@@ -21,22 +21,20 @@ using namespace llvm;
 
 namespace fracture {
 
-Decompiler::Decompiler(Disassembler *NewDis, Module *NewMod,
-  raw_ostream &InfoOut, raw_ostream &ErrOut) : Infos(InfoOut), Errs(ErrOut) {
+Decompiler::Decompiler(Disassembler *NewDis, Module *NewMod, raw_ostream &InfoOut, raw_ostream &ErrOut) :
+    Dis(NewDis), Mod(NewMod), DAG(NULL), ViewMCDAGs(false), ViewIRDAGs(false), Infos(InfoOut), Errs(ErrOut){
+
   assert(NewDis && "Cannot initialize decompiler with null Disassembler!");
-  Dis = NewDis;
-  Mod = NewMod;
   if (Mod == NULL) {
     std::string ModID = Dis->getExecutable()->getLoadName().data();
     ModID += "-IR";
     Mod = new Module(StringRef(ModID), *(Dis->getMCDirector()->getContext()));
   }
   Context = Dis->getMCDirector()->getContext();
+
+  //Where is the getTargetInvISelDAG method?
   InvISel = getTargetInvISelDAG(Dis->getMCDirector()->getTargetMachine());
   Emitter = InvISel->getEmitter(this, Infos, Errs);
-  DAG = NULL;
-  ViewIRDAGs = false;
-  ViewMCDAGs = false;
 }
 
 Decompiler::~Decompiler() {
@@ -160,6 +158,7 @@ Function* Decompiler::decompileFunction(unsigned Address) {
     BasicBlock::iterator SI, SE;    // Split instruction
     // Note the ++, nothing ever splits the entry block.
     for (SB = ++F->begin(); SB != E; ++SB) {
+      DEBUG(SB->dump());
       DEBUG(outs() << "SB: " << SB->getName()
         << "\tRange: " << Dis->getDebugOffset(SB->begin()->getDebugLoc())
         << " " << Dis->getDebugOffset(SB->getTerminator()->getDebugLoc())
