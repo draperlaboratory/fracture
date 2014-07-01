@@ -426,8 +426,8 @@ Value* IREmitter::visitFFLOOR(const SDNode *N) { llvm_unreachable("Unimplemented
 // Note: branch conditions, by definition, only have a chain user.
 // This is why it should not be saved in a map for recall.
 Value* IREmitter::visitBRCOND(const SDNode *N) {
-  llvm_unreachable("visitBRCOND Unimplemented visit..."); return NULL;
-  /*
+  //llvm_unreachable("visitBRCOND Unimplemented visit..."); return NULL;
+
   // Get the address
   const CondCodeSDNode *Cond = dyn_cast<CondCodeSDNode>(N->getOperand(0));
   const ConstantSDNode *DestNode = dyn_cast<ConstantSDNode>(N->getOperand(1));
@@ -442,13 +442,19 @@ Value* IREmitter::visitBRCOND(const SDNode *N) {
   // Note: pipeline is 8 bytes
   uint64_t Tgt = PC + DestInt;  //Address is added in X86 (potentially need to adjust ARM)
 
-
   Function *F = IRB->GetInsertBlock()->getParent();
   BasicBlock *CurBB = IRB->GetInsertBlock();
 
   BasicBlock *BBTgt = Dec->getOrCreateBasicBlock(Tgt, F);
 
-  Instruction *Br = IRB->CreateBr(BBTgt);
+  //Instruction *Br = IRB->CreateBr(BBTgt);
+
+  // Unconditional branch
+  if (Cond->get() == ISD::SETTRUE2) {
+    Instruction *Br = IRB->CreateBr(BBTgt);
+    Br->setDebugLoc(N->getDebugLoc());
+    return Br;
+  }
 
   SDNode *CPSR = N->getOperand(2)->getOperand(1).getNode();
   SDNode *CMPNode = NULL;
@@ -464,7 +470,9 @@ Value* IREmitter::visitBRCOND(const SDNode *N) {
     return NULL;
   }
 
-  //This code may become X86 specific...
+  //This code should currently be platform agnostic since CMPNode
+  //    is an iterator that runs over ISD::CopyToReg, which is
+  //    currently platform agnostic...
   Value *Cmp = NULL;
   Value *LHS = visit(CMPNode->getOperand(0).getNode());
   Value *RHS = visit(CMPNode->getOperand(1).getNode());
@@ -475,9 +483,6 @@ Value* IREmitter::visitBRCOND(const SDNode *N) {
   default:
     printError("Unknown condition code");
     return NULL;
-  case ISD::SETTRUE2:
-    //Need a Create for always...
-    break;
   case ISD::SETEQ:
     Cmp = IRB->CreateICmpEQ(LHS, RHS);
     break;
@@ -503,11 +508,21 @@ Value* IREmitter::visitBRCOND(const SDNode *N) {
   }
   (dyn_cast<Instruction>(Cmp))->setDebugLoc(N->getOperand(2)->getDebugLoc());
 
+  // If not a conditional branch, find the successor block and look at CC
+  BasicBlock *NextBB = NULL;
+  Function::iterator BI = F->begin(), BE= F->end();
+  while (BI != BE && BI->getName() != CurBB->getName()) ++BI;
+  ++BI;
+  if (BI == BE) {               // NOTE: This should never happen...
+    NextBB = Dec->getOrCreateBasicBlock("end", F);
+  } else {
+    NextBB = &(*BI);
+  }
+
   // Conditional branch
   Instruction *Br = IRB->CreateCondBr(Cmp, BBTgt, NextBB);
   Br->setDebugLoc(N->getDebugLoc());
   return Br;
-  */
 }
 
 Value* IREmitter::visitBR_CC(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
