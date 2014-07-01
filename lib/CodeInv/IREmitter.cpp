@@ -477,7 +477,6 @@ Value* IREmitter::visitBRCOND(const SDNode *N) {
   Value *LHS = visit(CMPNode->getOperand(0).getNode());
   Value *RHS = visit(CMPNode->getOperand(1).getNode());
 
-  // See ARMCC::CondCodes IntCCToARMCC(ISD::CondCode CC); in ARMISelLowering.cpp
   // TODO: Add support for conditions that handle floating point
   switch(Cond->get()) {
   default:

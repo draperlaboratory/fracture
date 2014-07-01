@@ -139,7 +139,28 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
-    //case X86::MOV8ri:   //1 i32 in, 1 i8 out.  I think the down conversion is causing an issue.
+    case X86::MOV8ri:{
+      /**<
+       * MOV8ri notes
+       *    1 i32 in, 1 i8 out.
+       */
+      SDNode *C2R = NULL;
+      for (SDNode::use_iterator I = N->use_begin(), E = N->use_end(); I != E; ++I) {
+        if (I->getOpcode() == ISD::CopyToReg) {
+          C2R = *I;
+          break;
+        }
+      }
+
+      assert(C2R && "Move instruction without CopytoReg!");
+      SDLoc SL(N);
+      C2R->setDebugLoc(SL.getDebugLoc());
+      SDValue DownConv = CurDAG->getSExtOrTrunc(N->getOperand(0), SL, MVT::i8);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N,0), DownConv);
+
+      return NULL;
+      break;
+    }
     case X86::MOV32ri:
     case X86::MOV32rr:{
       /**<
