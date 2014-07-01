@@ -143,6 +143,7 @@ protected:
   Value* visitFTRUNC(const SDNode *N);
   Value* visitFFLOOR(const SDNode *N);
   Value* visitBRCOND(const SDNode *N);
+  Value* visitBR(const SDNode *N);
   Value* visitBR_CC(const SDNode *N);
   Value* visitLOAD(const SDNode *N);
   Value* visitSTORE(const SDNode *N);

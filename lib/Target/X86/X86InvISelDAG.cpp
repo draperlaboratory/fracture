@@ -504,10 +504,10 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       //Calling Jump On Condition with the always true variable.
       //EFLAGS isn't used in JumpOnCondition, so this should work, however there may be
       //    subtle differences if compiled back...
-      JumpOnCondition(N, ISD::SETTRUE2);
+      //JumpOnCondition(N, ISD::SETTRUE2);
 
       //Original logic if differences are a concern.
-      /*
+
       SDValue Chain = N->getOperand(0);
       uint64_t TarVal = N->getConstantOperandVal(1);
       SDValue tempEIP = CurDAG->getConstant(TarVal, MVT::i32);
@@ -518,7 +518,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
 
       SDValue BrNode = CurDAG->getNode(ISD::BR, SL, MVT::Other, TempEIPval, Chain);
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
-      */
+
       return NULL;
       break;
     }
@@ -542,7 +542,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       SDValue DownVal = CurDAG->getConstant(DownShift, MVT::i32);
       SDValue AddHighShift = CurDAG->getNode(ISD::SRL , SL, MVT::i32, AddOut, DownVal );    //Right Shift (2 MSBs in 2 LSBs)
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), AddHighShift);
-
+Scope
       //EAX
       uint64_t LowBytes = N->getConstantOperandVal(65535);                                  //Low 2 bytes
       SDValue LowVal = CurDAG->getConstant(LowBytes, MVT::i32);
@@ -552,11 +552,12 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;Decompiler
     }*/
-    case X86::ADD32i32:{
+    //case X86::ADD32i32:{
       /**<
        * Takes two inputs - a constant and a register and has two outputs.
        *    Current question, not sure what to do about the extra output...
        */
+    /*
       SDValue C1 = N->getOperand(0);
       SDValue C2 = N->getOperand(1);
 
@@ -569,12 +570,32 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
+    */
+    case X86::SUB32ri8:{
+      /**<
+       * 2 i32 in (Reg, Const) -> 2 i32 out
+       * dec fastfib_v2 (O1 gcc)
+       */
+      SDValue Reg = N->getOperand(0);
+      uint64_t C1val = N->getConstantOperandVal(1);
+      SDValue Constant = CurDAG->getConstant(C1val, MVT::i32);
+      SDLoc SL(N);
+      SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::i32);
+
+      SDValue Node = CurDAG->getNode(ISD::SUB, SL, VTList, Constant, Reg);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Node);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), CurDAG->getUNDEF(MVT::i32));
+
+      return NULL;
+      break;
+    }
     case X86::SUB32i32:{
       /**<
-       * Not correct yet, 2nd output argument is mapping to first...
+       * Doesn't seem correct yet, 2nd output argument is mapping to first...
        *    Makes sense based on the diagram, but not really sane...
        *    dec fib (O0 LLVM)
        */
+
       uint64_t C1val = N->getConstantOperandVal(0);
       SDValue C1 = CurDAG->getConstant(C1val, MVT::i32);
       SDValue C2 = N->getOperand(1);
@@ -614,15 +635,20 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       }
 
       SDLoc SL(N);
-      SDValue LoadEBP = CurDAG->getLoad(LdType, SL, Chain, EBP, MMO);  //Load from EBP
+      SDValue Load = CurDAG->getLoad(LdType, SL, Chain, EBP, MMO);  //Load from EBP
 
-      SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::i32, MVT::Other);
-      SDValue NewESP = CurDAG->getNode(X86ISD::ADD , SL, VTList, SDValue(LoadEBP.getNode(),1), EAX, LoadEBP); //EAX + EBP;
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), NewESP);
+      //SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::i32, MVT::Other);
+      SDVTList VTList = CurDAG->getVTList(MVT::i32);
+      //Prob need to switch to x86ISD::add when code with eflags pops up.
+      SDValue AddNode = CurDAG->getNode(ISD::ADD, SL, VTList, SDValue(Load.getNode(),1), EAX, Load);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), AddNode);
 
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), SDValue(NewESP.getNode(),1));   //Chain
+      //CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), EFLAGS);   //Ignore for time being...
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), CurDAG->getUNDEF(MVT::i32));
 
-      FixChainOp(LoadEBP.getNode());
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 2), SDValue(Load.getNode(),1));   //Chain
+
+      FixChainOp(Load.getNode());
 
       return NULL;
       break;
@@ -658,10 +684,10 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       SDValue LoadEBP = CurDAG->getLoad(LdType, SL, Chain, EBP, MMO);  //Load from EBP; This line has issues...
 
       SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::Other);
-      SDValue NewESP = CurDAG->getNode(X86ISD::ADD , SL, VTList, SDValue(LoadEBP.getNode(),1), LoadEBP, C1); //EBP == C1;
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), NewESP);
+      SDValue AddNode = CurDAG->getNode(ISD::ADD , SL, VTList, SDValue(LoadEBP.getNode(),1), LoadEBP, C1); //EBP == C1;
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), AddNode);
 
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), SDValue(NewESP.getNode(),1));   //Chain
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), SDValue(AddNode.getNode(),1));   //Chain
 
       FixChainOp(LoadEBP.getNode());
 
@@ -857,7 +883,7 @@ bool X86InvISelDAG::JumpOnCondition(SDNode *N, ISD::CondCode cond) {
   //Comparison should be before this instruction, result stored in EFLAGS
   SDValue Chain = N->getOperand(0);
   uint64_t TarVal = N->getConstantOperandVal(1);
-  //SDValue EFLAGSCFR = N->getOperand(2);
+  SDValue EFLAGSCFR = N->getOperand(2);
 
   // Recover Instruction information
   //const MCInstrInfo *MII = TM->getTarget().createMCInstrInfo();
@@ -877,7 +903,7 @@ bool X86InvISelDAG::JumpOnCondition(SDNode *N, ISD::CondCode cond) {
 
   // Condition Code is "Below or Equal" <=
   SDValue Condition = CurDAG->getCondCode(cond);
-  SDValue BrNode = CurDAG->getNode(ISD::BRCOND, SL, MVT::Other, Condition, TempEIPval, Chain);
+  SDValue BrNode = CurDAG->getNode(X86ISD::BRCOND, SL, MVT::Other, Condition, TempEIPval, EFLAGSCFR, Chain);
   CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
 
   return true;
