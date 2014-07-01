@@ -426,6 +426,8 @@ Value* IREmitter::visitFFLOOR(const SDNode *N) { llvm_unreachable("Unimplemented
 // Note: branch conditions, by definition, only have a chain user.
 // This is why it should not be saved in a map for recall.
 Value* IREmitter::visitBRCOND(const SDNode *N) {
+  llvm_unreachable("visitBRCOND Unimplemented visit..."); return NULL;
+  /*
   // Get the address
   const CondCodeSDNode *Cond = dyn_cast<CondCodeSDNode>(N->getOperand(0));
   const ConstantSDNode *DestNode = dyn_cast<ConstantSDNode>(N->getOperand(1));
@@ -505,6 +507,7 @@ Value* IREmitter::visitBRCOND(const SDNode *N) {
   Instruction *Br = IRB->CreateCondBr(Cmp, BBTgt, NextBB);
   Br->setDebugLoc(N->getDebugLoc());
   return Br;
+  */
 }
 
 Value* IREmitter::visitBR_CC(const SDNode *N) { llvm_unreachable("Unimplemented visit..."); return NULL; }
