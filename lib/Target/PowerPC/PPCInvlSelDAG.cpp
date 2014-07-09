@@ -98,6 +98,11 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
     	return NULL;
     	break;
     }
+    case PPC::MFLR:{
+
+    	return NULL;
+    	break;
+    }
     case PPC::STDU:{
 
     	/*
@@ -185,7 +190,7 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
     	return NULL;
     	break;
     }
-    //case PPC::CMPLWI:{
+    case PPC::CMPLWI:{
     	/*
     	 * opcode: 185
     	 *
@@ -198,7 +203,7 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
 		 	 	 if a <u (UI) then c <- 0b100
 		 	 	 else if a >u (480 || UI) then c <- 0b010
 		 	 	 else c <- 0b001
-		 	 	 CR4xBF:4xBF+3 <- c || XERSO
+		 	 	 CR4xBF:4xBF+3 <- c || XERSO	// XER is fixed point exception register
     	 *
     	 *
 		 *The contents of register (RA)32:63 zero-extended
@@ -207,9 +212,25 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
 		 comparison is placed into CR field BF.
     	 */
 
-    	//return NULL;
-    //	break;
-    //}
+    	SDValue RAConst = N->getOperand(0);
+    	SDValue UIConst = N->getOperand(1);
+
+    	//uint64_t RAConst = N->getConstantOperandVal(0);	// get sign extended value?
+    	//uint64_t UIConst = N->getConstantOperandVal(1);
+
+    	uint64_t C;
+//    	if (RAConst < UIConst)
+//    		C = 4;
+//    	else if (RAConst > UIConst)
+//    		C = 2;
+//    	else
+//    		C = 1;
+
+    	// store C in 4 bits of CR
+
+    	return NULL;
+    	break;
+    }
     case PPC::B:{
 
       SDValue Chain = N->getOperand(0);
@@ -268,9 +289,10 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
     	*/
 
       SDValue Chain = N->getOperand(0);
-      SDValue Op1 = N->getOperand(1); // const 4 - branch if false
+      //SDValue Op1 = N->getOperand(1); // const 4 - branch if false
       // page 6 of http://cache.freescale.com/files/32bit/doc/app_note/AN2491.pdf
-      SDValue Op2 = N->getOperand(2); // cond code
+      // page 30 of PowerPC User Instruction Set Architecture
+      //SDValue Op2 = N->getOperand(2); // cond code
       uint64_t Op3 = N->getConstantOperandVal(3);
       																// const * 4 for branch target offset
       																// always multiply by 4.
@@ -280,20 +302,12 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
       //SDValue Op4 = N->getOperand(4); // CTR register? implicit use/def
       ///SDValue Op5 = N->getOperand(5); // RM register? implicit use
 
-
-
-      uint64_t TarVal = N->getConstantOperandVal(1);	// this index was arbitrary... didn't compile with 1
-      SDValue tempEIP = CurDAG->getConstant(TarVal, MVT::i32);
-      //SDValue EFLAGSCFR = N->getOperand(2);
-
-
       SDLoc SL(N);
       // Calculate the Branch Target
-      SDValue TempEIPval = CurDAG->getConstant(cast<ConstantSDNode>(tempEIP)->getZExtValue(), tempEIP.getValueType());
 
-      // Condition Code is "Equal", for no good reason
-      SDValue Condition = CurDAG->getCondCode(ISD::SETEQ);
-      SDValue BrNode = CurDAG->getNode(ISD::BRCOND, SL, MVT::Other, Condition, TempEIPval, Chain);
+      // Condition Code is "LTE", based on BO
+      SDValue Condition = CurDAG->getCondCode(ISD::SETLE);
+      SDValue BrNode = CurDAG->getNode(ISD::BRCOND, SL, MVT::Other, Condition, BranchTarget, Chain);
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
 
     	return NULL;
