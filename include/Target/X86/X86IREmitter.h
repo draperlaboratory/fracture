@@ -33,7 +33,8 @@ public:
 private:
   virtual Value* visit(const SDNode *N);
   Value* visitRET(const SDNode *N);
-  Value* visitBRCOND(const SDNode *N);
+  Value* visitBRCONDBasic(const SDNode *N);
+  Value* visitBRCONDAdvanced(const SDNode *N);
 };
 
 } // end fracture namespace

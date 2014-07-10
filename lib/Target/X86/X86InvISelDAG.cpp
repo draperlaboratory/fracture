@@ -442,7 +442,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
-    case X86::JLE_1:
+    case X86::JLE_1:    //Need to add to IREMitter...
     case X86::JBE_1:{
       /**<
        * JBE_1 - Jump if Below or Equal
@@ -453,7 +453,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
-    case X86::JL_1:
+    case X86::JL_1:     //Need to add to IREMitter...
     case X86::JB_1:{
       /**<
        * JB_1 - Jump if Below
@@ -464,7 +464,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
-    case X86::JGE_1:
+    case X86::JGE_1:    //Need to add to IREMitter...
     case X86::JAE_1:{
       /**<
        * JAE_1 - Jump if Above or Equal
@@ -475,7 +475,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
-    case X86::JG_1:
+    case X86::JG_1:     //Need to add to IREMitter...
     case X86::JA_1:{
       /**<
        * JA_1 - Jump if Above
