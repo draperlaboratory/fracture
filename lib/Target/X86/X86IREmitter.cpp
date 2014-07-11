@@ -173,17 +173,19 @@ Value* X86IREmitter::visitBRCONDAdvanced(const SDNode *N) {
 
   RegisterSDNode *CMPNode = NULL;                     //Store EFLAGS for the current Compare.
   SDNode *BinOpNode = NULL;
-  uint32_t Ctr = 1;                                   //Reverse order through the graph from our current posistion
-  SDValue Chain = N->getOperand(N->getNumOperands()-Ctr);
-  while((N->getNumOperands()-Ctr) != 0){              //Get nearest CopyToReg || CopyFromReg
-    if(Chain.getOpcode() == ISD::CopyToReg || Chain.getOpcode() == ISD::CopyFromReg){
-      CMPNode = dyn_cast<RegisterSDNode>(Chain.getOperand(1).getNode());
-      if(CMPNode->getReg() == X86::EFLAGS  && Chain.getNumOperands() >= 3){           //Verify that we find the first EFLAGS Register
-        BinOpNode = Chain.getOperand(2).getNode();    //Get the math operation {add, mult, etc...}
+  SDValue Iter = N->getOperand(N->getNumOperands()-1);
+  while(Iter.getOpcode() != ISD::EntryToken){              //Get nearest CopyToReg || CopyFromReg
+    Iter.dump();
+    if(Iter.getOpcode() == ISD::CopyToReg || Iter.getOpcode() == ISD::CopyFromReg){
+      CMPNode = dyn_cast<RegisterSDNode>(Iter.getOperand(1).getNode()); //Change from EFLAGS to the output to ESI
+      if(CMPNode->getReg() == X86::EFLAGS && Iter.getOpcode() == ISD::CopyToReg && Iter.getNumOperands() == 3){           //Verify that we find the first EFLAGS Register
+        BinOpNode = Iter.getOperand(2).getNode();    //Get the math operation {add, mult, etc...}
         break;
       }
+      Iter = Iter.getOperand(0);
+    } else {
+      Iter = Iter.getOperand(Iter.getNumOperands()-1);
     }
-    Chain = N->getOperand(N->getNumOperands()-(Ctr++));
   }
 
   if(BinOpNode == NULL || CMPNode == NULL || CMPNode->getReg() != X86::EFLAGS){  //Ensure we didn't just fall through the while loop

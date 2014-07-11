@@ -143,6 +143,7 @@ StringRef IREmitter::getInstructionName(const SDNode *N) {
     if (I->getOpcode() == ISD::CopyToReg) {
       return getIndexedValueName(
         visitRegister(I->getOperand(1).getNode())->getName());
+      //FIXME - Favor the first result number.  (EFLAGS vs ESI x86)
     }
   }
   return StringRef();
