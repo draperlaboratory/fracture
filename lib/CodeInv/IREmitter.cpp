@@ -363,7 +363,14 @@ Value* IREmitter::visitSMULO(const SDNode *N) { return NULL; }
 Value* IREmitter::visitUMULO(const SDNode *N) { return NULL; }
 Value* IREmitter::visitSDIVREM(const SDNode *N) { return NULL; }
 Value* IREmitter::visitUDIVREM(const SDNode *N) { return NULL; }
-Value* IREmitter::visitAND(const SDNode *N) { return NULL; }
+Value* IREmitter::visitAND(const SDNode *N) {
+	Value* Source1 = visit(N->getOperand(0).getNode());
+	Value* Source2 = visit(N->getOperand(0).getNode());
+  StringRef BaseName = getBaseValueName(Source1->getName());
+  StringRef Name = getIndexedValueName(BaseName);
+	Value* And = IRB->CreateAnd(Source1, Source2, Name);
+	return And;
+}
 Value* IREmitter::visitOR(const SDNode *N) { return NULL; }
 Value* IREmitter::visitXOR(const SDNode *N) { return NULL; }
 Value* IREmitter::visitSHL(const SDNode *N) { return NULL; }

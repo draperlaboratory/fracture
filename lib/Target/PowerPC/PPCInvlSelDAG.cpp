@@ -100,6 +100,26 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
     }
     case PPC::MFLR:{
 
+    	/* Move from special purpose register
+    	 * opcode 467
+    	 *
+    	 * mfspr Rx,8
+    	 *
+    	 */
+
+      SDNode *C2R = NULL;
+      for (SDNode::use_iterator I = N->use_begin(), E = N->use_end(); I != E; ++I) {
+        if (I->getOpcode() == ISD::CopyToReg) {
+          C2R = *I;
+          break;
+        }
+      }
+
+      assert(C2R && "Move instruction without CopytoReg!");
+      C2R->setDebugLoc(N->getDebugLoc());
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N,0), N->getOperand(0));
+
+
     	return NULL;
     	break;
     }
@@ -214,6 +234,7 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
 
     	SDValue RAConst = N->getOperand(0);
     	SDValue UIConst = N->getOperand(1);
+      SDLoc SL(N);
 
     	//uint64_t RAConst = N->getConstantOperandVal(0);	// get sign extended value?
     	//uint64_t UIConst = N->getConstantOperandVal(1);
@@ -225,7 +246,51 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
 //    		C = 2;
 //    	else
 //    		C = 1;
+    	SDValue Temp = CurDAG->getNode(ISD::DEBUGTRAP, SL, MVT::Other, RAConst);
+    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Temp);
+    	// store C in 4 bits of CR
 
+    	return NULL;
+    	break;
+    }
+    case PPC::CMPDI:{
+    	/*
+    	 * opcode: 181
+    	 *
+    	 * two inputs: i32 copy from reg, and constant
+    	 *
+    	 * cmpdi Rx,value is comparable to cmpi 0,1,Rx,value
+    	 * cmpi BF,L,RA,SI
+    	 *
+    	 * a <- (RA)
+		 	 	 if a < EXTS(SI) then c <- 0b100
+		 	 	 else if a > EXTS(SI) then c <- 0b010
+		 	 	 else c <- 0b001
+		 	 	 CR4xBF:4xBF+3 <- c || XERSO	// XER is fixed point exception register
+    	 *
+    	 *
+		 *The contents of register RA are compared with the sign-extended
+			value of the SI field, treating the operands as signed
+			integers. The result of the comparison is placed into
+			CR field BF.
+    	 */
+
+    	SDValue RAConst = N->getOperand(0);
+    	SDValue SIConst = N->getOperand(1);
+      SDLoc SL(N);
+
+    	//uint64_t RAConst = N->getConstantOperandVal(0);	// get sign extended value?
+    	//uint64_t UIConst = N->getConstantOperandVal(1);
+
+    	uint64_t C;
+//    	if (RAConst < UIConst)
+//    		C = 4;
+//    	else if (RAConst > UIConst)
+//    		C = 2;
+//    	else
+//    		C = 1;
+    	SDValue Temp = CurDAG->getNode(ISD::DEBUGTRAP, SL, MVT::Other, RAConst);
+    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Temp);
     	// store C in 4 bits of CR
 
     	return NULL;
@@ -314,6 +379,47 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
     	break;
 
     }
+    case PPC::gBCLR:{
+    	/* Branch Conditional to Link Register
+    	 *
+    	 *
+    	 *	bclr BO,BI,BH
+    	 *
+    	 *	7 inputs, 2 outputs: i32 and chain
+    	 *
+    	 * if (64-bit mode)
+					then M <- 0
+				else M <- 32
+				if ¬BO2 then CTR <- CTR - 1
+				ctr_ok <- BO2 | ((CTRM:63 != 0) XOR BO3
+				cond_ok <- BO0 | (CRBI == BO1)
+				if ctr_ok & cond_ok then NIA <-iea LR0:61 || 0b00
+if LK then LR iea CIA + 4
+    	 *
+    	 *
+    	 *
+    	 * The BI field specifies the Condition Register bit to be
+					tested. The BO field is used to resolve the branch as
+					described in Figure 21. The BH field is used as
+					described in Figure 23. The branch target address is
+					LR0:61 || 0b00, with the high-order 32 bits of the branch
+					target address set to 0 in 32-bit mode.
+    	 *
+    	 */
+
+    	//copied from gBC
+      SDValue Chain = N->getOperand(0);
+
+      uint64_t Op3 = N->getConstantOperandVal(3);
+      SDValue BranchTarget = CurDAG->getConstant(Op3 * 4, MVT::i32);
+      SDLoc SL(N);
+
+      SDValue Condition = CurDAG->getCondCode(ISD::SETLE);
+      SDValue BrNode = CurDAG->getNode(ISD::BRCOND, SL, MVT::Other, Condition, BranchTarget, Chain);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
+
+
+    }
     case PPC::RLDICL:{
     	 /*
     	  * Rotate Left Double Word Immediate then Clear Left
@@ -332,8 +438,6 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
 					MASK(x, y) Mask having 1s in positions x through y
 					(wrapping if x > y) and 0s elsewhere
     	 */
-
-
 
       SDValue RS = N->getOperand(0);	// register x9
       SDValue SH = N->getOperand(1);	// const: 0
@@ -357,14 +461,8 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
       SDValue M = CurDAG->getConstant(C1, MVT::i64);
 
       SDValue RA = CurDAG->getNode(ISD::AND, SL, MVT::i64, R, M);
-      //ISD::OR
-      //ISD::ROTL
-      //ISD::OR
-      //getConstant
-      //ISD::AND
 
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), RA);
-
 
     	return NULL;
     	break;
