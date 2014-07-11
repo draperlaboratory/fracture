@@ -51,8 +51,9 @@ Value* X86IREmitter::visit(const SDNode *N) {
   }
 }
 
-// Note: branch conditions, by definition, only have a chain user.
-// This is why it should not be saved in a map for recall.
+//visitBRCONDBasic handles most conditional branches.  The ideas is that it will search
+//  for the CopyToRegs and look for the compare (CMP).  In situations where there isn't a
+//  compare, visitBRCONDAdvanced will step in.
 Value* X86IREmitter::visitBRCONDBasic(const SDNode *N) {
   // Get the address
   const CondCodeSDNode *Cond = dyn_cast<CondCodeSDNode>(N->getOperand(0));
@@ -146,8 +147,11 @@ Value* X86IREmitter::visitBRCONDBasic(const SDNode *N) {
   return Br;
 }
 
-// Note: branch conditions, by definition, only have a chain user.
-// This is why it should not be saved in a map for recall.
+//visitBRCONDAdvanced handles optimized conditional branches.  Often optimized
+//  conditional branches do not have compare statements - instead the use
+//  mathematical operations to set the EFLAGS register.  Once EFLAGS are set the
+//  condition can be based on specific field(s).  The two EFLAGS fields that are
+//  of specific interst are CF (Carry Flag) and ZF (Zero Flag).
 Value* X86IREmitter::visitBRCONDAdvanced(const SDNode *N) {
   // Get the address
   const CondCodeSDNode *Cond = dyn_cast<CondCodeSDNode>(N->getOperand(0));
@@ -174,16 +178,16 @@ Value* X86IREmitter::visitBRCONDAdvanced(const SDNode *N) {
   while((N->getNumOperands()-Ctr) != 0){              //Get nearest CopyToReg || CopyFromReg
     if(Chain.getOpcode() == ISD::CopyToReg || Chain.getOpcode() == ISD::CopyFromReg){
       CMPNode = dyn_cast<RegisterSDNode>(Chain.getOperand(1).getNode());
-      BinOpNode = Chain.getOperand(2).getNode();      //Get the math operation {add, mult, etc...}
-      if(CMPNode->getReg() == X86::EFLAGS){           //Verify that we find the first EFLAGS Register
+      if(CMPNode->getReg() == X86::EFLAGS  && Chain.getNumOperands() >= 3){           //Verify that we find the first EFLAGS Register
+        BinOpNode = Chain.getOperand(2).getNode();    //Get the math operation {add, mult, etc...}
         break;
       }
     }
     Chain = N->getOperand(N->getNumOperands()-(Ctr++));
   }
 
-  if(CMPNode == NULL || CMPNode->getReg() != X86::EFLAGS){  //Ensure we didn't just fall through the while loop
-    printError("X86IREmitter::visitBRCOND: Could not find EFLAGS Register...");
+  if(BinOpNode == NULL || CMPNode == NULL || CMPNode->getReg() != X86::EFLAGS){  //Ensure we didn't just fall through the while loop
+    llvm_unreachable("X86IREmitter::visitBRCONDAdvanced: Could not find EFLAGS Register or the Math Node...");
   }
 
   /*
@@ -229,10 +233,7 @@ Value* X86IREmitter::visitBRCONDAdvanced(const SDNode *N) {
   //We need to convert the context into an Integer.  That integer will be the
   //    used for the conditional statement.  The entire point of this operation
   //    is to abstract EFLAGS as a register, which means we really don't care about
-  //    the specific location of the flag, just its meaning and context so it can
-  //    be translated into IR.  This is why the ZF flag maps into our ConstIntZero
-  //    variable.  This works because the context provides the cmp instruction which
-  //    performs a subtraction; the IR for that result is stored in the variable.
+  //    the specific location of the flag, the operation that is setting it.
   ConstantInt *ConstIntZero = ConstantInt::get(IntegerType::get(*CurrentContext, 32), 0, true);
   switch(Cond->get()) {
   default:
@@ -252,18 +253,22 @@ Value* X86IREmitter::visitBRCONDAdvanced(const SDNode *N) {
   case ISD::SETGE:  //JAE_1: CF == 0
     // CF ISD::AND 1 (b1) == 0
     //Cmp = IRB->CreateICmpSGE(LHS, RHS);
+    llvm_unreachable("X86IREmitter::visitBRCONDAdvanced: SETGE Unimplemented");
     break;
   case ISD::SETLT:  //JB_1: CF == 1
     // CF ISD::AND 1 (b1) == 1
     //Cmp = IRB->CreateICmpSLT(LHS, RHS);
+    llvm_unreachable("X86IREmitter::visitBRCONDAdvanced: SETLT Unimplemented");
     break;
   case ISD::SETGT:  //JA_1: CF == 0 && ZF == 0
     // ZF ISD::AND 32 (b100000) == 0 && CF ISD::AND 1 (b1) == 0
     //Cmp = IRB->CreateICmpSGT(LHS, RHS);
+    llvm_unreachable("X86IREmitter::visitBRCONDAdvanced: SETGT Unimplemented");
     break;
   case ISD::SETLE:  //JBE_1: CF == 1 || ZF == 1
     // ZF ISD::AND 32 (b100000) == 1 && CF ISD::AND 1 (b1) == 1
     //Cmp = IRB->CreateICmpSLE(LHS, RHS);
+    llvm_unreachable("X86IREmitter::visitBRCONDAdvanced: SETLE Unimplemented");
     break;
   }
   (dyn_cast<Instruction>(Cmp))->setDebugLoc(N->getOperand(2)->getDebugLoc());

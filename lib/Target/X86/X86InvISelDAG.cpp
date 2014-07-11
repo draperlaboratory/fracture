@@ -584,7 +584,7 @@ Scope
 
       SDValue Node = CurDAG->getNode(ISD::SUB, SL, VTList, Constant, Reg);
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Node);
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), CurDAG->getUNDEF(MVT::i32));
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Node);
 
       return NULL;
       break;
