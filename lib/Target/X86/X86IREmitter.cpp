@@ -73,7 +73,7 @@ Value* X86IREmitter::visitBRCONDBasic(const SDNode *N) {
   BasicBlock *CurBB = IRB->GetInsertBlock();
 
   BasicBlock *BBTgt = Dec->getOrCreateBasicBlock(Tgt, F);
-
+/*
   SDNode *CPSR = N->getOperand(2)->getOperand(1).getNode();
   SDNode *CMPNode = NULL;
 
@@ -84,6 +84,19 @@ Value* X86IREmitter::visitBRCONDBasic(const SDNode *N) {
         CMPNode = I->getOperand(2).getNode();
       }
     }
+  }
+*/
+  SDNode *CMPNode = NULL;
+  SDValue Iter = N->getOperand(N->getNumOperands()-1);
+  while(Iter.getOpcode() != ISD::EntryToken){
+    Iter.dump();
+    if(Iter.getOpcode() == ISD::CopyToReg && Iter.getNumOperands() == 3){   //Get nearest CopyToReg
+      if(Iter.getOperand(2).getNode()->getOpcode() == X86ISD::CMP){
+        CMPNode = Iter.getOperand(2).getNode();
+        break;
+      }
+    }
+    Iter = Iter.getOperand(0);
   }
 
   if (CMPNode == NULL) {
