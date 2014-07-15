@@ -694,15 +694,17 @@ Scope
       }
 
       SDLoc SL(N);
-      SDValue LoadEBP = CurDAG->getLoad(LdType, SL, Chain, EBP, MMO);  //Load from EBP; This line has issues...
+      //SDValue LoadEBP = CurDAG->getLoad(LdType, SL, Chain, EBP, MMO);  //Load from EBP; This line has issues...
+      SDValue StoreEBP = CurDAG->getStore(Chain, SL, EBP, C1, MMO);
+      //SDValue LoadEBP = CurDAG->getStore(LdType, SL, Chain, EBP, MMO);
 
       SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::Other);
-      SDValue AddNode = CurDAG->getNode(ISD::ADD , SL, VTList, SDValue(LoadEBP.getNode(),1), LoadEBP, C1); //EBP == C1;
+      SDValue AddNode = CurDAG->getNode(ISD::ADD , SL, VTList, SDValue(StoreEBP.getNode(),1), StoreEBP, C1); //EBP == C1;
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), AddNode);
 
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), SDValue(AddNode.getNode(),1));   //Chain
 
-      FixChainOp(LoadEBP.getNode());
+      //FixChainOp(LoadEBP.getNode());
 
       return NULL;
       break;
