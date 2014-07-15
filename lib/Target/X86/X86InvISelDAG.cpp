@@ -412,6 +412,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
+    case X86::JNE_4:
     case X86::JNE_1:{
       /**<
        * JNE_1 (Jump short if Not Equal) Pseudo code
@@ -443,6 +444,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       break;
     }
     case X86::JLE_1:    //Need to add to IREMitter...
+    case X86::JBE_4:
     case X86::JBE_1:{
       /**<
        * JBE_1 - Jump if Below or Equal
@@ -465,6 +467,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       break;
     }
     case X86::JGE_1:    //Need to add to IREMitter...
+    case X86::JAE_4:
     case X86::JAE_1:{
       /**<
        * JAE_1 - Jump if Above or Equal
@@ -476,6 +479,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       break;
     }
     case X86::JG_1:     //Need to add to IREMitter...
+    case X86::JA_4:
     case X86::JA_1:{
       /**<
        * JA_1 - Jump if Above
@@ -590,12 +594,6 @@ Scope
       break;
     }
     case X86::SUB32i32:{
-      /**<
-       * Doesn't seem correct yet, 2nd output argument is mapping to first...
-       *    Makes sense based on the diagram, but not really sane...
-       *    dec fib (O0 LLVM)
-       */
-
       uint64_t C1val = N->getConstantOperandVal(0);
       SDValue C1 = CurDAG->getConstant(C1val, MVT::i32);
       SDValue C2 = N->getOperand(1);
@@ -604,6 +602,21 @@ Scope
       SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::i32);
 
       SDValue Node = CurDAG->getNode(ISD::SUB, SL, VTList, C2, C1);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Node);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Node);
+
+      return NULL;
+      break;
+    }
+    case X86::ADD32i32:{
+      uint64_t C1val = N->getConstantOperandVal(0);
+      SDValue C1 = CurDAG->getConstant(C1val, MVT::i32);
+      SDValue C2 = N->getOperand(1);
+
+      SDLoc SL(N);
+      SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::i32);
+
+      SDValue Node = CurDAG->getNode(ISD::ADD, SL, VTList, C2, C1);
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Node);
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Node);
 
