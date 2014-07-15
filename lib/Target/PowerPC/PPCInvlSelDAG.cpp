@@ -123,6 +123,31 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
     	return NULL;
     	break;
     }
+    case PPC::MTLR:{
+
+    	/* Move to special purpose register
+    	 * opcode 488
+    	 *
+    	 * mtspr Rx,8
+    	 *
+    	 */
+
+      SDNode *C2R = NULL;
+      for (SDNode::use_iterator I = N->use_begin(), E = N->use_end(); I != E; ++I) {
+        if (I->getOpcode() == ISD::CopyToReg) {
+          C2R = *I;
+          break;
+        }
+      }
+
+      assert(C2R && "Move instruction without CopytoReg!");
+      C2R->setDebugLoc(N->getDebugLoc());
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N,0), N->getOperand(0));
+
+
+    	return NULL;
+    	break;
+    }
     case PPC::STDU:{
 
     	/*
@@ -233,21 +258,31 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
     	 */
 
     	SDValue RAConst = N->getOperand(0);
-    	SDValue UIConst = N->getOperand(1);
+    	SDValue SIConst = N->getOperand(1);
       SDLoc SL(N);
 
     	//uint64_t RAConst = N->getConstantOperandVal(0);	// get sign extended value?
     	//uint64_t UIConst = N->getConstantOperandVal(1);
 
-    	uint64_t C;
-//    	if (RAConst < UIConst)
-//    		C = 4;
-//    	else if (RAConst > UIConst)
-//    		C = 2;
-//    	else
-//    		C = 1;
-    	SDValue Temp = CurDAG->getNode(ISD::DEBUGTRAP, SL, MVT::Other, RAConst);
-    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Temp);
+    	SDNode *C2RUser = NULL;
+    	for (SDNode::use_iterator S = N->use_begin(), E = N->use_end(); S != E; ++S) {
+    		if (S->getOpcode() == ISD::CopyToReg) {
+    			C2RUser = *S;
+    		}
+    	}
+    	if (C2RUser == NULL) {
+    		llvm_unreachable("Invalid CMPLWI User!");
+    	}
+    	SDValue Chain = C2RUser->getOperand(0);
+
+    	SDValue Equals = CurDAG->getSetCC(SL, MVT::i32, RAConst, SIConst, ISD::SETEQ);
+    	SDValue C2REQ = CurDAG->getCopyToReg(Chain, SL, PPC::CR7EQ, Equals);
+    	SDValue GreaterThan = CurDAG->getSetCC(SL, MVT::i32, RAConst, SIConst, ISD::SETGT);
+    	SDValue C2RGT = CurDAG->getCopyToReg(C2REQ, SL, PPC::CR7GT, GreaterThan);
+    	SDValue LessThan = CurDAG->getSetCC(SL, MVT::i32, RAConst, SIConst, ISD::SETLT);
+    	SDValue C2RLT = CurDAG->getCopyToReg(C2RGT, SL, PPC::CR7LT, LessThan);
+
+    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(C2RUser, 0), C2RLT);
     	// store C in 4 bits of CR
 
     	return NULL;
@@ -282,15 +317,25 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
     	//uint64_t RAConst = N->getConstantOperandVal(0);	// get sign extended value?
     	//uint64_t UIConst = N->getConstantOperandVal(1);
 
-    	uint64_t C;
-//    	if (RAConst < UIConst)
-//    		C = 4;
-//    	else if (RAConst > UIConst)
-//    		C = 2;
-//    	else
-//    		C = 1;
-    	SDValue Temp = CurDAG->getNode(ISD::DEBUGTRAP, SL, MVT::Other, RAConst);
-    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Temp);
+    	SDNode *C2RUser = NULL;
+    	for (SDNode::use_iterator S = N->use_begin(), E = N->use_end(); S != E; ++S) {
+    		if (S->getOpcode() == ISD::CopyToReg) {
+    			C2RUser = *S;
+    		}
+    	}
+    	if (C2RUser == NULL) {
+    		llvm_unreachable("Invalid CMPDI User!");
+    	}
+    	SDValue Chain = C2RUser->getOperand(0);
+
+    	SDValue Equals = CurDAG->getSetCC(SL, MVT::i32, RAConst, SIConst, ISD::SETEQ);
+    	SDValue C2REQ = CurDAG->getCopyToReg(Chain, SL, PPC::CR7EQ, Equals);
+    	SDValue GreaterThan = CurDAG->getSetCC(SL, MVT::i32, RAConst, SIConst, ISD::SETGT);
+    	SDValue C2RGT = CurDAG->getCopyToReg(C2REQ, SL, PPC::CR7GT, GreaterThan);
+    	SDValue LessThan = CurDAG->getSetCC(SL, MVT::i32, RAConst, SIConst, ISD::SETLT);
+    	SDValue C2RLT = CurDAG->getCopyToReg(C2RGT, SL, PPC::CR7LT, LessThan);
+
+    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(C2RUser, 0), C2RLT);
     	// store C in 4 bits of CR
 
     	return NULL;
@@ -381,7 +426,7 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
     }
     case PPC::gBCLR:{
     	/* Branch Conditional to Link Register
-    	 *
+    	 * opcode 883
     	 *
     	 *	bclr BO,BI,BH
     	 *
@@ -444,7 +489,7 @@ if LK then LR iea CIA + 4
       //SDValue MB = N->getOperand(2);	// const: 32
       SDLoc SL(N);
 
-      SDValue R = CurDAG->getNode(ISD::ROTL, SL, MVT::i64, RS, SH);
+      SDValue R = CurDAG->getNode(ISD::ROTL, SL, RS.getValueType(), RS, SH);	//breaking on this line
 
       uint64_t MBVal = N->getConstantOperandVal(2);	// get value of MB
       // TODO: MASK(x, y) Mask having 1s in positions x through y (wrapping if x > y)
