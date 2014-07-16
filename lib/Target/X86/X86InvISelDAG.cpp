@@ -612,13 +612,25 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       }
 
       SDLoc SL(N);
-      SDValue StoreEBP = CurDAG->getStore(Chain, SL, EBP, C1, MMO);
-      SDValue LoadEBP = CurDAG->getLoad(LdType, SL, SDValue(StoreEBP.getNode(),1), EBP, MMO);  //Load from EBP; This line has issues...
+      //need to add -8 to EBP
+      SDValue Incr = CurDAG->getConstant(-8, LdType);
+      SDValue NewEBP = CurDAG->getNode(ISD::ADD, SL, LdType, EBP, Incr);    //EBP += -8;
+
+      SDValue LoadEBP = CurDAG->getLoad(LdType, SL, Chain, NewEBP, MMO);  //Load from EBP; This line has issues...
 
       SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::Other);
-      SDValue AddNode = CurDAG->getNode(ISD::ADD , SL, VTList, SDValue(LoadEBP.getNode(),1), LoadEBP, C1); //EBP == C1;
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), AddNode);
+      SDValue AddNode = CurDAG->getNode(ISD::ADD , SL, VTList, SDValue(LoadEBP.getNode(),1), LoadEBP, C1);
 
+      MN = dyn_cast<MachineSDNode>(N);
+      if (MN->memoperands_empty()) {
+        errs() << "NO MACHINE OPS for CMP32mi!\n";
+      } else {
+        MMO = *(MN->memoperands_begin());
+      }
+
+      SDValue StoreEBP = CurDAG->getStore(SDValue(AddNode.getNode(),1), SL, NewEBP, C1, MMO);
+
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), AddNode);
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), SDValue(AddNode.getNode(),1));   //Chain
 
       FixChainOp(LoadEBP.getNode());
