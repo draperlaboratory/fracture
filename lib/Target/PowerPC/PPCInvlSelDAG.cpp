@@ -123,6 +123,7 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
     	return NULL;
     	break;
     }
+    case PPC::MTCTR: // mtspr 9,Rx
     case PPC::MTLR:{
 
     	/* Move to special purpose register
@@ -288,6 +289,7 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
     	return NULL;
     	break;
     }
+    case PPC::CMPLD:
     case PPC::CMPDI:{
     	/*
     	 * opcode: 181
@@ -424,6 +426,17 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
     	break;
 
     }
+//    case PPC::BCTRL:{
+//
+//    	SDValue Chain = N->getOperand(0);
+//
+//
+//
+//
+//    	return NULL;
+//    	break;
+//    }
+    case PPC::BCTR8:
     case PPC::gBCLR:{
     	/* Branch Conditional to Link Register
     	 * opcode 883
