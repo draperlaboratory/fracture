@@ -40,6 +40,8 @@ void IREmitter::EmitIR(BasicBlock *BB, SDNode *CurNode,
   for (SDNode::use_iterator I = CurNode->use_begin(), E = CurNode->use_end();
       I != E; ++I) {
     // Save any chain uses to the Nodestack (to guarantee they get evaluated)
+    //I->dump();
+    //outs() << "EVT String: " << I.getUse().getValueType().getEVTString() << "\n";
     if (I.getUse().getValueType() == MVT::Other) {
       NodeStack.push(*I);
       continue;

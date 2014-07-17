@@ -193,7 +193,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
 
       SDValue Chain = N->getOperand(0);
       SDValue EBP = N->getOperand(1);
-      SDValue C1 = N->getOperand(2);
+      //SDValue C1 = N->getOperand(2);
       //3 is NoReg
       //RegisterSDNode *NoReg3 = dyn_cast<RegisterSDNode>(N->getOperand(3).getNode());
       SDValue Cn8 = N->getOperand(4);
@@ -214,7 +214,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
 
       SDValue LoadEBP = CurDAG->getLoad(EBP.getValueType(), SL, Chain, NewEBP, MMOLoad);  //Load from EBP
 
-      SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::Other);
+      //SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::Other);
       //SDValue C2RNode = CurDAG->getNode(ISD::CopyToReg , SL, VTList, SDValue(LoadEBP.getNode(),1), LoadEBP, C1);
 
       //unsigned ImmSumStore = 0;
@@ -543,8 +543,9 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
        * dec fastfib_v2 (O1 gcc)
        */
       SDValue Reg = N->getOperand(0);
-      uint64_t C1val = N->getConstantOperandVal(1);
-      SDValue Constant = CurDAG->getConstant(C1val, MVT::i32);
+      SDValue Constant = N->getOperand(1);
+      //uint64_t C1val = N->getConstantOperandVal(1);
+      //SDValue Constant = CurDAG->getConstant(C1val, MVT::i32);
       SDLoc SL(N);
       SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::i32);
 
@@ -630,13 +631,13 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
     }
     case X86::ADD32mi8:{
       /**<
-       * 6 inputs & 2 outputs (i32, ch) - based heavily on CMP32mi
-       *
-       * ADD32mi Manual Description
+       * 7 inputs: Chain, EBP, Constant<1>, NoReg<i1>, Constant<-12>, NoReg<i1>, Constant<1>,
+       * 2 outputs: i32, Chain
+       * ADD32mi8 Manual Description
        *
        */
 
-      EVT LdType = N->getValueType(0);
+      //EVT LdType = N->getValueType(0);
       SDValue Chain = N->getOperand(0);
       SDValue EBP = N->getOperand(1);
       SDValue C1 = N->getOperand(2);
@@ -653,10 +654,10 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
 
       SDLoc SL(N);
       //need to add -8 to EBP
-      SDValue Incr = CurDAG->getConstant(-8, LdType);
-      SDValue NewEBP = CurDAG->getNode(ISD::ADD, SL, LdType, EBP, Incr);    //EBP += -8;
+      SDValue Incr = CurDAG->getConstant(-8, EBP.getValueType());
+      SDValue NewEBP = CurDAG->getNode(ISD::ADD, SL, EBP.getValueType(), EBP, Incr);    //EBP += -8;
 
-      SDValue LoadEBP = CurDAG->getLoad(LdType, SL, Chain, NewEBP, MMOLoad);  //Load from EBP
+      SDValue LoadEBP = CurDAG->getLoad(EBP.getValueType(), SL, Chain, NewEBP, MMOLoad);  //Load from EBP
 
       SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::Other);
       SDValue AddNode = CurDAG->getNode(ISD::ADD , SL, VTList, SDValue(LoadEBP.getNode(),1), LoadEBP, C1);
