@@ -603,32 +603,25 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
           SDValue C10 = N->getOperand(6);
        */
 
-      const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
-      MachineMemOperand *MMO = NULL;        //Basically a NOP
-      if (MN->memoperands_empty()) {
-        errs() << "NO MACHINE OPS for CMP32mi!\n";
-      } else {
-        MMO = *(MN->memoperands_begin());
-      }
+      unsigned ImmSumLoad = 0;
+      MachineMemOperand *MMOLoad = new MachineMemOperand(MachinePointerInfo(0, ImmSumLoad),
+          MachineMemOperand::MOLoad, 4, 0);
 
       SDLoc SL(N);
       //need to add -8 to EBP
       SDValue Incr = CurDAG->getConstant(-8, LdType);
       SDValue NewEBP = CurDAG->getNode(ISD::ADD, SL, LdType, EBP, Incr);    //EBP += -8;
 
-      SDValue LoadEBP = CurDAG->getLoad(LdType, SL, Chain, NewEBP, MMO);  //Load from EBP; This line has issues...
+      SDValue LoadEBP = CurDAG->getLoad(LdType, SL, Chain, NewEBP, MMOLoad);  //Load from EBP; This line has issues...
 
       SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::Other);
       SDValue AddNode = CurDAG->getNode(ISD::ADD , SL, VTList, SDValue(LoadEBP.getNode(),1), LoadEBP, C1);
 
-      MN = dyn_cast<MachineSDNode>(N);
-      if (MN->memoperands_empty()) {
-        errs() << "NO MACHINE OPS for CMP32mi!\n";
-      } else {
-        MMO = *(MN->memoperands_begin());
-      }
+      unsigned ImmSumStore = 0;
+      MachineMemOperand *MMOStore = new MachineMemOperand(MachinePointerInfo(0, ImmSumStore),
+          MachineMemOperand::MOStore, 4, 0);
 
-      SDValue StoreEBP = CurDAG->getStore(SDValue(AddNode.getNode(),1), SL, NewEBP, C1, MMO);
+      SDValue StoreEBP = CurDAG->getStore(SDValue(AddNode.getNode(),1), SL, NewEBP, C1, MMOStore);
 
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), AddNode);
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), SDValue(AddNode.getNode(),1));   //Chain
