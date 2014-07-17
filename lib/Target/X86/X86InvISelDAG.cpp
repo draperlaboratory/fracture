@@ -238,8 +238,9 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
        *    more easily handled later on.
        */
       SDValue Chain = N->getOperand(0);
-      uint64_t TarVal = N->getConstantOperandVal(1);
-      SDValue Target = CurDAG->getConstant(TarVal, MVT::i32);
+      SDValue Target = N->getOperand(1);
+      //uint64_t TarVal = N->getConstantOperandVal(1);
+      //SDValue Target = CurDAG->getConstant(TarVal, MVT::i32);
       //SDValue noReg = N->getOperand(2);
 
       SDLoc SL(N);
@@ -524,8 +525,9 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       //Original logic if differences are a concern.
 
       SDValue Chain = N->getOperand(0);
-      uint64_t TarVal = N->getConstantOperandVal(1);
-      SDValue tempEIP = CurDAG->getConstant(TarVal, MVT::i32);
+      SDValue tempEIP = N->getOperand(1);
+      //uint64_t TarVal = N->getConstantOperandVal(1);
+      //SDValue tempEIP = CurDAG->getConstant(TarVal, MVT::i32);
 
       SDLoc SL(N);
       // Calculate the Branch Target
@@ -557,8 +559,9 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       break;
     }
     case X86::SUB32i32:{
-      uint64_t C1val = N->getConstantOperandVal(0);
-      SDValue C1 = CurDAG->getConstant(C1val, MVT::i32);
+      //uint64_t C1val = N->getConstantOperandVal(0);
+      //SDValue C1 = CurDAG->getConstant(C1val, MVT::i32);
+      SDValue C1 = N->getOperand(1);
       SDValue C2 = N->getOperand(1);
 
       SDLoc SL(N);
@@ -572,8 +575,9 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       break;
     }
     case X86::ADD32i32:{
-      uint64_t C1val = N->getConstantOperandVal(0);
-      SDValue C1 = CurDAG->getConstant(C1val, MVT::i32);
+      //uint64_t C1val = N->getConstantOperandVal(0);
+      //SDValue C1 = CurDAG->getConstant(C1val, MVT::i32);
+      SDValue C1 = N->getOperand(1);
       SDValue C2 = N->getOperand(1);
 
       SDLoc SL(N);
@@ -654,8 +658,8 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
 
       SDLoc SL(N);
       //need to add -8 to EBP
-      SDValue Incr = CurDAG->getConstant(-8, EBP.getValueType());
-      SDValue NewEBP = CurDAG->getNode(ISD::ADD, SL, EBP.getValueType(), EBP, Incr);    //EBP += -8;
+      //SDValue Incr = CurDAG->getConstant(-8, EBP.getValueType());
+      SDValue NewEBP = CurDAG->getNode(ISD::ADD, SL, EBP.getValueType(), EBP, C1);    //EBP += -8;
 
       SDValue LoadEBP = CurDAG->getLoad(EBP.getValueType(), SL, Chain, NewEBP, MMOLoad);  //Load from EBP
 
@@ -810,7 +814,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
        */
 
       SDValue EDI = N->getOperand(0);
-      SDValue ECX = N->getOperand(0);
+      SDValue ECX = N->getOperand(1);   //Was 0 - looked like a mistake...
 
       SDLoc SL(N);
       SDValue MulOut = CurDAG->getNode(ISD::MUL , SL, MVT::i32, EDI, ECX); //EDI * ECX;
