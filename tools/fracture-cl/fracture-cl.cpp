@@ -332,11 +332,11 @@ static void runDecompileCommand(std::vector<std::string> &CommandLine) {
       return;
     }
   }
-
-  if (Address == 0) {
-    errs() << "runDecompileCommand: invalid address or function name.\n";
-    return;
-  }
+//  Commenting this out so raw binaries can be decompiled at 0x0
+//  if (Address == 0) {
+//    errs() << "runDecompileCommand: invalid address or function name.\n";
+//    return;
+//  }
 
   DEC->setViewMCDAGs(ViewMachineDAGs);
   DEC->setViewIRDAGs(ViewIRDAGs);
@@ -379,10 +379,11 @@ static void runDisassembleCommand(std::vector<std::string> &CommandLine) {
     }
   }
 
-  if (Address == 0) {
-    errs() << "runDisassemblerCommand: invalid address or function name.\n";
-    return;
-  }
+//  Commenting this out so raw binaries can be disassembled at 0x0
+//  if (Address == 0) {
+//    errs() << "runDisassemblerCommand: invalid address or function name.\n";
+//    return;
+//  }
 
   formatted_raw_ostream Out(outs(), false);
   Out << "Address: " << Address << "\nNumInstrs: " << NumInstrs << "\n";
