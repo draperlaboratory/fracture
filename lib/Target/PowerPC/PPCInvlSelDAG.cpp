@@ -149,6 +149,50 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
     	return NULL;
     	break;
     }
+    case PPC::LDU:{
+    	/* load doubleword with update
+    	// opcode: 396
+    	 *
+    	 * ldu RT,DS(RA)
+    	 *
+    	 * EA <- (RA) + EXTS(DS || 0b00)
+					RT <- MEM(EA, 8)
+					RA <- EA
+
+				Let the effective address (EA) be the sum
+					(RA)+ (DS||0b00). The doubleword in storage
+					addressed by EA is loaded into RT.
+					EA is placed into register RA.
+					If RA=0 or RA=RT, the instruction form is invalid.
+    	 *
+    	 */
+
+    	SDValue Chain = N->getOperand(0);
+    	SDValue RT = N->getOperand(1);	// const -8, 32bit
+    	SDValue DS = N->getOperand(2);	// reg r31, 32bit
+
+      const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
+      MachineMemOperand *MMO = NULL;
+      if (MN->memoperands_empty()) {
+        errs() << "NO MACHINE OPS for LEAVE!\n";
+      } else {
+      	MMO = new MachineMemOperand(
+      			MachinePointerInfo(0, 0), MachineMemOperand::MOStore, 4, 0);	// need 8bytes for ppc64
+      }
+
+      SDLoc SL(N);
+
+    	SDValue EA = CurDAG->getNode(ISD::ADD, SL, MVT::i32, RT, DS);
+
+      SDValue Load = CurDAG->getStore(Chain, SL, DS, EA, MMO);	// should be a getLoad, probably
+
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Load);
+    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), EA);   //Chain
+      FixChainOp(Load.getNode());
+
+    	return NULL;
+    	break;
+    }
     case PPC::STDU:{
 
     	/*
@@ -290,6 +334,9 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
     	break;
     }
     case PPC::CMPLD:
+    case PPC::CMPWI:
+    case PPC::CMPD:
+    case PPC::CMPLW:
     case PPC::CMPDI:{
     	/*
     	 * opcode: 181
@@ -357,6 +404,8 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
     	return NULL;
     	break;
     }
+    case PPC::BCTR:
+    case PPC::BCTRL:
     case PPC::BL:{
     	// opcode 161
     	//TODO:LR <-iea CIA + 4
@@ -374,6 +423,7 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
     	break;
 
     }
+    case PPC::gBCL:
     case PPC::gBC:{
     	/* opcode 877
 
@@ -426,16 +476,6 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
     	break;
 
     }
-//    case PPC::BCTRL:{
-//
-//    	SDValue Chain = N->getOperand(0);
-//
-//
-//
-//
-//    	return NULL;
-//    	break;
-//    }
     case PPC::BCTR8:
     case PPC::gBCLR:{
     	/* Branch Conditional to Link Register
