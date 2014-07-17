@@ -191,13 +191,18 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       //6 inputs: Chain, EBP(i32), Constant<1>, NoReg(i1), Constant<-8>, NoReg(i1)
       //2 outputs: i32, Chain
 
-      EVT LdType = N->getValueType(0);
       SDValue Chain = N->getOperand(0);
       SDValue EBP = N->getOperand(1);
       SDValue C1 = N->getOperand(2);
       //3 is NoReg
+      RegisterSDNode *NoReg3 = dyn_cast<RegisterSDNode>(N->getOperand(3).getNode());
       SDValue Cn8 = N->getOperand(4);
       //5 is NoReg
+      RegisterSDNode *NoReg5 = dyn_cast<RegisterSDNode>(N->getOperand(5).getNode());
+
+      if(NoReg3->getReg() != X86::NoRegister || NoReg5->getReg() != X86::NoRegister){
+        llvm_unreachable("X86InvlSelDAG MOV32rm: NoReg not mapping properly...");
+      }
 
       unsigned ImmSumLoad = 0;
       MachineMemOperand *MMOLoad = new MachineMemOperand(MachinePointerInfo(0, ImmSumLoad),
@@ -205,21 +210,21 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
 
       SDLoc SL(N);
       //need to add -8 to EBP
-      SDValue NewEBP = CurDAG->getNode(ISD::ADD, SL, LdType, EBP, Cn8);    //EBP += -8;
+      SDValue NewEBP = CurDAG->getNode(ISD::ADD, SL, EBP.getValueType(), EBP, Cn8);    //EBP += -8;
 
-      SDValue LoadEBP = CurDAG->getLoad(LdType, SL, Chain, NewEBP, MMOLoad);  //Load from EBP
+      SDValue LoadEBP = CurDAG->getLoad(EBP.getValueType(), SL, Chain, NewEBP, MMOLoad);  //Load from EBP
 
       SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::Other);
-      SDValue C2RNode = CurDAG->getNode(ISD::CopyToReg , SL, VTList, SDValue(LoadEBP.getNode(),1), LoadEBP, C1);
+      //SDValue C2RNode = CurDAG->getNode(ISD::CopyToReg , SL, VTList, SDValue(LoadEBP.getNode(),1), LoadEBP, C1);
 
-      unsigned ImmSumStore = 0;
-      MachineMemOperand *MMOStore = new MachineMemOperand(MachinePointerInfo(0, ImmSumStore),
-          MachineMemOperand::MOStore, 4, 0);
+      //unsigned ImmSumStore = 0;
+      //MachineMemOperand *MMOStore = new MachineMemOperand(MachinePointerInfo(0, ImmSumStore),
+      //    MachineMemOperand::MOStore, 4, 0);
 
-      SDValue StoreEBP = CurDAG->getStore(SDValue(C2RNode.getNode(),1), SL, NewEBP, C1, MMOStore);
+      //SDValue StoreEBP = CurDAG->getStore(SDValue(C2RNode.getNode(),1), SL, NewEBP, C1, MMOStore);
 
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), C2RNode);
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), SDValue(StoreEBP.getNode(),1));   //Chain
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), LoadEBP);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), SDValue(LoadEBP.getNode(),1));   //Chain
 
       FixChainOp(LoadEBP.getNode());
 
