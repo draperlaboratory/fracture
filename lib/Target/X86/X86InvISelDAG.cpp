@@ -195,14 +195,14 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       SDValue EBP = N->getOperand(1);
       SDValue C1 = N->getOperand(2);
       //3 is NoReg
-      RegisterSDNode *NoReg3 = dyn_cast<RegisterSDNode>(N->getOperand(3).getNode());
+      //RegisterSDNode *NoReg3 = dyn_cast<RegisterSDNode>(N->getOperand(3).getNode());
       SDValue Cn8 = N->getOperand(4);
       //5 is NoReg
-      RegisterSDNode *NoReg5 = dyn_cast<RegisterSDNode>(N->getOperand(5).getNode());
+      //RegisterSDNode *NoReg5 = dyn_cast<RegisterSDNode>(N->getOperand(5).getNode());
 
-      if(NoReg3->getReg() != X86::NoRegister || NoReg5->getReg() != X86::NoRegister){
-        llvm_unreachable("X86InvlSelDAG MOV32rm: NoReg not mapping properly...");
-      }
+      //if(NoReg3->getReg() != X86::NoRegister || NoReg5->getReg() != X86::NoRegister){
+      //  llvm_unreachable("X86InvlSelDAG MOV32rm: NoReg not mapping properly...");
+      //}
 
       unsigned ImmSumLoad = 0;
       MachineMemOperand *MMOLoad = new MachineMemOperand(MachinePointerInfo(0, ImmSumLoad),
