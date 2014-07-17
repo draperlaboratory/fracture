@@ -24,18 +24,18 @@ namespace fracture {
 
 
 //Coppied these from https://github.com/llvm-mirror/llvm/blob/f65712bfe35a038e5895ffc859bcf43fda35a8fd/lib/Target/ARM/MCTargetDesc/ARMAddressingModes.h#L413
-static inline unsigned getAM2Offset(unsigned AM2Opc) {
-  return AM2Opc & ((1 << 12)-1);
-}
-static inline unsigned getAM2Op(unsigned AM2Opc) {
-  return ((AM2Opc >> 12) & 1) ? 1 : 0;
-}
-static inline unsigned getAM2ShiftOpc(unsigned AM2Opc) {
-  return ((AM2Opc >> 13) & 7);
-}
-static inline unsigned getAM2IdxMode(unsigned AM2Opc) {
-  return (AM2Opc >> 16);
-}
+//static inline unsigned getAM2Offset(unsigned AM2Opc) {
+//  return AM2Opc & ((1 << 12)-1);
+//}
+//static inline unsigned getAM2Op(unsigned AM2Opc) {
+//  return ((AM2Opc >> 12) & 1) ? 1 : 0;
+//}
+//static inline unsigned getAM2ShiftOpc(unsigned AM2Opc) {
+//  return ((AM2Opc >> 13) & 7);
+//}
+//static inline unsigned getAM2IdxMode(unsigned AM2Opc) {
+//  return (AM2Opc >> 16);
+//}
 
 
 
