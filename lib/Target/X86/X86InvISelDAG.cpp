@@ -652,8 +652,8 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
           SDValue C10 = N->getOperand(6);
        */
 
-      unsigned ImmSumLoad = 0;
-      MachineMemOperand *MMOLoad = new MachineMemOperand(MachinePointerInfo(0, ImmSumLoad),
+      unsigned ImmSum = 0;
+      MachineMemOperand *MMOLoad = new MachineMemOperand(MachinePointerInfo(0, ImmSum),
           MachineMemOperand::MOLoad, 4, 0);
 
       SDLoc SL(N);
@@ -666,8 +666,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::Other);
       SDValue AddNode = CurDAG->getNode(ISD::ADD , SL, VTList, SDValue(LoadEBP.getNode(),1), LoadEBP, C1);
 
-      unsigned ImmSumStore = 0;
-      MachineMemOperand *MMOStore = new MachineMemOperand(MachinePointerInfo(0, ImmSumStore),
+      MachineMemOperand *MMOStore = new MachineMemOperand(MachinePointerInfo(0, ImmSum),
           MachineMemOperand::MOStore, 4, 0);
 
       SDValue StoreEBP = CurDAG->getStore(SDValue(AddNode.getNode(),1), SL, NewEBP, C1, MMOStore);
@@ -676,6 +675,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), SDValue(StoreEBP.getNode(),1));   //Chain
 
       FixChainOp(LoadEBP.getNode());
+      FixChainOp(StoreEBP.getNode());
 
       return NULL;
       break;
@@ -715,6 +715,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), SDValue(StoreEBP.getNode(),1));   //Chain
 
       FixChainOp(LoadEBP.getNode());
+      FixChainOp(StoreEBP.getNode());
 
       return NULL;
       break;
