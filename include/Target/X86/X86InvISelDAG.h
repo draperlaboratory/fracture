@@ -41,6 +41,7 @@ public:
 
   SDNode* InvertCode(SDNode *N);
   SDNode* Transmogrify(SDNode *N);
+  bool OpOnLoad(SDNode *N, unsigned Opcode, SDValue Chain, SDValue EBP, SDValue BaseOffset, SDValue MathOp);
   bool JumpOnCondition(SDNode *N, ISD::CondCode cond);
   SDValue ConvertNoRegToZero(const SDValue N);
 private:

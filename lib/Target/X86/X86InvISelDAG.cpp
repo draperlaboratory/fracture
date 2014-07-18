@@ -355,15 +355,21 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       break;
     }
     case X86::CMP32rm:{
-      EVT LdType = N->getValueType(0);
+      /*
+       * 7 inputs: Chain, EAX (i32), EBP (i32), Constant <1>, NoReg(i1), Constant(-12), NoReg(i1)
+       * 2 outputs: i32, Chain
+       * 08048616:   3B 45 F4                            cmpl    -0xc(%ebp), %eax
+       */
+      //EVT LdType = N->getValueType(0);
       SDValue Chain = N->getOperand(0);
       SDValue EAX = N->getOperand(1);
       SDValue EBP = N->getOperand(2);
+      SDValue Cn12 = N->getOperand(5);
 
       /*
       SDValue C1 = N->getOperand(3);
       SDValue NoReg1 = N->getOperand(4);
-      SDValue C2 = N->getOperand(5);
+
       SDValue NoReg2 = N->getOperand(5);
        */
 
@@ -376,15 +382,16 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       }
 
       SDLoc SL(N);
-      SDValue LoadEBP = CurDAG->getLoad(LdType, SL, Chain, EBP, MMO);  //Load from EBP
+      SDValue AddrEBP = CurDAG->getNode(ISD::ADD, SL, EBP.getValueType(), EBP, Cn12);
+      SDValue ValEBP = CurDAG->getLoad(EBP.getValueType(), SL, Chain, AddrEBP, MMO);  //Load from EBP
 
       SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::Other);
-      SDValue NewESP = CurDAG->getNode(X86ISD::CMP , SL, VTList, SDValue(LoadEBP.getNode(),1), EAX, LoadEBP); //EAX == EBP;
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), NewESP);
+      SDValue NodeCMP = CurDAG->getNode(X86ISD::CMP , SL, VTList, SDValue(ValEBP.getNode(),1), EAX, ValEBP); //EAX == EBP;
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), NodeCMP);
 
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), SDValue(NewESP.getNode(),1));   //Chain
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), SDValue(NodeCMP.getNode(),1));   //Chain
 
-      FixChainOp(LoadEBP.getNode());
+      FixChainOp(ValEBP.getNode());
 
       return NULL;
       break;
@@ -598,7 +605,6 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       SDValue Chain = N->getOperand(0);
       SDValue EAX = N->getOperand(1);
       SDValue EBP = N->getOperand(2);
-
       /*
       SDValue C1 = N->getOperand(3);
       SDValue NoReg1 = N->getOperand(4);
@@ -637,6 +643,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       /**<
        * 7 inputs: Chain, EBP, Constant<1>, NoReg<i1>, Constant<-12>, NoReg<i1>, Constant<1>,
        * 2 outputs: i32, Chain
+       * 0804860C:   83 45 F4 01                         addl    $0x1, -0xc(%ebp)
        * ADD32mi8 Manual Description
        *
        */
@@ -645,38 +652,39 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       SDValue Chain = N->getOperand(0);
       SDValue EBP = N->getOperand(1);
       SDValue C1 = N->getOperand(2);
+      SDValue Cn12 = N->getOperand(4);
       /*
-          SDValue NoReg1 = N->getOperand(3);
-          SDValue C8 = N->getOperand(4);
-          SDValue NoReg2 = N->getOperand(5);
-          SDValue C10 = N->getOperand(6);
+      SDValue NoReg1 = N->getOperand(3);
+      SDValue NoReg2 = N->getOperand(5);
+      SDValue C3 = N->getOperand(6);
        */
 
-      unsigned ImmSum = 0;
-      MachineMemOperand *MMOLoad = new MachineMemOperand(MachinePointerInfo(0, ImmSum),
+      OpOnLoad(N, ISD::ADD, Chain, EBP, Cn12, C1);
+
+      /*
+      unsigned ImmSumLoad = 0;
+      MachineMemOperand *MMOLoad = new MachineMemOperand(MachinePointerInfo(0, ImmSumLoad),
           MachineMemOperand::MOLoad, 4, 0);
 
       SDLoc SL(N);
-      //need to add -8 to EBP
-      //SDValue Incr = CurDAG->getConstant(-8, EBP.getValueType());
-      SDValue NewEBP = CurDAG->getNode(ISD::ADD, SL, EBP.getValueType(), EBP, C1);    //EBP += -8;
 
-      SDValue LoadEBP = CurDAG->getLoad(EBP.getValueType(), SL, Chain, NewEBP, MMOLoad);  //Load from EBP
+      SDValue AddrEBP = CurDAG->getNode(ISD::ADD, SL, EBP.getValueType(), EBP, Cn12);    //EBP += -8;  EBP.getValueType()
+      SDValue ValEBP = CurDAG->getLoad(EBP.getValueType(), SL, Chain, AddrEBP, MMOLoad);  //Load from EBP
 
-      SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::Other);
-      SDValue AddNode = CurDAG->getNode(ISD::ADD , SL, VTList, SDValue(LoadEBP.getNode(),1), LoadEBP, C1);
+      SDValue AddNode = CurDAG->getNode(ISD::ADD , SL, EBP.getValueType(), ValEBP, C1);
 
-      MachineMemOperand *MMOStore = new MachineMemOperand(MachinePointerInfo(0, ImmSum),
+      unsigned ImmSumStore = 0;
+      MachineMemOperand *MMOStore = new MachineMemOperand(MachinePointerInfo(0, ImmSumStore),
           MachineMemOperand::MOStore, 4, 0);
 
-      SDValue StoreEBP = CurDAG->getStore(SDValue(AddNode.getNode(),1), SL, NewEBP, C1, MMOStore);
+      SDValue StoreEBP = CurDAG->getStore(SDValue(ValEBP.getNode(),1), SL, ValEBP, Cn12, MMOStore);
 
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), StoreEBP);   //Chain
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), AddNode);
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), SDValue(StoreEBP.getNode(),1));   //Chain
 
-      FixChainOp(LoadEBP.getNode());
+      FixChainOp(ValEBP.getNode());
       FixChainOp(StoreEBP.getNode());
-
+      */
       return NULL;
       break;
     }
@@ -684,39 +692,41 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       //7 inputs: Chain, EBP(i32), Constant<1>, noreg(i1), Constant -8, noreg(i1), EAX(i32)
       //2 outputs: i32, Chain
 
-      EVT LdType = N->getValueType(0);
+      //EVT LdType = N->getValueType(0);
       SDValue Chain = N->getOperand(0);
       SDValue EBP = N->getOperand(1);
-      SDValue C1 = N->getOperand(2);    //could also be an EAX dup...
+      //SDValue C1 = N->getOperand(2);    //could also be an EAX dup...
       //3 is noReg
       SDValue Cn8 = N->getOperand(4);   //Constant<-8>
       //5 is noReg
-      //SDValue EAX = N->getOperand(6);
+      SDValue EAX = N->getOperand(6);
 
+      OpOnLoad(N, ISD::ADD, Chain, EBP, Cn8, EAX);
+
+      /*
       unsigned ImmSumLoad = 0;
       MachineMemOperand *MMOLoad = new MachineMemOperand(MachinePointerInfo(0, ImmSumLoad),
           MachineMemOperand::MOLoad, 4, 0);
 
       SDLoc SL(N);
 
-      SDValue NewEBP = CurDAG->getNode(ISD::ADD, SL, LdType, EBP, Cn8);    //EBP += -8;
-      SDValue LoadEBP = CurDAG->getLoad(LdType, SL, Chain, NewEBP, MMOLoad);  //Load from EBP
+      SDValue AddrEBP = CurDAG->getNode(ISD::ADD, SL, EBP.getValueType(), EBP, Cn8);    //EBP += -8;  EBP.getValueType()
+      SDValue ValEBP = CurDAG->getLoad(EBP.getValueType(), SL, Chain, AddrEBP, MMOLoad);  //Load from EBP
 
-      SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::Other);
-      SDValue AddNode = CurDAG->getNode(ISD::ADD , SL, VTList, SDValue(LoadEBP.getNode(),1), LoadEBP, C1);
+      SDValue AddNode = CurDAG->getNode(ISD::ADD , SL, EBP.getValueType(), ValEBP, EAX);
 
       unsigned ImmSumStore = 0;
       MachineMemOperand *MMOStore = new MachineMemOperand(MachinePointerInfo(0, ImmSumStore),
           MachineMemOperand::MOStore, 4, 0);
 
-      SDValue StoreEBP = CurDAG->getStore(SDValue(AddNode.getNode(),1), SL, NewEBP, C1, MMOStore);
+      SDValue StoreEBP = CurDAG->getStore(SDValue(ValEBP.getNode(),1), SL, ValEBP, Cn8, MMOStore);
 
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), StoreEBP);   //Chain
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), AddNode);
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), SDValue(StoreEBP.getNode(),1));   //Chain
 
-      FixChainOp(LoadEBP.getNode());
+      FixChainOp(ValEBP.getNode());
       FixChainOp(StoreEBP.getNode());
-
+      */
       return NULL;
       break;
     }
@@ -905,6 +915,32 @@ Scope
   return TheRes;
 }
 
+bool X86InvISelDAG::OpOnLoad(SDNode *N, unsigned Opcode, SDValue Chain, SDValue EBP, SDValue BaseOffset, SDValue MathOp){
+  unsigned ImmSum = 0;
+  MachineMemOperand *MMOLoad = new MachineMemOperand(MachinePointerInfo(0, ImmSum),
+      MachineMemOperand::MOLoad, 4, 0);
+
+  SDLoc SL(N);
+
+  SDValue AddrEBP = CurDAG->getNode(ISD::ADD, SL, EBP.getValueType(), EBP, BaseOffset);    //EBP += -8;  EBP.getValueType()
+  SDValue ValEBP = CurDAG->getLoad(EBP.getValueType(), SL, Chain, AddrEBP, MMOLoad);  //Load from EBP
+
+  SDValue AddNode = CurDAG->getNode(Opcode, SL, EBP.getValueType(), ValEBP, MathOp);
+
+  MachineMemOperand *MMOStore = new MachineMemOperand(MachinePointerInfo(0, ImmSum),
+      MachineMemOperand::MOStore, 4, 0);
+
+  SDValue StoreEBP = CurDAG->getStore(SDValue(ValEBP.getNode(),1), SL, AddNode, AddrEBP, MMOStore);
+
+  CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), AddNode);
+  CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), StoreEBP);   //Chain
+
+  FixChainOp(ValEBP.getNode());
+  FixChainOp(StoreEBP.getNode());
+
+  return true;
+}
+
 /*! \brief JumpOnCondition Jump on a specific condition.
  *
  *  This method applies when a Jump opcode has a condition and three inputs.
@@ -955,4 +991,4 @@ SDValue X86InvISelDAG::ConvertNoRegToZero(const SDValue N){
 }
 
 
-}
+} //End namespace fracture

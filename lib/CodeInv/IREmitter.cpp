@@ -289,6 +289,10 @@ Value* IREmitter::visitCopyToReg(const SDNode *N) {
     errs() << "Null values on CopyToReg, skipping!\n";
     return NULL;
   }
+  //errs() << "V:\n";
+  //V->dump();
+  //errs() << "RegVal:\n";
+  //RegVal->dump();
   Instruction* Res = IRB->CreateStore(V, RegVal);
   VisitMap[N] = Res;
   Res->setDebugLoc(N->getDebugLoc());
@@ -486,7 +490,13 @@ Value* IREmitter::visitSTORE(const SDNode *N) {
   StringRef Name = getIndexedValueName(getBaseValueName(Addr->getName()));
 
   if (!Addr->getType()->isPointerTy()) {
+    //errs() << "-----Dump1\n";
+    //Addr->dump();
+    //N->getDebugLoc().dump(getGlobalContext());
     Addr = IRB->CreateIntToPtr(Addr, Addr->getType()->getPointerTo(), Name);
+    //errs() << "-----Dump2\n";
+    //Addr->dump();
+    //N->getDebugLoc().dump(getGlobalContext());
     (dyn_cast<Instruction>(Addr))->setDebugLoc(N->getDebugLoc());
   }
 
