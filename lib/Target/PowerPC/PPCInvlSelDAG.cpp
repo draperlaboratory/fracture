@@ -280,6 +280,21 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
     	return NULL;
     	break;
     }
+    case PPC::SUBF:{
+    	//subtract from
+    	// swap args to be a SUB
+
+    	SDLoc SL(N);
+    	SDValue Subtractor = N->getOperand(1);
+    	SDValue Subtractee = N->getOperand(0);
+
+    	SDValue Sub = CurDAG->getNode(ISD::SUB, SL, MVT::i32, Subtractor, Subtractee);
+
+    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Sub);
+
+    	return NULL;
+    	break;
+    }
     case PPC::CMPLWI:{
     	/*
     	 * opcode: 185
@@ -334,6 +349,7 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
     	break;
     }
     case PPC::CMPLD:
+    case PPC::CMPLDI:
     case PPC::CMPWI:
     case PPC::CMPD:
     case PPC::CMPLW:
@@ -516,8 +532,10 @@ if LK then LR iea CIA + 4
       SDValue BrNode = CurDAG->getNode(ISD::BRCOND, SL, MVT::Other, Condition, BranchTarget, Chain);
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
 
-
+      return NULL;
+      break;
     }
+    case PPC::RLDICR:
     case PPC::RLDICL:{
     	 /*
     	  * Rotate Left Double Word Immediate then Clear Left
