@@ -442,6 +442,19 @@ SelectionDAG* Decompiler::createDAGFromMachineBasicBlock(
       Ops.insert(Ops.begin(), prevNode);
     }
 
+    if(ResultTypes.size() == 0){
+      errs() << "Dumping I: \tOpCode: " << OpCode << "\tSize " << ResultTypes.size() << "\n";
+      I->dump();
+      //Need to do an Assert on ResultTypes...
+      //ResultTys[0], ResultTys.size(), Index < Length
+      //ResultTypes.size()
+
+      SDValue CFRNode = DAG->getNode(ISD::CopyFromReg , Loc, MVT::i32, 1);
+      SDValue C2RNode = DAG->getNode(ISD::CopyToReg , Loc, MVT::i32, CFRNode, 1);
+
+      DAG->ReplaceAllUsesOfValueWith(prevNode, C2RNode);
+    }
+
     MachineSDNode *MSD = DAG->getMachineNode(OpCode, Loc, ResultTypes, Ops);
     MSD->setDebugLoc(I->getDebugLoc());
     MSD->setMemRefs(I->memoperands_begin(), I->memoperands_end());
@@ -457,12 +470,12 @@ SelectionDAG* Decompiler::createDAGFromMachineBasicBlock(
       Deps[Defs[i]->getReg()].second = prevNode;
       // Add CopyToReg for every register definition
       SDValue CTR = DAG->getCopyToReg(prevNode, Loc, Defs[i]->getReg(),
-        SDValue(MSD, i));
+          SDValue(MSD, i));
       CTR.getNode()->setDebugLoc(I->getDebugLoc());
       prevNode = CTR;
     }
   }
-
+}
   DAG->setRoot(prevNode);
 
   return DAG;

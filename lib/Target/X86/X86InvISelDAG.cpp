@@ -161,7 +161,10 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
-    case X86::MOV32ri:
+    //case X86::MOV32ri:
+      /**<
+       *
+       */
     case X86::MOV32rr:{
       /**<
        * MOV32rr notes
@@ -863,6 +866,13 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
+    //case X86::NOOPW:  Working to handle NOP in the decompiler.  Looks to be a similar problem on multiple platforms {x86, PPC}
+    //case X86::NOOPL:
+    //case X86::NOOP:{
+    //  errs() << "NOOP!\n";
+    //  return NULL;
+    //  break;
+    //}
     /*
     case X86::ADD32rr:{
        // Takes two inputs - a constant and a register and has two outputs.
