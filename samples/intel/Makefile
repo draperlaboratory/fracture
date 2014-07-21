@@ -1,24 +1,28 @@
-LLC = ecc -target i386-ellcc-linux
-LLC_64 = ecc -target x86_64-ellcc-linux
-LLC_Path = /opt/x-tools/ellcc/bin
-
+CC  = clang
+GCC = gcc
+OPT = -m32
 
 FNAME = fib
 
-all: fib
+all: x32
 
-fib:
-#	$(CC) -O0 $(FNAME).c -o fib_O0_gcc_x86
-#	$(CC) -O1 $(FNAME).c -o fib_O1_gcc_x86
-#	$(CC) -O2 $(FNAME).c -o fib_O2_gcc_x86
-	$(LLC_Path)/$(LLC) -O0 $(FNAME).c -o $(FNAME)_O0_clang_x86
-	$(LLC_Path)/$(LLC) -O1 $(FNAME).c -o $(FNAME)_O1_clang_x86
-	$(LLC_Path)/$(LLC) -O2 $(FNAME).c -o $(FNAME)_O2_clang_x86
-	$(LLC_Path)/$(LLC) -O0 $(FNAME).c -o $(FNAME)_O2_clang_64
-	$(LLC_Path)/$(LLC) -O1 $(FNAME).c -o $(FNAME)_O2_clang_64
-	$(LLC_Path)/$(LLC) -O2 $(FNAME).c -o $(FNAME)_O2_clang_64
+x32:
+	$(GCC) $(OPT) -O0 $(FNAME).c -o fib_O0_gcc_elf_x86
+	$(GCC) $(OPT) -O1 $(FNAME).c -o fib_O1_gcc_elf_x86
+	$(GCC) $(OPT) -O2 $(FNAME).c -o fib_O2_gcc_elf_x86
+	$(CC)  $(OPT) -O0 $(FNAME).c -o fib_O0_llvm_elf_x86
+	$(CC)  $(OPT) -O1 $(FNAME).c -o fib_O1_llvm_elf_x86
+	$(CC)  $(OPT) -O2 $(FNAME).c -o fib_O2_llvm_elf_x86
+
+x64:
+	$(GCC) -O0 $(FNAME).c -o fib_O0_gcc_elf_x64
+	$(GCC) -O1 $(FNAME).c -o fib_O1_gcc_elf_x64
+	$(GCC) -O2 $(FNAME).c -o fib_O2_gcc_elf_x64
+	$(CC)  -O0 $(FNAME).c -o fib_O0_llvm_elf_x64
+	$(CC)  -O1 $(FNAME).c -o fib_O1_llvm_elf_x64
+	$(CC)  -O2 $(FNAME).c -o fib_O2_llvm_elf_x64	
 	
 clean:
-	rm -f *.o *_x86*
-	rm -f *.o *_64*
+	rm -f *.o *elf_x86*
+	rm -f *.o *elf_x64*
 
