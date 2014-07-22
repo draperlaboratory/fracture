@@ -442,40 +442,44 @@ SelectionDAG* Decompiler::createDAGFromMachineBasicBlock(
       Ops.insert(Ops.begin(), prevNode);
     }
 
+    //This if block handles NOPs (hopefully just) and the else block handles everything else
+    //  NOPs appear to be the only OpCode that has a size of 0, which breaks getMachineNode
+    //  We are going to replace a NOP with an abstract CFR and then C2R which is extremely
+    //  similar to how NOPs are treated in the hardware (xchg).  It should also leave any
+    //  flag registers alone.
     if(ResultTypes.size() == 0){
-      errs() << "Dumping I: \tOpCode: " << OpCode << "\tSize " << ResultTypes.size() << "\n";
-      I->dump();
+      DEBUG(errs() << "Dumping I: \tOpCode: " << OpCode << "\tSize " << ResultTypes.size() << "\n");
+      DEBUG(I->dump());
       //Need to do an Assert on ResultTypes...
       //ResultTys[0], ResultTys.size(), Index < Length
       //ResultTypes.size()
 
-      SDValue CFRNode = DAG->getNode(ISD::CopyFromReg , Loc, MVT::i32, 1);
-      SDValue C2RNode = DAG->getNode(ISD::CopyToReg , Loc, MVT::i32, CFRNode, 1);
+      //(unsigned) 1 should be a register on any platform.
+      SDValue CFRNode = DAG->getCopyFromReg(prevNode, Loc, (unsigned) 1, MVT::i32);
+      prevNode = DAG->getCopyToReg(CFRNode, Loc, (unsigned) 1, CFRNode);
+    } else {
 
-      DAG->ReplaceAllUsesOfValueWith(prevNode, C2RNode);
-    }
+      MachineSDNode *MSD = DAG->getMachineNode(OpCode, Loc, ResultTypes, Ops);
+      MSD->setDebugLoc(I->getDebugLoc());
+      MSD->setMemRefs(I->memoperands_begin(), I->memoperands_end());
 
-    MachineSDNode *MSD = DAG->getMachineNode(OpCode, Loc, ResultTypes, Ops);
-    MSD->setDebugLoc(I->getDebugLoc());
-    MSD->setMemRefs(I->memoperands_begin(), I->memoperands_end());
-
-    // If we were a chain, make us the prevNode.
-    if (isChain) {
-      prevNode = SDValue(MSD, ResultTypes.size() - 1);
-    }
-    // Update instruction Defs (should always get registers here)
-    for (unsigned i = 0, e = Defs.size(); i != e; ++i) {
-      Deps[Defs[i]->getReg()].first = SDValue(MSD, i);
-      // Also track the chain at the time this reg is defined (for insert later)
-      Deps[Defs[i]->getReg()].second = prevNode;
-      // Add CopyToReg for every register definition
-      SDValue CTR = DAG->getCopyToReg(prevNode, Loc, Defs[i]->getReg(),
-          SDValue(MSD, i));
-      CTR.getNode()->setDebugLoc(I->getDebugLoc());
-      prevNode = CTR;
+      // If we were a chain, make us the prevNode.
+      if (isChain) {
+        prevNode = SDValue(MSD, ResultTypes.size() - 1);
+      }
+      // Update instruction Defs (should always get registers here)
+      for (unsigned i = 0, e = Defs.size(); i != e; ++i) {
+        Deps[Defs[i]->getReg()].first = SDValue(MSD, i);
+        // Also track the chain at the time this reg is defined (for insert later)
+        Deps[Defs[i]->getReg()].second = prevNode;
+        // Add CopyToReg for every register definition
+        SDValue CTR = DAG->getCopyToReg(prevNode, Loc, Defs[i]->getReg(),
+            SDValue(MSD, i));
+        CTR.getNode()->setDebugLoc(I->getDebugLoc());
+        prevNode = CTR;
+      }
     }
   }
-}
   DAG->setRoot(prevNode);
 
   return DAG;
