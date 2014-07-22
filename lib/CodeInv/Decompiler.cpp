@@ -448,11 +448,9 @@ SelectionDAG* Decompiler::createDAGFromMachineBasicBlock(
     //  similar to how NOPs are treated in the hardware (xchg).  It should also leave any
     //  flag registers alone.
     if(ResultTypes.size() == 0){
-      DEBUG(errs() << "Dumping I: \tOpCode: " << OpCode << "\tSize " << ResultTypes.size() << "\n");
+      DEBUG(errs() << "Decompiler::createDAGFromMachineBasicBlock dumping I: \tOpCode: "
+          << OpCode << "\tSize: " << ResultTypes.size() << "\n");
       DEBUG(I->dump());
-      //Need to do an Assert on ResultTypes...
-      //ResultTys[0], ResultTys.size(), Index < Length
-      //ResultTypes.size()
 
       //(unsigned) 1 should be a register on any platform.
       SDValue CFRNode = DAG->getCopyFromReg(prevNode, Loc, (unsigned) 1, MVT::i32);
