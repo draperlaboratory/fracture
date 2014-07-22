@@ -454,7 +454,10 @@ SelectionDAG* Decompiler::createDAGFromMachineBasicBlock(
 
       //(unsigned) 1 should be a register on any platform.
       SDValue CFRNode = DAG->getCopyFromReg(prevNode, Loc, (unsigned) 1, MVT::i32);
-      prevNode = DAG->getCopyToReg(CFRNode, Loc, (unsigned) 1, CFRNode);
+      CFRNode.getNode()->setDebugLoc(I->getDebugLoc());
+      SDValue C2RNode = DAG->getCopyToReg(CFRNode, Loc, (unsigned) 1, CFRNode);
+      C2RNode.getNode()->setDebugLoc(I->getDebugLoc());
+      prevNode = C2RNode;
     } else {
 
       MachineSDNode *MSD = DAG->getMachineNode(OpCode, Loc, ResultTypes, Ops);
