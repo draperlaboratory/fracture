@@ -1,4 +1,4 @@
-//===- X86IREmitter - Generalize X86ISD Instrs  ================-*- C++ -*-=//
+//===- X86X86IREmitter - Generalize X86ISD Instrs  ================-*- C++ -*-=//
 //
 //              Fracture: The Draper Decompiler Infrastructure
 //
@@ -33,7 +33,7 @@ X86IREmitter::~X86IREmitter() {
 Value* X86IREmitter::visit(const SDNode *N) {
   // return the parent if we are in IR only territory
   if (N->getOpcode() <= ISD::BUILTIN_OP_END){
-  	return IREmitter::visit(N);
+  	return X86IREmitter::visit(N);
   }
 
   // If we already visited the node, return the result.
@@ -44,13 +44,48 @@ Value* X86IREmitter::visit(const SDNode *N) {
   IRB->SetCurrentDebugLocation(N->getDebugLoc());
   DEBUG(Infos << "Visiting X86 specific Opcode.\n");
   switch (N->getOpcode()) {
-    default: return NULL;
+    default:{
+      N->dump();
+      errs() << "OpCode: " << N->getOpcode() << "\n";
+      errs() << "??? " << X86ISD::SMUL << "\n";
+      llvm_unreachable("X86X86IREmitter::visit - Unimplemented X86 visit...");
+      return NULL;
+    }
+    case X86ISD::CMP:       return visitSUB(N); //comparison is performed by a (signed) subtraction of arg2 from arg1
+    case X86ISD::CMOV:      return NULL;
     case X86ISD::BRCOND:    return visitBRCONDBasic(N);
-    case X86ISD::RET_FLAG:  return visitRET(N);
+    case X86ISD::RET_FLAG:  return visitRET_FLAG(N);
     case X86ISD::CALL:      return visitCALL(N);
+    case X86ISD::ADD:       return visitADD(N);
+    case X86ISD::SUB:       return visitSUB(N);
+    case X86ISD::INC:       return NULL;
+    case X86ISD::DEC:       return NULL;
+    case X86ISD::AND:       return visitAND(N);
+    case X86ISD::XOR:       return visitXOR(N);
   }
 }
 
+Value* X86IREmitter::visitBSF(const SDNode *N) { llvm_unreachable("visitBSF Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitBSR(const SDNode *N) { llvm_unreachable("visitBSR Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitSHLD(const SDNode *N) { llvm_unreachable("visitSHLD Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitSHRD(const SDNode *N) { llvm_unreachable("visitSHRD Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitFAND(const SDNode *N) { llvm_unreachable("visitFAND Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitFOR(const SDNode *N) { llvm_unreachable("visitFOR Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitFXOR(const SDNode *N) { llvm_unreachable("visitFXOR Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitFANDN(const SDNode *N) { llvm_unreachable("visitFANDN Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitFSRL(const SDNode *N) { llvm_unreachable("visitFSRL Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitCALL(const SDNode *N) { llvm_unreachable("visitCALL Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitRDTSC_DAG(const SDNode *N) { llvm_unreachable("visitRDTSC_DAG Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitCMP(const SDNode *N) { llvm_unreachable("visitCMP Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitCOMI(const SDNode *N) { llvm_unreachable("visitCOMI Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitUCOMI(const SDNode *N) { llvm_unreachable("visitUCOMI Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitBT(const SDNode *N) { llvm_unreachable("visitBT Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitSETCC(const SDNode *N) { llvm_unreachable("visitSETCC Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitSELECT(const SDNode *N) { llvm_unreachable("visitSELECT Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitSETCC_CARRY(const SDNode *N) { llvm_unreachable("visitSETCC_CARRY Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitFSETCC(const SDNode *N) { llvm_unreachable("visitFSETCC Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitFGETSIGNx86(const SDNode *N) { llvm_unreachable("visitFGETSIGNx86 Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitCMOV(const SDNode *N) { llvm_unreachable("visitCMOV Unimplemented X86 visit..."); return NULL; }
 //visitBRCONDBasic handles most conditional branches.  The ideas is that it will search
 //  for the CopyToRegs and look for the compare (CMP).  In situations where there isn't a
 //  compare, visitBRCONDAdvanced will step in.
@@ -60,7 +95,7 @@ Value* X86IREmitter::visitBRCONDBasic(const SDNode *N) {
   const ConstantSDNode *DestNode = dyn_cast<ConstantSDNode>(N->getOperand(1));
 
   if (!DestNode) {
-    printError("X86IREmitter::visitBRCOND: Not a constant integer for branch!");
+    printError("X86X86IREmitter::visitBRCOND: Not a constant integer for branch!");
     return NULL;
   }
 
@@ -100,9 +135,9 @@ Value* X86IREmitter::visitBRCONDBasic(const SDNode *N) {
   }
 
   if (CMPNode == NULL) {
-    //errs() << "X86IREmitter ERROR: Could not find CMP SDNode for BRCond!\n";
+    //errs() << "X86X86IREmitter ERROR: Could not find CMP SDNode for BRCond!\n";
     //return NULL;
-    DEBUG(outs() << "X86IREmitter::visitBRCONDBasic: Branch type is advanced -> visitBRCONDAdvanced\n");
+    DEBUG(outs() << "X86X86IREmitter::visitBRCONDBasic: Branch type is advanced -> visitBRCONDAdvanced\n");
     return visitBRCONDAdvanced(N);
   }
 
@@ -171,7 +206,7 @@ Value* X86IREmitter::visitBRCONDAdvanced(const SDNode *N) {
   const ConstantSDNode *DestNode = dyn_cast<ConstantSDNode>(N->getOperand(1));
 
   if (!DestNode) {
-    printError("X86IREmitter::visitBRCONDAdvanced: Not a constant integer for branch!");
+    printError("X86X86IREmitter::visitBRCONDAdvanced: Not a constant integer for branch!");
     return NULL;
   }
 
@@ -202,7 +237,7 @@ Value* X86IREmitter::visitBRCONDAdvanced(const SDNode *N) {
   }
 
   if(BinOpNode == NULL || CMPNode == NULL || CMPNode->getReg() != X86::EFLAGS){  //Ensure we didn't just fall through the while loop
-    llvm_unreachable("X86IREmitter::visitBRCONDAdvanced: Could not find EFLAGS Register or the Math Node...");
+    llvm_unreachable("X86X86IREmitter::visitBRCONDAdvanced: Could not find EFLAGS Register or the Math Node...");
   }
 
   /*
@@ -268,22 +303,22 @@ Value* X86IREmitter::visitBRCONDAdvanced(const SDNode *N) {
   case ISD::SETGE:  //JAE_1: CF == 0
     // CF ISD::AND 1 (b1) == 0
     //Cmp = IRB->CreateICmpSGE(LHS, RHS);
-    llvm_unreachable("X86IREmitter::visitBRCONDAdvanced: SETGE Unimplemented");
+    llvm_unreachable("X86X86IREmitter::visitBRCONDAdvanced: SETGE Unimplemented");
     break;
   case ISD::SETLT:  //JB_1: CF == 1
     // CF ISD::AND 1 (b1) == 1
     //Cmp = IRB->CreateICmpSLT(LHS, RHS);
-    llvm_unreachable("X86IREmitter::visitBRCONDAdvanced: SETLT Unimplemented");
+    llvm_unreachable("X86X86IREmitter::visitBRCONDAdvanced: SETLT Unimplemented");
     break;
   case ISD::SETGT:  //JA_1: CF == 0 && ZF == 0
     // ZF ISD::AND 32 (b100000) == 0 && CF ISD::AND 1 (b1) == 0
     //Cmp = IRB->CreateICmpSGT(LHS, RHS);
-    llvm_unreachable("X86IREmitter::visitBRCONDAdvanced: SETGT Unimplemented");
+    llvm_unreachable("X86X86IREmitter::visitBRCONDAdvanced: SETGT Unimplemented");
     break;
   case ISD::SETLE:  //JBE_1: CF == 1 || ZF == 1
     // ZF ISD::AND 32 (b100000) == 1 && CF ISD::AND 1 (b1) == 1
     //Cmp = IRB->CreateICmpSLE(LHS, RHS);
-    llvm_unreachable("X86IREmitter::visitBRCONDAdvanced: SETLE Unimplemented");
+    llvm_unreachable("X86X86IREmitter::visitBRCONDAdvanced: SETLE Unimplemented");
     break;
   }
   (dyn_cast<Instruction>(Cmp))->setDebugLoc(N->getOperand(2)->getDebugLoc());
@@ -304,9 +339,160 @@ Value* X86IREmitter::visitBRCONDAdvanced(const SDNode *N) {
   Br->setDebugLoc(N->getDebugLoc());
   return Br;
 }
-
-Value* X86IREmitter::visitRET(const SDNode *N) {
+Value* X86IREmitter::visitRET_FLAG(const SDNode *N){
   return IRB->CreateRetVoid();
 }
+
+Value* X86IREmitter::visitREP_STOS(const SDNode *N) { llvm_unreachable("visitREP_STOS Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitREP_MOVS(const SDNode *N) { llvm_unreachable("visitREP_MOVS Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitGlobalBaseReg(const SDNode *N) { llvm_unreachable("visitGlobalBaseReg Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitWrapper(const SDNode *N) { llvm_unreachable("visitWrapper Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitWrapperRIP(const SDNode *N) { llvm_unreachable("visitWrapperRIP Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitMOVDQ2Q(const SDNode *N) { llvm_unreachable("visitMOVDQ2Q Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitMMX_MOVD2W(const SDNode *N) { llvm_unreachable("visitMMX_MOVD2W Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitPEXTRB(const SDNode *N) { llvm_unreachable("visitPEXTRB Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitPEXTRW(const SDNode *N) { llvm_unreachable("visitPEXTRW Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitINSERTPS(const SDNode *N) { llvm_unreachable("visitINSERTPS Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitPINSRB(const SDNode *N) { llvm_unreachable("visitPINSRB Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitPINSRW(const SDNode *N) { llvm_unreachable("visitPINSRW Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitMMX_PINSRW(const SDNode *N) { llvm_unreachable("visitMMX_PINSRW Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitPSHUFB(const SDNode *N) { llvm_unreachable("visitPSHUFB Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitANDNP(const SDNode *N) { llvm_unreachable("visitANDNP Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitPSIGN(const SDNode *N) { llvm_unreachable("visitPSIGN Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitBLENDV(const SDNode *N) { llvm_unreachable("visitBLENDV Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitBLENDI(const SDNode *N) { llvm_unreachable("visitBLENDI Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitSUBUS(const SDNode *N) { llvm_unreachable("visitSUBUS Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitHADD(const SDNode *N) { llvm_unreachable("visitHADD Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitHSUB(const SDNode *N) { llvm_unreachable("visitHADD Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitFHADD(const SDNode *N) { llvm_unreachable("visitFHADD Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitFHSUB(const SDNode *N) { llvm_unreachable("visitFHSUB Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitUMAX(const SDNode *N) { llvm_unreachable("visitUMAX Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitUMIN(const SDNode *N) { llvm_unreachable("visitUMIN Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitSMAX(const SDNode *N) { llvm_unreachable("visitSMAX Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitSMIN(const SDNode *N) { llvm_unreachable("visitSMIN Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitFMAX(const SDNode *N) { llvm_unreachable("visitFMAX Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitFMIN(const SDNode *N) { llvm_unreachable("visitFMIN Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitFMAXC(const SDNode *N) { llvm_unreachable("visitFMAXC Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitFMINC(const SDNode *N) { llvm_unreachable("visitFMINC Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitFRSQRT(const SDNode *N) { llvm_unreachable("visitFRSQRT Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitFRCP(const SDNode *N) { llvm_unreachable("visitFRCP Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitTLSADDR(const SDNode *N) { llvm_unreachable("visitTLSADDR Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitTLSBASEADDR(const SDNode *N) { llvm_unreachable("visitTLSBASEADDR Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitTLSCALL(const SDNode *N) { llvm_unreachable("visitTLSBASEADDR Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitEH_RETURN(const SDNode *N) { llvm_unreachable("visitEH_RETURN Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitEH_SJLJ_SETJMP(const SDNode *N) { llvm_unreachable("visitEH_SJLJ_SETJMP Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitEH_SJLJ_LONGJMP(const SDNode *N) { llvm_unreachable("visitEH_SJLJ_LONGJMP Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitTC_RETURN(const SDNode *N) { llvm_unreachable("visitTC_RETURN Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitVZEXT_MOVL(const SDNode *N) { llvm_unreachable("visitVZEXT_MOVL Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitVZEXT(const SDNode *N) { llvm_unreachable("visitVZEXT Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitVSEXT(const SDNode *N) { llvm_unreachable("visitVSEXT Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitVTRUNC(const SDNode *N) { llvm_unreachable("visitVTRUNC Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitVTRUNCM(const SDNode *N) { llvm_unreachable("visitVTRUNCM Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitVFPEXT(const SDNode *N) { llvm_unreachable("visitVFPEXT Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitVFPROUND(const SDNode *N) { llvm_unreachable("visitVFPROUND Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitVSHLDQ(const SDNode *N) { llvm_unreachable("visitVSHLDQ Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitVSRLDQ(const SDNode *N) { llvm_unreachable("visitVSRLDQ Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitVSHL(const SDNode *N) { llvm_unreachable("visitVSHL Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitVSRL(const SDNode *N) { llvm_unreachable("visitVSRL Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitVSRA(const SDNode *N) { llvm_unreachable("visitVSRA Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitVSHLI(const SDNode *N) { llvm_unreachable("visitVSHLI Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitVSRLI(const SDNode *N) { llvm_unreachable("visitVSRLI Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitVSRAI(const SDNode *N) { llvm_unreachable("visitVSRAI Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitCMPP(const SDNode *N) { llvm_unreachable("visitCMPP Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitPCMPEQ(const SDNode *N) { llvm_unreachable("visitPCMPEQ Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitPCMPGT(const SDNode *N) { llvm_unreachable("visitPCMPGT Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitPCMPEQM(const SDNode *N) { llvm_unreachable("visitPCMPEQM Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitPCMPGTM(const SDNode *N) { llvm_unreachable("visitPCMPGTM Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitCMPM(const SDNode *N) { llvm_unreachable("visitCMPM Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitCMPMU(const SDNode *N) { llvm_unreachable("visitCMPMU Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitADD(const SDNode *N) { llvm_unreachable("visitADD Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitSUB(const SDNode *N) { llvm_unreachable("visitSUB Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitADC(const SDNode *N) { llvm_unreachable("visitADC Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitSBB(const SDNode *N) { llvm_unreachable("visitSBB Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitSMUL(const SDNode *N) { llvm_unreachable("visitSMUL Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitINC(const SDNode *N) { llvm_unreachable("visitINC Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitDEC(const SDNode *N) { llvm_unreachable("visitDEC Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitOR(const SDNode *N) { llvm_unreachable("visitOR Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitXOR(const SDNode *N) { llvm_unreachable("visitXOR Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitAND(const SDNode *N) { llvm_unreachable("visitAND Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitBZHI(const SDNode *N) { llvm_unreachable("visitBZHI Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitBEXTR(const SDNode *N) { llvm_unreachable("visitBEXTR Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitUMUL(const SDNode *N) { llvm_unreachable("visitUMUL Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitMUL_IMM(const SDNode *N) { llvm_unreachable("visitMUL_IMM Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitPTEST(const SDNode *N) { llvm_unreachable("visitPTEST Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitTESTP(const SDNode *N) { llvm_unreachable("visitTESTP Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitTESTM(const SDNode *N) { llvm_unreachable("visitTESTM Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitTESTNM(const SDNode *N) { llvm_unreachable("visitTESTNM Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitKORTEST(const SDNode *N) { llvm_unreachable("visitKORTEST Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitPALIGNR(const SDNode *N) { llvm_unreachable("visitPALIGNR Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitPSHUFD(const SDNode *N) { llvm_unreachable("visitPSHUFD Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitPSHUFHW(const SDNode *N) { llvm_unreachable("visitPSHUFHW Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitPSHUFLW(const SDNode *N) { llvm_unreachable("visitPSHUFLW Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitSHUFP(const SDNode *N) { llvm_unreachable("visitSHUFP Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitMOVDDUP(const SDNode *N) { llvm_unreachable("visitMOVDDUP Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitMOVSHDUP(const SDNode *N) { llvm_unreachable("visitMOVSHDUP Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitMOVSLDUP(const SDNode *N) { llvm_unreachable("visitMOVSLDUP Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitMOVLHPS(const SDNode *N) { llvm_unreachable("visitMOVLHPS Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitMOVLHPD(const SDNode *N) { llvm_unreachable("visitMOVLHPD Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitMOVHLPS(const SDNode *N) { llvm_unreachable("visitMOVHLPS Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitMOVLPS(const SDNode *N) { llvm_unreachable("visitMOVLPS Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitMOVLPD(const SDNode *N) { llvm_unreachable("visitMOVLPD Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitMOVSD(const SDNode *N) { llvm_unreachable("visitMOVSD Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitMOVSS(const SDNode *N) { llvm_unreachable("visitMOVSS Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitUNPCKL(const SDNode *N) { llvm_unreachable("visitUNPCKL Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitUNPCKH(const SDNode *N) { llvm_unreachable("visitUNPCKH Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitVPERMILP(const SDNode *N) { llvm_unreachable("visitVPERMILP Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitVPERMV(const SDNode *N) { llvm_unreachable("visitVPERMV Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitVPERMV3(const SDNode *N) { llvm_unreachable("visitVPERMV3 Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitVPERMIV3(const SDNode *N) { llvm_unreachable("visitVPERMIV3 Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitVPERMI(const SDNode *N) { llvm_unreachable("visitVPERMI Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitVPERM2X128(const SDNode *N) { llvm_unreachable("visitVPERM2X128 Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitVBROADCAST(const SDNode *N) { llvm_unreachable("visitVBROADCAST Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitVBROADCASTM(const SDNode *N) { llvm_unreachable("visitVBROADCASTM Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitVINSERT(const SDNode *N) { llvm_unreachable("visitVINSERT Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitVEXTRACT(const SDNode *N) { llvm_unreachable("visitVEXTRACT Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitPMULUDQ(const SDNode *N) { llvm_unreachable("visitPMULUDQ Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitFMADD(const SDNode *N) { llvm_unreachable("visitFMADD Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitFNMADD(const SDNode *N) { llvm_unreachable("visitFNMADD Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitFMSUB(const SDNode *N) { llvm_unreachable("visitFMSUB Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitFNMSUB(const SDNode *N) { llvm_unreachable("visitFNMSUB Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitFMADDSUB(const SDNode *N) { llvm_unreachable("visitFMADDSUB Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitFMSUBADD(const SDNode *N) { llvm_unreachable("visitFMSUBADD Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitVASTART_SAVE_XMM_REGS(const SDNode *N) { llvm_unreachable("visitVASTART_SAVE_XMM_REGS Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitWIN_ALLOCA(const SDNode *N) { llvm_unreachable("visitWIN_ALLOCA Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitSEG_ALLOCA(const SDNode *N) { llvm_unreachable("visitSEG_ALLOCA Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitWIN_FTOL(const SDNode *N) { llvm_unreachable("visitWIN_FTOL Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitMEMBARRIER(const SDNode *N) { llvm_unreachable("visitMEMBARRIER Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitMFENCE(const SDNode *N) { llvm_unreachable("visitMFENCE Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitSFENCE(const SDNode *N) { llvm_unreachable("visitSFENCE Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitLFENCE(const SDNode *N) { llvm_unreachable("visitLFENCE Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitFNSTSW16r(const SDNode *N) { llvm_unreachable("visitFNSTSW16r Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitSAHF(const SDNode *N) { llvm_unreachable("visitSAHF Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitRDRAND(const SDNode *N) { llvm_unreachable("visitRDRAND Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitRDSEED(const SDNode *N) { llvm_unreachable("visitRDSEED Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitPCMPISTRI(const SDNode *N) { llvm_unreachable("visitPCMPISTRI Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitPCMPESTRI(const SDNode *N) { llvm_unreachable("visitPCMPESTRI Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitXTEST(const SDNode *N) { llvm_unreachable("visitXTEST Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitATOMADD64_DAG(const SDNode *N) { llvm_unreachable("visitATOMADD64_DAG Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitATOMSUB64_DAG(const SDNode *N) { llvm_unreachable("visitATOMSUB64_DAG Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitATOMOR64_DAG(const SDNode *N) { llvm_unreachable("visitATOMOR64_DAG Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitATOMXOR64_DAG(const SDNode *N) { llvm_unreachable("visitATOMXOR64_DAG Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitATOMAND64_DAG(const SDNode *N) { llvm_unreachable("visitATOMAND64_DAG Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitATOMNAND64_DAG(const SDNode *N) { llvm_unreachable("visitATOMNAND64_DAG Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitATOMMAX64_DAG(const SDNode *N) { llvm_unreachable("visitATOMMAX64_DAG Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitATOMMIN64_DAG(const SDNode *N) { llvm_unreachable("visitATOMMIN64_DAG Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitATOMUMAX64_DAG(const SDNode *N) { llvm_unreachable("visitATOMUMAX64_DAG Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitATOMUMIN64_DAG(const SDNode *N) { llvm_unreachable("visitATOMUMIN64_DAG Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitATOMSWAP64_DAG(const SDNode *N) { llvm_unreachable("visitATOMSWAP64_DAG Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitLCMPXCHG_DAG(const SDNode *N) { llvm_unreachable("visitLCMPXCHG_DAG Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitLCMPXCHG8_DAG(const SDNode *N) { llvm_unreachable("visitLCMPXCHG8_DAG Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitLCMPXCHG16_DAG(const SDNode *N) { llvm_unreachable("visitLCMPXCHG16_DAG Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitVZEXT_LOAD(const SDNode *N) { llvm_unreachable("visitVZEXT_LOAD Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitFNSTCW16m(const SDNode *N) { llvm_unreachable("visitFNSTCW16m Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitFP_TO_INT64_IN_MEM(const SDNode *N) { llvm_unreachable("visitFP_TO_INT64_IN_MEM Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitFILD_FLAG(const SDNode *N) { llvm_unreachable("visitFILD_FLAG Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitFLD(const SDNode *N) { llvm_unreachable("visitFLD Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitFST(const SDNode *N) { llvm_unreachable("visitFST Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitVAARG_64(const SDNode *N) { llvm_unreachable("visitVAARG_64 Unimplemented w"); return NULL; }
 
 } // end fracture namespace

@@ -159,6 +159,7 @@ Function* Decompiler::decompileFunction(unsigned Address) {
     // Note the ++, nothing ever splits the entry block.
     for (SB = ++F->begin(); SB != E; ++SB) {
       DEBUG(SB->dump());
+      assert(SB->getTerminator() && "Decompiler::decompileFunction - getTerminator (llvm unreachable?)");
       DEBUG(outs() << "SB: " << SB->getName()
         << "\tRange: " << Dis->getDebugOffset(SB->begin()->getDebugLoc())
         << " " << Dis->getDebugOffset(SB->getTerminator()->getDebugLoc())
@@ -447,10 +448,11 @@ SelectionDAG* Decompiler::createDAGFromMachineBasicBlock(
     //  We are going to replace a NOP with an abstract CFR and then C2R which is extremely
     //  similar to how NOPs are treated in the hardware (xchg).  It should also leave any
     //  flag registers alone.
+    DEBUG(errs() << "Decompiler::createDAGFromMachineBasicBlock dumping I: \tOpCode: "
+              << OpCode << "\tSize: " << ResultTypes.size() << "\n");
+    DEBUG(I->dump());
     if(ResultTypes.size() == 0){
-      DEBUG(errs() << "Decompiler::createDAGFromMachineBasicBlock dumping I: \tOpCode: "
-          << OpCode << "\tSize: " << ResultTypes.size() << "\n");
-      DEBUG(I->dump());
+
 
       //(unsigned) 1 should be a register on any platform.
       SDValue CFRNode = DAG->getCopyFromReg(prevNode, Loc, (unsigned) 1, MVT::i32);
