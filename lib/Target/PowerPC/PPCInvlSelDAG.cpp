@@ -280,6 +280,59 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
     	return NULL;
     	break;
     }
+    case PPC::ADDZEo:{
+    	// add to zero extended
+
+    	SDValue RAConst = N->getOperand(0);
+    	SDValue CAConst = N->getOperand(1);
+      SDLoc SL(N);
+
+    	//uint64_t RAConst = N->getConstantOperandVal(0);	// get sign extended value?
+    	//uint64_t UIConst = N->getConstantOperandVal(1);
+
+    	SDNode *C2RUser = NULL;
+    	for (SDNode::use_iterator S = N->use_begin(), E = N->use_end(); S != E; ++S) {
+    		if (S->getOpcode() == ISD::CopyToReg) {
+    			C2RUser = *S;
+    		}
+    	}
+    	if (C2RUser == NULL) {
+    		llvm_unreachable("Invalid CMPLWI User!");
+    	}
+    	SDValue Chain = C2RUser->getOperand(0);
+
+    	SDValue Add = CurDAG->getNode(ISD::ADD, SL, MVT::i32, RAConst, CAConst);
+    	//SDValue C2REQ = CurDAG->getCopyToReg(Chain, SL , Add);
+
+    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(C2RUser, 0), Add);
+    	// store C in 4 bits of CR
+
+    	return NULL;
+    	break;
+    }
+    case PPC::ANDISo:{
+    	// AND immediate shifted. Not sure what the -o suffix means.
+    	// should be 32bit and 16bit input, but it's two 32bit
+
+    	// RA <- RS & (UI << 16)
+
+    	SDValue RS = N->getOperand(0);
+    	SDValue UI = N->getOperand(1);
+
+    	SDLoc SL(N);
+
+      SDValue Shiftsize = CurDAG->getConstant(16, MVT::i32);
+
+    	SDValue UIshift = CurDAG->getNode(ISD::SHL, SL, MVT::i32, UI, Shiftsize);
+
+    	SDValue And = CurDAG->getNode(ISD::AND, SL, MVT::i32, RS, UIshift);
+    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), And);
+    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), UIshift);	// this section needs help
+
+
+    	return NULL;
+    	break;
+    }
     case PPC::SUBF:{
     	//subtract from
     	// swap args to be a SUB
@@ -535,6 +588,39 @@ if LK then LR iea CIA + 4
       return NULL;
       break;
     }
+    case PPC::SRADI:{
+        	 /*
+        	  * Shift Right Algebraic Doubleword Immediate
+        	  * The documentation on this has a ROTL in pseudocode, and a shift right in description
+        	  * n <- sh5 || sh0:4
+    				  r <- ROTL64((RS), n)
+    					m <- MASK(n, 63)
+    					RA <- r & m
+
+    					The contents of register RS are shifted right SH bits.
+							Bits shifted out of position 63 are lost. Bit 0 of RS is
+							replicated to fill the vacated positions on the left. The
+							result is placed into register RA. CA is set to 1 if (RS) is
+							negative and any 1-bits are shifted out of position 63;
+							otherwise CA is set to 0. A shift amount of zero causes
+							RA to be set equal to (RS), and CA to be set to 0.
+
+    					MASK(x, y) Mask having 1s in positions x through y
+    					(wrapping if x > y) and 0s elsewhere
+        	 */
+
+          SDValue RS = N->getOperand(0);	// register x4, 64bit
+          SDValue SH = N->getOperand(1);	// const: 1, 32bit
+          SDLoc SL(N);
+
+          // SHL, SRA, SRL - shift left, shift right arithmetic (sext), shift right logical (zext)
+          SDValue R = CurDAG->getNode(ISD::SRA, SL, RS.getValueType(), RS, SH);
+          // TODO: replace i32 output to get rid of SRADI node completely
+          CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), R);
+
+        	return NULL;
+        	break;
+        }
     case PPC::RLDICR:
     case PPC::RLDICL:{
     	 /*
