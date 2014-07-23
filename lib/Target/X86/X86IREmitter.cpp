@@ -22,7 +22,7 @@ using namespace llvm;
 namespace fracture {
 
 X86IREmitter::X86IREmitter(Decompiler *TheDec, raw_ostream &InfoOut,
-  raw_ostream &ErrOut) : IREmitter(TheDec, InfoOut, ErrOut) {
+    raw_ostream &ErrOut) : IREmitter(TheDec, InfoOut, ErrOut) {
   // Nothing to do here
 }
 
@@ -33,7 +33,7 @@ X86IREmitter::~X86IREmitter() {
 Value* X86IREmitter::visit(const SDNode *N) {
   // return the parent if we are in IR only territory
   if (N->getOpcode() <= ISD::BUILTIN_OP_END){
-  	return X86IREmitter::visit(N);
+    return IREmitter::visit(N);
   }
 
   // If we already visited the node, return the result.
@@ -45,23 +45,185 @@ Value* X86IREmitter::visit(const SDNode *N) {
   DEBUG(Infos << "Visiting X86 specific Opcode.\n");
   switch (N->getOpcode()) {
     default:{
-      N->dump();
       errs() << "OpCode: " << N->getOpcode() << "\n";
-      errs() << "??? " << X86ISD::SMUL << "\n";
-      llvm_unreachable("X86X86IREmitter::visit - Unimplemented X86 visit...");
+      N->dump();
+      llvm_unreachable("X86X86IREmitter::visit - Every X86 visit should be implemented...");
       return NULL;
     }
-    case X86ISD::CMP:       return visitSUB(N); //comparison is performed by a (signed) subtraction of arg2 from arg1
-    case X86ISD::CMOV:      return NULL;
-    case X86ISD::BRCOND:    return visitBRCONDBasic(N);
-    case X86ISD::RET_FLAG:  return visitRET_FLAG(N);
-    case X86ISD::CALL:      return visitCALL(N);
-    case X86ISD::ADD:       return visitADD(N);
-    case X86ISD::SUB:       return visitSUB(N);
-    case X86ISD::INC:       return NULL;
-    case X86ISD::DEC:       return NULL;
-    case X86ISD::AND:       return visitAND(N);
-    case X86ISD::XOR:       return visitXOR(N);
+    case X86ISD::BSF:             return visitBSF(N);
+    case X86ISD::BSR:             return visitBSR(N);
+    case X86ISD::SHLD:            return visitSHLD(N);
+    case X86ISD::SHRD:            return visitSHRD(N);
+    case X86ISD::FAND:            return visitFAND(N);
+    case X86ISD::FOR:             return visitFOR(N);
+    case X86ISD::FXOR:            return visitFXOR(N);
+    case X86ISD::FANDN:           return visitFANDN(N);
+    case X86ISD::FSRL:            return visitFSRL(N);
+    case X86ISD::CALL:            return visitCALL(N);
+    case X86ISD::RDTSC_DAG:       return visitRDTSC_DAG(N);
+    case X86ISD::CMP:             return visitCMP(N);
+    case X86ISD::COMI:            return visitCOMI(N);
+    case X86ISD::UCOMI:           return visitUCOMI(N);
+    case X86ISD::BT:              return visitBT(N);
+    case X86ISD::SETCC:           return visitSETCC(N);
+    case X86ISD::SELECT:          return visitSELECT(N);
+    case X86ISD::SETCC_CARRY:     return visitSETCC_CARRY(N);
+    case X86ISD::FSETCC:          return visitFSETCC(N);
+    case X86ISD::FGETSIGNx86:     return visitFGETSIGNx86(N);
+    case X86ISD::CMOV:            return visitCMOV(N);
+    case X86ISD::BRCOND:          return visitBRCOND(N);
+    case X86ISD::RET_FLAG:        return visitRET_FLAG(N);
+    case X86ISD::REP_STOS:        return visitREP_STOS(N);
+    case X86ISD::REP_MOVS:        return visitREP_MOVS(N);
+    case X86ISD::GlobalBaseReg:   return visitGlobalBaseReg(N);
+    case X86ISD::Wrapper:         return visitWrapper(N);
+    case X86ISD::WrapperRIP:      return visitWrapperRIP(N);
+    case X86ISD::MOVDQ2Q:         return visitMOVDQ2Q(N);
+    case X86ISD::MMX_MOVD2W:      return visitMMX_MOVD2W(N);
+    case X86ISD::PEXTRB:          return visitPEXTRB(N);
+    case X86ISD::PEXTRW:          return visitPEXTRW(N);
+    case X86ISD::INSERTPS:        return visitINSERTPS(N);
+    case X86ISD::PINSRB:          return visitPINSRB(N);
+    case X86ISD::PINSRW:          return visitPINSRW(N);
+    case X86ISD::MMX_PINSRW:      return visitMMX_PINSRW(N);
+    case X86ISD::PSHUFB:          return visitPSHUFB(N);
+    case X86ISD::ANDNP:           return visitANDNP(N);
+    case X86ISD::PSIGN:           return visitPSIGN(N);
+    case X86ISD::BLENDV:          return visitBLENDV(N);
+    case X86ISD::BLENDI:          return visitBLENDI(N);
+    case X86ISD::SUBUS:           return visitSUBUS(N);
+    case X86ISD::HADD:            return visitHADD(N);
+    case X86ISD::HSUB:            return visitHSUB(N);
+    case X86ISD::FHADD:           return visitFHADD(N);
+    case X86ISD::FHSUB:           return visitFHSUB(N);
+    case X86ISD::UMAX:            return visitUMAX(N);
+    case X86ISD::UMIN:            return visitUMIN(N);
+    case X86ISD::SMAX:            return visitSMAX(N);
+    case X86ISD::SMIN:            return visitSMIN(N);
+    case X86ISD::FMAX:            return visitFMAX(N);
+    case X86ISD::FMIN:            return visitFMIN(N);
+    case X86ISD::FMAXC:           return visitFMAXC(N);
+    case X86ISD::FMINC:           return visitFMINC(N);
+    case X86ISD::FRSQRT:          return visitFRSQRT(N);
+    case X86ISD::FRCP:            return visitFRCP(N);
+    case X86ISD::TLSADDR:         return visitTLSADDR(N);
+    case X86ISD::TLSBASEADDR:     return visitTLSBASEADDR(N);
+    case X86ISD::TLSCALL:         return visitTLSCALL(N);
+    case X86ISD::EH_RETURN:       return visitEH_RETURN(N);
+    case X86ISD::EH_SJLJ_SETJMP:  return visitEH_SJLJ_SETJMP(N);
+    case X86ISD::EH_SJLJ_LONGJMP: return visitEH_SJLJ_LONGJMP(N);
+    case X86ISD::TC_RETURN:       return visitTC_RETURN(N);
+    case X86ISD::VZEXT_MOVL:      return visitVZEXT_MOVL(N);
+    case X86ISD::VZEXT:           return visitVZEXT(N);
+    case X86ISD::VSEXT:           return visitVSEXT(N);
+    case X86ISD::VTRUNC:          return visitVTRUNC(N);
+    case X86ISD::VTRUNCM:         return visitVTRUNCM(N);
+    case X86ISD::VFPEXT:          return visitVFPEXT(N);
+    case X86ISD::VFPROUND:        return visitVFPROUND(N);
+    case X86ISD::VSHLDQ:          return visitVSHLDQ(N);
+    case X86ISD::VSRLDQ:          return visitVSRLDQ(N);
+    case X86ISD::VSHL:            return visitVSHL(N);
+    case X86ISD::VSRL:            return visitVSRL(N);
+    case X86ISD::VSRA:            return visitVSRA(N);
+    case X86ISD::VSHLI:           return visitVSHLI(N);
+    case X86ISD::VSRLI:           return visitVSRLI(N);
+    case X86ISD::VSRAI:           return visitVSRAI(N);
+    case X86ISD::CMPP:            return visitCMPP(N);
+    case X86ISD::PCMPEQ:          return visitPCMPEQ(N);
+    case X86ISD::PCMPGT:          return visitPCMPGT(N);
+    case X86ISD::PCMPEQM:         return visitPCMPEQM(N);
+    case X86ISD::PCMPGTM:         return visitPCMPGTM(N);
+    case X86ISD::CMPM:            return visitCMPM(N);
+    case X86ISD::CMPMU:           return visitCMPMU(N);
+    case X86ISD::ADD:             return visitADD(N);
+    case X86ISD::SUB:             return visitSUB(N);
+    case X86ISD::ADC:             return visitADC(N);
+    case X86ISD::SBB:             return visitSBB(N);
+    case X86ISD::SMUL:            return visitSMUL(N);
+    case X86ISD::INC:             return visitINC(N);
+    case X86ISD::DEC:             return visitDEC(N);
+    case X86ISD::OR:              return visitOR(N);
+    case X86ISD::XOR:             return visitXOR(N);
+    case X86ISD::AND:             return visitAND(N);
+    case X86ISD::BZHI:            return visitBZHI(N);
+    case X86ISD::BEXTR:           return visitBEXTR(N);
+    case X86ISD::UMUL:            return visitUMUL(N);
+    case X86ISD::MUL_IMM:         return visitMUL_IMM(N);
+    case X86ISD::PTEST:           return visitPTEST(N);
+    case X86ISD::TESTP:           return visitTESTP(N);
+    case X86ISD::TESTM:           return visitTESTM(N);
+    case X86ISD::TESTNM:          return visitTESTNM(N);
+    case X86ISD::KORTEST:         return visitKORTEST(N);
+    case X86ISD::PALIGNR:         return visitPALIGNR(N);
+    case X86ISD::PSHUFD:          return visitPSHUFD(N);
+    case X86ISD::PSHUFHW:         return visitPSHUFHW(N);
+    case X86ISD::PSHUFLW:         return visitPSHUFLW(N);
+    case X86ISD::SHUFP:           return visitSHUFP(N);
+    case X86ISD::MOVDDUP:         return visitMOVDDUP(N);
+    case X86ISD::MOVSHDUP:        return visitMOVSHDUP(N);
+    case X86ISD::MOVSLDUP:        return visitMOVSLDUP(N);
+    case X86ISD::MOVLHPS:         return visitMOVLHPS(N);
+    case X86ISD::MOVLHPD:         return visitMOVLHPD(N);
+    case X86ISD::MOVHLPS:         return visitMOVHLPS(N);
+    case X86ISD::MOVLPS:          return visitMOVLPS(N);
+    case X86ISD::MOVLPD:          return visitMOVLPD(N);
+    case X86ISD::MOVSD:           return visitMOVSD(N);
+    case X86ISD::MOVSS:           return visitMOVSS(N);
+    case X86ISD::UNPCKL:          return visitUNPCKL(N);
+    case X86ISD::UNPCKH:          return visitUNPCKH(N);
+    case X86ISD::VPERMILP:        return visitVPERMILP(N);
+    case X86ISD::VPERMV:          return visitVPERMV(N);
+    case X86ISD::VPERMV3:         return visitVPERMV3(N);
+    case X86ISD::VPERMIV3:        return visitVPERMIV3(N);
+    case X86ISD::VPERMI:          return visitVPERMI(N);
+    case X86ISD::VPERM2X128:      return visitVPERM2X128(N);
+    case X86ISD::VBROADCAST:      return visitVBROADCAST(N);
+    case X86ISD::VBROADCASTM:     return visitVBROADCASTM(N);
+    case X86ISD::VINSERT:         return visitVINSERT(N);
+    case X86ISD::VEXTRACT:        return visitVEXTRACT(N);
+    case X86ISD::PMULUDQ:         return visitPMULUDQ(N);
+    case X86ISD::FMADD:           return visitFMADD(N);
+    case X86ISD::FNMADD:          return visitFNMADD(N);
+    case X86ISD::FMSUB:           return visitFMSUB(N);
+    case X86ISD::FNMSUB:          return visitFNMSUB(N);
+    case X86ISD::FMADDSUB:        return visitFMADDSUB(N);
+    case X86ISD::FMSUBADD:        return visitFMSUBADD(N);
+    case X86ISD::VASTART_SAVE_XMM_REGS: return visitVASTART_SAVE_XMM_REGS(N);
+    case X86ISD::WIN_ALLOCA:      return visitWIN_ALLOCA(N);
+    case X86ISD::SEG_ALLOCA:      return visitSEG_ALLOCA(N);
+    case X86ISD::WIN_FTOL:        return visitWIN_FTOL(N);
+    case X86ISD::MEMBARRIER:      return visitMEMBARRIER(N);
+    case X86ISD::MFENCE:          return visitMFENCE(N);
+    case X86ISD::SFENCE:          return visitSFENCE(N);
+    case X86ISD::LFENCE:          return visitLFENCE(N);
+    case X86ISD::FNSTSW16r:       return visitFNSTSW16r(N);
+    case X86ISD::SAHF:            return visitSAHF(N);
+    case X86ISD::RDRAND:          return visitRDRAND(N);
+    case X86ISD::RDSEED:          return visitRDSEED(N);
+    case X86ISD::PCMPISTRI:       return visitPCMPISTRI(N);
+    case X86ISD::PCMPESTRI:       return visitPCMPESTRI(N);
+    case X86ISD::XTEST:           return visitXTEST(N);
+    case X86ISD::ATOMADD64_DAG:   return visitATOMADD64_DAG(N);
+    case X86ISD::ATOMSUB64_DAG:   return visitATOMSUB64_DAG(N);
+    case X86ISD::ATOMOR64_DAG:    return visitATOMOR64_DAG(N);
+    case X86ISD::ATOMXOR64_DAG:   return visitATOMXOR64_DAG(N);
+    case X86ISD::ATOMAND64_DAG:   return visitATOMAND64_DAG(N);
+    case X86ISD::ATOMNAND64_DAG:  return visitATOMNAND64_DAG(N);
+    case X86ISD::ATOMMAX64_DAG:   return visitATOMMAX64_DAG(N);
+    case X86ISD::ATOMMIN64_DAG:   return visitATOMMIN64_DAG(N);
+    case X86ISD::ATOMUMAX64_DAG:  return visitATOMUMAX64_DAG(N);
+    case X86ISD::ATOMUMIN64_DAG:  return visitATOMUMIN64_DAG(N);
+    case X86ISD::ATOMSWAP64_DAG:  return visitATOMSWAP64_DAG(N);
+    case X86ISD::LCMPXCHG_DAG:    return visitLCMPXCHG_DAG(N);
+    case X86ISD::LCMPXCHG8_DAG:   return visitLCMPXCHG8_DAG(N);
+    case X86ISD::LCMPXCHG16_DAG:  return visitLCMPXCHG16_DAG(N);
+    case X86ISD::VZEXT_LOAD:      return visitVZEXT_LOAD(N);
+    case X86ISD::FNSTCW16m:       return visitFNSTCW16m(N);
+    case X86ISD::FP_TO_INT64_IN_MEM: return visitFP_TO_INT64_IN_MEM(N);
+    case X86ISD::FILD_FLAG:       return visitFILD_FLAG(N);
+    case X86ISD::FLD:             return visitFLD(N);
+    case X86ISD::FST:             return visitFST(N);
+    case X86ISD::VAARG_64:        return visitVAARG_64(N);
   }
 }
 
@@ -74,7 +236,9 @@ Value* X86IREmitter::visitFOR(const SDNode *N) { llvm_unreachable("visitFOR Unim
 Value* X86IREmitter::visitFXOR(const SDNode *N) { llvm_unreachable("visitFXOR Unimplemented X86 visit..."); return NULL; }
 Value* X86IREmitter::visitFANDN(const SDNode *N) { llvm_unreachable("visitFANDN Unimplemented X86 visit..."); return NULL; }
 Value* X86IREmitter::visitFSRL(const SDNode *N) { llvm_unreachable("visitFSRL Unimplemented X86 visit..."); return NULL; }
-Value* X86IREmitter::visitCALL(const SDNode *N) { llvm_unreachable("visitCALL Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitCALL(const SDNode *N) {
+  return IREmitter::visitCALL(N);
+}
 Value* X86IREmitter::visitRDTSC_DAG(const SDNode *N) { llvm_unreachable("visitRDTSC_DAG Unimplemented X86 visit..."); return NULL; }
 Value* X86IREmitter::visitCMP(const SDNode *N) { llvm_unreachable("visitCMP Unimplemented X86 visit..."); return NULL; }
 Value* X86IREmitter::visitCOMI(const SDNode *N) { llvm_unreachable("visitCOMI Unimplemented X86 visit..."); return NULL; }
@@ -86,10 +250,10 @@ Value* X86IREmitter::visitSETCC_CARRY(const SDNode *N) { llvm_unreachable("visit
 Value* X86IREmitter::visitFSETCC(const SDNode *N) { llvm_unreachable("visitFSETCC Unimplemented X86 visit..."); return NULL; }
 Value* X86IREmitter::visitFGETSIGNx86(const SDNode *N) { llvm_unreachable("visitFGETSIGNx86 Unimplemented X86 visit..."); return NULL; }
 Value* X86IREmitter::visitCMOV(const SDNode *N) { llvm_unreachable("visitCMOV Unimplemented X86 visit..."); return NULL; }
-//visitBRCONDBasic handles most conditional branches.  The ideas is that it will search
+//visitBRCOND - Basic handles most conditional branches.  The ideas is that it will search
 //  for the CopyToRegs and look for the compare (CMP).  In situations where there isn't a
 //  compare, visitBRCONDAdvanced will step in.
-Value* X86IREmitter::visitBRCONDBasic(const SDNode *N) {
+Value* X86IREmitter::visitBRCOND(const SDNode *N) {
   // Get the address
   const CondCodeSDNode *Cond = dyn_cast<CondCodeSDNode>(N->getOperand(0));
   const ConstantSDNode *DestNode = dyn_cast<ConstantSDNode>(N->getOperand(1));
@@ -108,7 +272,7 @@ Value* X86IREmitter::visitBRCONDBasic(const SDNode *N) {
   BasicBlock *CurBB = IRB->GetInsertBlock();
 
   BasicBlock *BBTgt = Dec->getOrCreateBasicBlock(Tgt, F);
-/*
+  /*
   SDNode *CPSR = N->getOperand(2)->getOperand(1).getNode();
   SDNode *CMPNode = NULL;
 
@@ -120,7 +284,7 @@ Value* X86IREmitter::visitBRCONDBasic(const SDNode *N) {
       }
     }
   }
-*/
+   */
   SDNode *CMPNode = NULL;
   SDValue Iter = N->getOperand(N->getNumOperands()-1);
   while(Iter.getOpcode() != ISD::EntryToken){
@@ -405,16 +569,32 @@ Value* X86IREmitter::visitPCMPEQM(const SDNode *N) { llvm_unreachable("visitPCMP
 Value* X86IREmitter::visitPCMPGTM(const SDNode *N) { llvm_unreachable("visitPCMPGTM Unimplemented X86 visit..."); return NULL; }
 Value* X86IREmitter::visitCMPM(const SDNode *N) { llvm_unreachable("visitCMPM Unimplemented X86 visit..."); return NULL; }
 Value* X86IREmitter::visitCMPMU(const SDNode *N) { llvm_unreachable("visitCMPMU Unimplemented X86 visit..."); return NULL; }
-Value* X86IREmitter::visitADD(const SDNode *N) { llvm_unreachable("visitADD Unimplemented X86 visit..."); return NULL; }
-Value* X86IREmitter::visitSUB(const SDNode *N) { llvm_unreachable("visitSUB Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitADD(const SDNode *N) {
+  return IREmitter::visitADD(N);
+}
+Value* X86IREmitter::visitSUB(const SDNode *N) {
+  return IREmitter::visitSUB(N);
+}
 Value* X86IREmitter::visitADC(const SDNode *N) { llvm_unreachable("visitADC Unimplemented X86 visit..."); return NULL; }
 Value* X86IREmitter::visitSBB(const SDNode *N) { llvm_unreachable("visitSBB Unimplemented X86 visit..."); return NULL; }
 Value* X86IREmitter::visitSMUL(const SDNode *N) { llvm_unreachable("visitSMUL Unimplemented X86 visit..."); return NULL; }
-Value* X86IREmitter::visitINC(const SDNode *N) { llvm_unreachable("visitINC Unimplemented X86 visit..."); return NULL; }
-Value* X86IREmitter::visitDEC(const SDNode *N) { llvm_unreachable("visitDEC Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitINC(const SDNode *N) {
+  //Looks like there are two valid operands based on inc def:
+  //2/*#VTs*/, MVT::i16, MVT::i32, 1/*#Ops*/, 0,  // Results = #1 #2
+  return IREmitter::visitADD(N);
+}
+Value* X86IREmitter::visitDEC(const SDNode *N) {
+  //Looks like there are two valid operands based on dec def:
+  //2/*#VTs*/, MVT::i16, MVT::i32, 1/*#Ops*/, 0,  // Results = #1 #2
+  return IREmitter::visitSUB(N);
+}
 Value* X86IREmitter::visitOR(const SDNode *N) { llvm_unreachable("visitOR Unimplemented X86 visit..."); return NULL; }
-Value* X86IREmitter::visitXOR(const SDNode *N) { llvm_unreachable("visitXOR Unimplemented X86 visit..."); return NULL; }
-Value* X86IREmitter::visitAND(const SDNode *N) { llvm_unreachable("visitAND Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitXOR(const SDNode *N) {
+  return IREmitter::visitXOR(N);
+}
+Value* X86IREmitter::visitAND(const SDNode *N) {
+  return IREmitter::visitAND(N);
+}
 Value* X86IREmitter::visitBZHI(const SDNode *N) { llvm_unreachable("visitBZHI Unimplemented X86 visit..."); return NULL; }
 Value* X86IREmitter::visitBEXTR(const SDNode *N) { llvm_unreachable("visitBEXTR Unimplemented X86 visit..."); return NULL; }
 Value* X86IREmitter::visitUMUL(const SDNode *N) { llvm_unreachable("visitUMUL Unimplemented X86 visit..."); return NULL; }

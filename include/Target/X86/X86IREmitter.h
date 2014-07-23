@@ -54,7 +54,7 @@ private:
   Value* visitFSETCC(const SDNode *N);
   Value* visitFGETSIGNx86(const SDNode *N);
   Value* visitCMOV(const SDNode *N);
-  Value* visitBRCONDBasic(const SDNode *N);
+  Value* visitBRCOND(const SDNode *N);
   Value* visitBRCONDAdvanced(const SDNode *N);
   Value* visitRET_FLAG(const SDNode *N);
   Value* visitREP_STOS(const SDNode *N);
