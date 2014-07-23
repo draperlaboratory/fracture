@@ -44,7 +44,12 @@ Value* PowerPCIREmitter::visit(const SDNode *N) {
   IRB->SetCurrentDebugLocation(N->getDebugLoc());
   DEBUG(Infos << "Visiting PowerPC specific Opcode.\n");
   switch (N->getOpcode()) {
-    default: return NULL;
+    default:{
+      errs() << "OpCode: " << N->getOpcode() << "\n";
+      N->dump();
+      llvm_unreachable("PPCIREmitter::visit - Every PPC visit should be implemented...");
+      return NULL;
+    }
 
     case PPCISD::FSEL:				return visitFSEL(N);
     case PPCISD::FCFID:				return visitFCFID(N);
@@ -89,9 +94,9 @@ Value* PowerPCIREmitter::visit(const SDNode *N) {
     case PPCISD::LARX:				return visitLARX(N);
     case PPCISD::STCX:				return visitSTCX(N);
     case PPCISD::TC_RETURN:		return visitTC_RETURN(N);
-    case PPCISD::CR6SET:			return visitSET(N);
-    case PPCISD::CR6UNSET:		return visitUNSET(N);
-    case PPCISD::PPC32_GOT:		return visit_GOT(N);
+    case PPCISD::CR6SET:			return visitCR6SET(N);
+    case PPCISD::CR6UNSET:		return visitCR6UNSET(N);
+    case PPCISD::PPC32_GOT:		return visitPPC32_GOT(N);
     case PPCISD::ADDIS_GOT_TPREL_HA: return visitADDIS_GOT_TPREL_HA(N);
     case PPCISD::LD_GOT_TPREL_L:		return visitLD_GOT_TPREL_L(N);
     case PPCISD::ADD_TLS:						return visitADD_TLS(N);
@@ -118,9 +123,74 @@ Value* PowerPCIREmitter::visit(const SDNode *N) {
 }
 
 
+Value* PowerPCIREmitter::visitFSEL(const SDNode *N) { llvm_unreachable("visitFSEL unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitFCFID(const SDNode *N) { llvm_unreachable("visitFCFID unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitFCFIDU(const SDNode *N) { llvm_unreachable("visitFCFIDU unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitFCFIDS(const SDNode *N) { llvm_unreachable("visitFCFIDS unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitFCFIDUS(const SDNode *N) { llvm_unreachable("visitFCFIDUS unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitFCTIDZ(const SDNode *N) { llvm_unreachable("visitFCTIDZ unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitFCTIWZ(const SDNode *N) { llvm_unreachable("visitFCTIWZ unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitFCTIDUZ(const SDNode *N) { llvm_unreachable("visitFCTIDUZ unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitFCTIWUZ(const SDNode *N) { llvm_unreachable("visitFCTIWUZ unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitFRE(const SDNode *N) { llvm_unreachable("visitFRE unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitFRSQRTE(const SDNode *N) { llvm_unreachable("visitFRSQRTE unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitVMADDFP(const SDNode *N) { llvm_unreachable("visitVMADDFP unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitVNMSUBFP(const SDNode *N) { llvm_unreachable("visitVNMSUBFP unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitVPERM(const SDNode *N) { llvm_unreachable("visitVPERM unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitHi(const SDNode *N) { llvm_unreachable("visitHi unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitLo(const SDNode *N) { llvm_unreachable("visitLo unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitTOC_ENTRY(const SDNode *N) { llvm_unreachable("visitTOC_ENTRY unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitTOC_RESTORE(const SDNode *N) { llvm_unreachable("visitTOC_RESTORE unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitLOAD(const SDNode *N) { llvm_unreachable("visitLOAD unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitLOAD_TOC(const SDNode *N) { llvm_unreachable("visitLOAD_TOC unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitDYNALLOC(const SDNode *N) { llvm_unreachable("visitDYNALLOC unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitGlobalBaseReg(const SDNode *N) { llvm_unreachable("visitGlobalBaseReg unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitSRL(const SDNode *N) { llvm_unreachable("visitSRL unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitSRA(const SDNode *N) { llvm_unreachable("visitSRA unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitSHL(const SDNode *N) { llvm_unreachable("visitSHL unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitCALL(const SDNode *N) { llvm_unreachable("visitCALL unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitCALL_NOP(const SDNode *N) { llvm_unreachable("visitCALL_NOP unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitMTCTR(const SDNode *N) { llvm_unreachable("visitMTCTR unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitBCTRL(const SDNode *N) { llvm_unreachable("visitBCTRL unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitRET_FLAG(const SDNode *N) { llvm_unreachable("visitRET_FLAG unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitMFOCRF(const SDNode *N) { llvm_unreachable("visitMFOCRF unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitEH_SJLJ_SETJMP(const SDNode *N) { llvm_unreachable("visitEH_SJLJ_SETJMP unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitEH_SJLJ_LONGJMP(const SDNode *N) { llvm_unreachable("visitEH_SJLJ_LONGJMP unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitVCMP(const SDNode *N) { llvm_unreachable("visitVCMP unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitVCMPo(const SDNode *N) { llvm_unreachable("visitVCMPo unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitCOND_BRANCH(const SDNode *N) { llvm_unreachable("visitCOND_BRANCH unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitBDNZ(const SDNode *N) { llvm_unreachable("visitBDNZ unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitBDZ(const SDNode *N) { llvm_unreachable("visitBDZ unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitFADDRTZ(const SDNode *N) { llvm_unreachable("visitFADDRTZ unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitMFFS(const SDNode *N) { llvm_unreachable("visitMFFS unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitLARX(const SDNode *N) { llvm_unreachable("visitLARX unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitSTCX(const SDNode *N) { llvm_unreachable("visitSTCX unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitTC_RETURN(const SDNode *N) { llvm_unreachable("visitTC_RETURN unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitCR6SET(const SDNode *N) { llvm_unreachable("visitCR6SET unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitCR6UNSET(const SDNode *N) { llvm_unreachable("visitCR6UNSET unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitPPC32_GOT(const SDNode *N) { llvm_unreachable("visitPPC32_GOT unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitADDIS_GOT_TPREL_HA(const SDNode *N) { llvm_unreachable("visitADDIS_GOT_TPREL_HA unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitLD_GOT_TPREL_L(const SDNode *N) { llvm_unreachable("visitLD_GOT_TPREL_L unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitADD_TLS(const SDNode *N) { llvm_unreachable("visitADD_TLS unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitADDIS_TLSGD_HA(const SDNode *N) { llvm_unreachable("visitADDIS_TLSGD_HA unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitADDI_TLSGD_L(const SDNode *N) { llvm_unreachable("visitADDI_TLSGD_L unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitGET_TLS_ADDR(const SDNode *N) { llvm_unreachable("visitGET_TLS_ADDR unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitADDIS_TLSLD_HA(const SDNode *N) { llvm_unreachable("visitADDIS_TLSLD_HA unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitADDI_TLSLD_L(const SDNode *N) { llvm_unreachable("visitADDI_TLSLD_L unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitGET_TLSLD_ADDR(const SDNode *N) { llvm_unreachable("visitGET_TLSLD_ADDR unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitADDIS_DTPREL_HA(const SDNode *N) { llvm_unreachable("visitADDIS_DTPREL_HA unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitADDI_DTPREL_L(const SDNode *N) { llvm_unreachable("visitADDI_DTPREL_L unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitVADD_SPLAT(const SDNode *N) { llvm_unreachable("visitVADD_SPLAT unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitSC(const SDNode *N) { llvm_unreachable("visitSC unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitSTBRX(const SDNode *N) { llvm_unreachable("visitSTBRX unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitLBRX(const SDNode *N) { llvm_unreachable("visitLBRX unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitSTFIWX(const SDNode *N) { llvm_unreachable("visitSTFIWX unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitLFIWAX(const SDNode *N) { llvm_unreachable("visitLFIWAX unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitLFIWZX(const SDNode *N) { llvm_unreachable("visitLFIWZX unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitADDIS_TOC_HA(const SDNode *N) { llvm_unreachable("visitADDIS_TOC_HA unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitLD_TOC_L(const SDNode *N) { llvm_unreachable("visitLD_TOC_L unimplemented PPC visit..."); return NULL; }
+Value* PowerPCIREmitter::visitADDI_TOC_L(const SDNode *N) { llvm_unreachable("visitADDI_TOC_L unimplemented PPC visit..."); return NULL; }
 
-//Value* PowerPCIREmitter::visitRET(const SDNode *N) {
-//  return IRB->CreateRetVoid();
-//}
+
 
 } // end fracture namespace
