@@ -164,6 +164,7 @@ Value* IREmitter::visit(const SDNode *N) {
   DEBUG(Infos << "Visiting Node: ");
   DEBUG(N->print(Infos));
   DEBUG(Infos << "\n");
+  DEBUG(Infos << format("%1" PRIx64, Dec->getDisassembler()->getDebugOffset(N->getDebugLoc())) << "\n");
 
   switch (N->getOpcode()) {
     default:{
@@ -173,8 +174,8 @@ Value* IREmitter::visit(const SDNode *N) {
       return NULL;
     }
     // Do nothing nodes
-    case ISD::EntryToken:
-    case ISD::HANDLENODE:
+    case ISD::EntryToken:         return NULL;
+    case ISD::HANDLENODE:         EndHandleDAG = true;
     case ISD::UNDEF:              return NULL;
     case ISD::CopyFromReg:        return visitCopyFromReg(N);
     case ISD::CopyToReg:          return visitCopyToReg(N);

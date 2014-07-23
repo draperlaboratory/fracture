@@ -63,8 +63,14 @@ public:
 
 
   IRBuilder<>* getIRB() { return IRB; }
-  void setDAG(SelectionDAG *NewDAG) { DAG = NewDAG; }
+  void setDAG(SelectionDAG *NewDAG) {
+    EndHandleDAG = false;
+    DAG = NewDAG;
+  }
+
+  void endDAG() { assert(EndHandleDAG && "Reached End of DAG and did not see handle node."); }
 protected:
+  bool EndHandleDAG;
   Decompiler *Dec;
   SelectionDAG *DAG;
   IRBuilder<> *IRB;

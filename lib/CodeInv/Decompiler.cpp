@@ -51,6 +51,8 @@ void Decompiler::decompile(unsigned Address) {
   Children.push_back(Address);
 
   do {
+    //size_t ChildrenSize = Children.size();
+    //errs() << "Size: " << ChildrenSize << "\n";
     Function* CurFunc = decompileFunction(Children.back());
     Children.pop_back();
     if (CurFunc == NULL) {
@@ -63,9 +65,12 @@ void Decompiler::decompile(unsigned Address) {
       for (BasicBlock::iterator I = BI->begin(), E = BI->end();
            I != E; ++I) {
         CallInst *CI = dyn_cast<CallInst>(I);
+        //outs() << "------CI------\n";
         if (CI == NULL || !CI->getCalledFunction()->hasFnAttribute("Address")) {
+          //outs() << "Continue?\n";
           continue;
         }
+        //CI->dump();
         StringRef AddrStr =
           CI->getCalledFunction()->getFnAttribute("Address").getValueAsString();
         uint64_t Addr;
@@ -116,6 +121,8 @@ Function* Decompiler::decompileFunction(unsigned Address) {
   // For each basic block
   MachineFunction::iterator BI = MF->begin(), BE = MF->end();
   while (BI != BE) {
+    //outs() << "-----BI------\n";
+    //BI->dump();
     // Add branch from "entry"
     if (BI == MF->begin()) {
       entry->getInstList().push_back(
@@ -127,6 +134,8 @@ Function* Decompiler::decompileFunction(unsigned Address) {
   }
 
   BI = MF->begin();
+  outs() << "-----BI------\n";
+  BI->dump();
   while (BI != BE) {
     if (decompileBasicBlock(BI, F) == NULL) {
       printError("Unable to decompile basic block!");
@@ -140,6 +149,7 @@ Function* Decompiler::decompileFunction(unsigned Address) {
     if (!(I->empty())) {
       continue;
     }
+
     // Right now, the only way to get the right offset is to parse its name
     // it sucks, but it works.
     StringRef Name = I->getName();
@@ -147,6 +157,11 @@ Function* Decompiler::decompileFunction(unsigned Address) {
 
     size_t Off = F->getName().size() + 1;
     size_t Size = Name.size() - Off;
+
+    outs() << "-----I------\n";
+    outs() << "Name: " << Name << " Offset: " << Off << " Size: " << Size << "\n";
+    I->dump();
+
     StringRef BBAddrStr = Name.substr(Off, Size);
     unsigned long long BBAddr;
     getAsUnsignedInteger(BBAddrStr, 10, BBAddr);
@@ -159,15 +174,18 @@ Function* Decompiler::decompileFunction(unsigned Address) {
     // Note the ++, nothing ever splits the entry block.
     for (SB = ++F->begin(); SB != E; ++SB) {
       DEBUG(SB->dump());
-      assert(SB->getTerminator() && "Decompiler::decompileFunction - getTerminator (missing llvm unreachable?)");
-      DEBUG(outs() << "SB: " << SB->getName()
-        << "\tRange: " << Dis->getDebugOffset(SB->begin()->getDebugLoc())
-        << " " << Dis->getDebugOffset(SB->getTerminator()->getDebugLoc())
-        << "\n");
-      if (SB->empty() || BBAddr < getBasicBlockAddress(SB)
-        || BBAddr > Dis->getDebugOffset(SB->getTerminator()->getDebugLoc())) {
+      if (SB->empty() || BBAddr < getBasicBlockAddress(SB)) {
         continue;
       }
+      assert(SB->getTerminator() && "Decompiler::decompileFunction - getTerminator (missing llvm unreachable?)");
+      DEBUG(outs() << "SB: " << SB->getName()
+              << "\tRange: " << Dis->getDebugOffset(SB->begin()->getDebugLoc())
+              << " " << Dis->getDebugOffset(SB->getTerminator()->getDebugLoc())
+              << "\n");
+      if (BBAddr > Dis->getDebugOffset(SB->getTerminator()->getDebugLoc())) {
+        continue;
+      }
+
       // Reorder instructions based on Debug Location
       sortBasicBlock(SB);
       DEBUG(errs() << "Found Split Block: " << SB->getName() << "\n");
@@ -362,7 +380,7 @@ BasicBlock* Decompiler::decompileBasicBlock(MachineBasicBlock *MBB,
     NodeStack.pop();
     Emitter->EmitIR(BB, CurNode, NodeStack, OpMap);
   }
-
+  Emitter->endDAG();
   free(DAG);
 
   return BB;
@@ -452,14 +470,17 @@ SelectionDAG* Decompiler::createDAGFromMachineBasicBlock(
               << OpCode << "\tSize: " << ResultTypes.size() << "\n");
     DEBUG(I->dump());
     if(ResultTypes.size() == 0){
-
-
-      //(unsigned) 1 should be a register on any platform.
-      SDValue CFRNode = DAG->getCopyFromReg(prevNode, Loc, (unsigned) 1, MVT::i32);
-      CFRNode.getNode()->setDebugLoc(I->getDebugLoc());
-      SDValue C2RNode = DAG->getCopyToReg(CFRNode, Loc, (unsigned) 1, CFRNode);
-      C2RNode.getNode()->setDebugLoc(I->getDebugLoc());
-      prevNode = C2RNode;
+      uint64_t Address = Dis->getDebugOffset(I->getDebugLoc());
+      const long int InstrSize = Dis->getMCInst(Address)->size();
+      for(int j = 0; j<= InstrSize; j++){
+        DebugLoc *Location = Dis->setDebugLoc(Address+j);
+        //(unsigned) 1 should be a register on any platform.
+        SDValue CFRNode = DAG->getCopyFromReg(prevNode, Loc, (unsigned) 1, MVT::i32);
+        CFRNode.getNode()->setDebugLoc(*Location);
+        SDValue C2RNode = DAG->getCopyToReg(SDValue(CFRNode.getNode(),1), Loc, (unsigned) 1, CFRNode);
+        C2RNode.getNode()->setDebugLoc(*Location);
+        prevNode = C2RNode;
+      }
     } else {
 
       MachineSDNode *MSD = DAG->getMachineNode(OpCode, Loc, ResultTypes, Ops);

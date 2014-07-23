@@ -155,7 +155,15 @@ public:
      return NULL;
   }
 
+  MCInst* getMCInst(unsigned Address) const {
+    if (Instructions.find(Address) != Instructions.end()) {
+      return Instructions.at(Address);
+    }
+    return NULL;
+  }
+
   uint64_t getDebugOffset(const DebugLoc &Loc) const;
+  DebugLoc* setDebugLoc(uint64_t Address);
   void deleteFunction(MachineFunction* MF);
 private:
   object::SectionRef CurSection;
