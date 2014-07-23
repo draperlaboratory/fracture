@@ -167,9 +167,9 @@ Value* IREmitter::visit(const SDNode *N) {
 
   switch (N->getOpcode()) {
     default:{
-      N->dump();
       errs() << "OpCode: " << N->getOpcode() << "\n";
-      llvm_unreachable("IREmitter::visit - Unimplemented visit...");
+      N->dump();
+      llvm_unreachable("IREmitter::visit - Every visit should be implemented...");
       return NULL;
     }
     // Do nothing nodes

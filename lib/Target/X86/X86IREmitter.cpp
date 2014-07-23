@@ -1,4 +1,4 @@
-//===- X86X86IREmitter - Generalize X86ISD Instrs  ================-*- C++ -*-=//
+//===- X86IREmitter - Generalize X86ISD Instrs  ================-*- C++ -*-=//
 //
 //              Fracture: The Draper Decompiler Infrastructure
 //
@@ -47,7 +47,7 @@ Value* X86IREmitter::visit(const SDNode *N) {
     default:{
       errs() << "OpCode: " << N->getOpcode() << "\n";
       N->dump();
-      llvm_unreachable("X86X86IREmitter::visit - Every X86 visit should be implemented...");
+      llvm_unreachable("X86IREmitter::visit - Every X86 visit should be implemented...");
       return NULL;
     }
     case X86ISD::BSF:             return visitBSF(N);
@@ -269,7 +269,14 @@ Value* X86IREmitter::visitSELECT(const SDNode *N) { llvm_unreachable("visitSELEC
 Value* X86IREmitter::visitSETCC_CARRY(const SDNode *N) { llvm_unreachable("visitSETCC_CARRY Unimplemented X86 visit..."); return NULL; }
 Value* X86IREmitter::visitFSETCC(const SDNode *N) { llvm_unreachable("visitFSETCC Unimplemented X86 visit..."); return NULL; }
 Value* X86IREmitter::visitFGETSIGNx86(const SDNode *N) { llvm_unreachable("visitFGETSIGNx86 Unimplemented X86 visit..."); return NULL; }
-Value* X86IREmitter::visitCMOV(const SDNode *N) { llvm_unreachable("visitCMOV Unimplemented X86 visit..."); return NULL; }
+
+//TODO: This looks like it will need to be a hybrid version of BRCOND
+//http://www.rcollins.org/p6/opcodes/CMOV.html
+//fib_O1_llvm_elf_x86 in fastfib
+Value* X86IREmitter::visitCMOV(const SDNode *N) {
+  //llvm_unreachable("visitCMOV Unimplemented X86 visit...");
+  return NULL;
+}
 //visitBRCOND - Basic handles most conditional branches.  The ideas is that it will search
 //  for the CopyToRegs and look for the compare (CMP).  In situations where there isn't a
 //  compare, visitBRCONDAdvanced will step in.
@@ -279,7 +286,7 @@ Value* X86IREmitter::visitBRCOND(const SDNode *N) {
   const ConstantSDNode *DestNode = dyn_cast<ConstantSDNode>(N->getOperand(1));
 
   if (!DestNode) {
-    printError("X86X86IREmitter::visitBRCOND: Not a constant integer for branch!");
+    printError("X86IREmitter::visitBRCOND: Not a constant integer for branch!");
     return NULL;
   }
 
@@ -319,9 +326,9 @@ Value* X86IREmitter::visitBRCOND(const SDNode *N) {
   }
 
   if (CMPNode == NULL) {
-    //errs() << "X86X86IREmitter ERROR: Could not find CMP SDNode for BRCond!\n";
+    //errs() << "X86IREmitter ERROR: Could not find CMP SDNode for BRCond!\n";
     //return NULL;
-    DEBUG(outs() << "X86X86IREmitter::visitBRCONDBasic: Branch type is advanced -> visitBRCONDAdvanced\n");
+    DEBUG(outs() << "X86IREmitter::visitBRCONDBasic: Branch type is advanced -> visitBRCONDAdvanced\n");
     return visitBRCONDAdvanced(N);
   }
 
@@ -390,7 +397,7 @@ Value* X86IREmitter::visitBRCONDAdvanced(const SDNode *N) {
   const ConstantSDNode *DestNode = dyn_cast<ConstantSDNode>(N->getOperand(1));
 
   if (!DestNode) {
-    printError("X86X86IREmitter::visitBRCONDAdvanced: Not a constant integer for branch!");
+    printError("X86IREmitter::visitBRCONDAdvanced: Not a constant integer for branch!");
     return NULL;
   }
 
@@ -421,7 +428,7 @@ Value* X86IREmitter::visitBRCONDAdvanced(const SDNode *N) {
   }
 
   if(BinOpNode == NULL || CMPNode == NULL || CMPNode->getReg() != X86::EFLAGS){  //Ensure we didn't just fall through the while loop
-    llvm_unreachable("X86X86IREmitter::visitBRCONDAdvanced: Could not find EFLAGS Register or the Math Node...");
+    llvm_unreachable("X86IREmitter::visitBRCONDAdvanced: Could not find EFLAGS Register or the Math Node...");
   }
 
   /*
@@ -487,22 +494,22 @@ Value* X86IREmitter::visitBRCONDAdvanced(const SDNode *N) {
   case ISD::SETGE:  //JAE_1: CF == 0
     // CF ISD::AND 1 (b1) == 0
     //Cmp = IRB->CreateICmpSGE(LHS, RHS);
-    llvm_unreachable("X86X86IREmitter::visitBRCONDAdvanced: SETGE Unimplemented");
+    llvm_unreachable("X86IREmitter::visitBRCONDAdvanced: SETGE Unimplemented");
     break;
   case ISD::SETLT:  //JB_1: CF == 1
     // CF ISD::AND 1 (b1) == 1
     //Cmp = IRB->CreateICmpSLT(LHS, RHS);
-    llvm_unreachable("X86X86IREmitter::visitBRCONDAdvanced: SETLT Unimplemented");
+    llvm_unreachable("X86IREmitter::visitBRCONDAdvanced: SETLT Unimplemented");
     break;
   case ISD::SETGT:  //JA_1: CF == 0 && ZF == 0
     // ZF ISD::AND 32 (b100000) == 0 && CF ISD::AND 1 (b1) == 0
     //Cmp = IRB->CreateICmpSGT(LHS, RHS);
-    llvm_unreachable("X86X86IREmitter::visitBRCONDAdvanced: SETGT Unimplemented");
+    llvm_unreachable("X86IREmitter::visitBRCONDAdvanced: SETGT Unimplemented");
     break;
   case ISD::SETLE:  //JBE_1: CF == 1 || ZF == 1
     // ZF ISD::AND 32 (b100000) == 1 && CF ISD::AND 1 (b1) == 1
     //Cmp = IRB->CreateICmpSLE(LHS, RHS);
-    llvm_unreachable("X86X86IREmitter::visitBRCONDAdvanced: SETLE Unimplemented");
+    llvm_unreachable("X86IREmitter::visitBRCONDAdvanced: SETLE Unimplemented");
     break;
   }
   (dyn_cast<Instruction>(Cmp))->setDebugLoc(N->getOperand(2)->getDebugLoc());
@@ -601,12 +608,15 @@ Value* X86IREmitter::visitSMUL(const SDNode *N) { llvm_unreachable("visitSMUL Un
 Value* X86IREmitter::visitINC(const SDNode *N) {
   //Looks like there are two valid operands based on inc def:
   //2/*#VTs*/, MVT::i16, MVT::i32, 1/*#Ops*/, 0,  // Results = #1 #2
-  return IREmitter::visitADD(N);
+  //return IREmitter::visitADD(N);
+  return NULL; //Todo - how do constants work in the IREmitter?
 }
+//in fib_O1_llvm_elf_x86
 Value* X86IREmitter::visitDEC(const SDNode *N) {
   //Looks like there are two valid operands based on dec def:
   //2/*#VTs*/, MVT::i16, MVT::i32, 1/*#Ops*/, 0,  // Results = #1 #2
-  return IREmitter::visitSUB(N);
+  //return IREmitter::visitSUB(N);
+  return NULL; //Todo - how do constants work in the IREmitter?
 }
 Value* X86IREmitter::visitOR(const SDNode *N) { llvm_unreachable("visitOR Unimplemented X86 visit..."); return NULL; }
 Value* X86IREmitter::visitXOR(const SDNode *N) {
