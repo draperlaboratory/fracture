@@ -240,7 +240,27 @@ Value* X86IREmitter::visitCALL(const SDNode *N) {
   return IREmitter::visitCALL(N);
 }
 Value* X86IREmitter::visitRDTSC_DAG(const SDNode *N) { llvm_unreachable("visitRDTSC_DAG Unimplemented X86 visit..."); return NULL; }
-Value* X86IREmitter::visitCMP(const SDNode *N) { llvm_unreachable("visitCMP Unimplemented X86 visit..."); return NULL; }
+Value* X86IREmitter::visitCMP(const SDNode *N) {
+  /*
+   * Compares the first source operand with the second source operand and
+   * sets the status flags in the EFLAGS register according to the results.
+   * The comparison is performed by subtracting the second operand from the
+   * first operand and then setting the status flags in the same manner as
+   * the SUB instruction. When an immediate value is used as an operand,
+   * it is sign-extended to the length of the first operand.
+   *
+   * The CMP instruction is typically used in conjunction with a conditional
+   * jump (Jcc), condition move (CMOVcc), or SETcc instruction. The condition
+   * codes used by the Jcc, CMOVcc, and SETcc instructions are based on the
+   * results of a CMP instruction. Appendix B, EFLAGS Condition Codes, in
+   * the IA-32 Intel Architecture Software Developer's Manual, Volume 1, shows
+   * the relationship of the status flags and the condition codes.
+   *
+   * OPC_EmitNode, TARGET_VAL(X86ISD::CMP), 0,
+   *    1 #VTs, MVT::i32, 2 #Ops , 0, 0,  // Results = #3
+   */
+  return IREmitter::visitSUB(N);
+}
 Value* X86IREmitter::visitCOMI(const SDNode *N) { llvm_unreachable("visitCOMI Unimplemented X86 visit..."); return NULL; }
 Value* X86IREmitter::visitUCOMI(const SDNode *N) { llvm_unreachable("visitUCOMI Unimplemented X86 visit..."); return NULL; }
 Value* X86IREmitter::visitBT(const SDNode *N) { llvm_unreachable("visitBT Unimplemented X86 visit..."); return NULL; }

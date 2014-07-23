@@ -159,7 +159,7 @@ Function* Decompiler::decompileFunction(unsigned Address) {
     // Note the ++, nothing ever splits the entry block.
     for (SB = ++F->begin(); SB != E; ++SB) {
       DEBUG(SB->dump());
-      assert(SB->getTerminator() && "Decompiler::decompileFunction - getTerminator (llvm unreachable?)");
+      assert(SB->getTerminator() && "Decompiler::decompileFunction - getTerminator (missing llvm unreachable?)");
       DEBUG(outs() << "SB: " << SB->getName()
         << "\tRange: " << Dis->getDebugOffset(SB->begin()->getDebugLoc())
         << " " << Dis->getDebugOffset(SB->getTerminator()->getDebugLoc())
