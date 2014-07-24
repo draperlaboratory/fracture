@@ -77,7 +77,7 @@ Sample commands to download and compile fracture are:
 The directory `/opt/llvm` is the directory you compiled llvm in step
 1. We assume you were in `/opt` when you compiled.
 
-NOTE: On Ubuntu and other systems we have had to add the following flag:
+NOTE: On Ubuntu, Mageia, and other systems we have had to add the following flag:
     --disable-optimized
 
 Note that the compile generates a large amount of debug output from the

@@ -220,7 +220,7 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
 //          CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Store);
 //
           return NULL;
-      }
+       }
 
 //    case ARM::LDRi12: {
 //      //load the Ptr
@@ -269,10 +269,8 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
       SDValue Store = CurDAG->getStore(Chain, SL, Tgt, Addr, MMO);
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Store);
       FixChainOp(Store.getNode());
-
-   	      return NULL;
-    }
-
+	return NULL;
+      }
     case ARM::LDMIA:            // Load variations...
                             //   LD?  Inc?   Bef?    WB?
       InvLoadOrStoreMultiple(N, true, true, false, false);

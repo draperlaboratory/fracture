@@ -68,9 +68,10 @@ namespace object {
   }
 
   section_iterator DummyObjectFile::end_sections() const {
-    DataRefImpl ret;
-    ret.p = intptr_t(0);
-    return section_iterator(SectionRef(ret, this));
+    //DataRefImpl ret;
+    //ret.p = intptr_t(0);
+    //return section_iterator(SectionRef(ret, this));
+	 return begin_sections();
   }
 
   library_iterator DummyObjectFile::begin_libraries_needed() const {

@@ -8,6 +8,6 @@ LEVEL=..
 #
 # List all of the subdirectories that we will compile.
 #
-DIRS=fracture-cl
+DIRS=fracture-cl mkAllInsts
 
 include $(LEVEL)/Makefile.common

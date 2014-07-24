@@ -25,7 +25,7 @@ namespace fracture {
 
 // NOTE: This needs to be generalized to select InvISelDAG's based on
 // TargetMachine Types.
-InvISelDAG* getTargetInvISelDAG(const TargetMachine *T) {
+InvISelDAG* getTargetInvISelDAG(const TargetMachine *T, const Decompiler *TheDec) {
   //Prob needs to be conditional...
 	StringRef triple = T->getTargetTriple();
 	outs() << "Triple: " << triple.str().c_str() << "\n";
@@ -36,7 +36,7 @@ InvISelDAG* getTargetInvISelDAG(const TargetMachine *T) {
 	if(triple.str().find("arm") == 0){
 		res = new ARMInvISelDAG(*T);
 	} else if(triple.str().find("i386") == 0 || triple.str().find("x86_64") == 0) {
-		res = new X86InvISelDAG(*T);
+		res = new X86InvISelDAG(*T, CodeGenOpt::Default, TheDec);
 	} else {
 		outs() << "Decompiler doesn't support: " << triple.str().c_str() << cpu.str().c_str() << "\n";
 	}
@@ -44,9 +44,10 @@ InvISelDAG* getTargetInvISelDAG(const TargetMachine *T) {
 }
 
 InvISelDAG::InvISelDAG(const TargetMachine &TMC,
-  CodeGenOpt::Level OL) {
+  CodeGenOpt::Level OL, const Decompiler *TheDec) {
   TLI = TMC.getTargetLowering();
   TM = &TMC;
+  Dec = TheDec;
 }
 
 

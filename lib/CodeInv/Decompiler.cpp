@@ -21,22 +21,20 @@ using namespace llvm;
 
 namespace fracture {
 
-Decompiler::Decompiler(Disassembler *NewDis, Module *NewMod,
-  raw_ostream &InfoOut, raw_ostream &ErrOut) : Infos(InfoOut), Errs(ErrOut) {
+Decompiler::Decompiler(Disassembler *NewDis, Module *NewMod, raw_ostream &InfoOut, raw_ostream &ErrOut) :
+    Dis(NewDis), Mod(NewMod), DAG(NULL), ViewMCDAGs(false), ViewIRDAGs(false), Infos(InfoOut), Errs(ErrOut){
+
   assert(NewDis && "Cannot initialize decompiler with null Disassembler!");
-  Dis = NewDis;
-  Mod = NewMod;
   if (Mod == NULL) {
     std::string ModID = Dis->getExecutable()->getLoadName().data();
     ModID += "-IR";
     Mod = new Module(StringRef(ModID), *(Dis->getMCDirector()->getContext()));
   }
   Context = Dis->getMCDirector()->getContext();
-  InvISel = getTargetInvISelDAG(Dis->getMCDirector()->getTargetMachine());
+
+  //Where is the getTargetInvISelDAG method?
+  InvISel = getTargetInvISelDAG(Dis->getMCDirector()->getTargetMachine(), this);
   Emitter = InvISel->getEmitter(this, Infos, Errs);
-  DAG = NULL;
-  ViewIRDAGs = false;
-  ViewMCDAGs = false;
 }
 
 Decompiler::~Decompiler() {
@@ -53,6 +51,8 @@ void Decompiler::decompile(unsigned Address) {
   Children.push_back(Address);
 
   do {
+    //size_t ChildrenSize = Children.size();
+    //errs() << "Size: " << ChildrenSize << "\n";
     Function* CurFunc = decompileFunction(Children.back());
     Children.pop_back();
     if (CurFunc == NULL) {
@@ -65,9 +65,12 @@ void Decompiler::decompile(unsigned Address) {
       for (BasicBlock::iterator I = BI->begin(), E = BI->end();
            I != E; ++I) {
         CallInst *CI = dyn_cast<CallInst>(I);
+        //outs() << "------CI------\n";
         if (CI == NULL || !CI->getCalledFunction()->hasFnAttribute("Address")) {
+          //outs() << "Continue?\n";
           continue;
         }
+        //CI->dump();
         StringRef AddrStr =
           CI->getCalledFunction()->getFnAttribute("Address").getValueAsString();
         uint64_t Addr;
@@ -118,6 +121,8 @@ Function* Decompiler::decompileFunction(unsigned Address) {
   // For each basic block
   MachineFunction::iterator BI = MF->begin(), BE = MF->end();
   while (BI != BE) {
+    //outs() << "-----BI------\n";
+    //BI->dump();
     // Add branch from "entry"
     if (BI == MF->begin()) {
       entry->getInstList().push_back(
@@ -129,6 +134,8 @@ Function* Decompiler::decompileFunction(unsigned Address) {
   }
 
   BI = MF->begin();
+  outs() << "-----BI------\n";
+  BI->dump();
   while (BI != BE) {
     if (decompileBasicBlock(BI, F) == NULL) {
       printError("Unable to decompile basic block!");
@@ -142,6 +149,7 @@ Function* Decompiler::decompileFunction(unsigned Address) {
     if (!(I->empty())) {
       continue;
     }
+
     // Right now, the only way to get the right offset is to parse its name
     // it sucks, but it works.
     StringRef Name = I->getName();
@@ -149,6 +157,11 @@ Function* Decompiler::decompileFunction(unsigned Address) {
 
     size_t Off = F->getName().size() + 1;
     size_t Size = Name.size() - Off;
+
+    //outs() << "-----I------\n";
+    //outs() << "Name: " << Name << " Offset: " << Off << " Size: " << Size << "\n";
+    //I->dump();
+
     StringRef BBAddrStr = Name.substr(Off, Size);
     unsigned long long BBAddr;
     getAsUnsignedInteger(BBAddrStr, 10, BBAddr);
@@ -160,14 +173,19 @@ Function* Decompiler::decompileFunction(unsigned Address) {
     BasicBlock::iterator SI, SE;    // Split instruction
     // Note the ++, nothing ever splits the entry block.
     for (SB = ++F->begin(); SB != E; ++SB) {
-      DEBUG(outs() << "SB: " << SB->getName()
-        << "\tRange: " << Dis->getDebugOffset(SB->begin()->getDebugLoc())
-        << " " << Dis->getDebugOffset(SB->getTerminator()->getDebugLoc())
-        << "\n");
-      if (SB->empty() || BBAddr < getBasicBlockAddress(SB)
-        || BBAddr > Dis->getDebugOffset(SB->getTerminator()->getDebugLoc())) {
+      DEBUG(SB->dump());
+      if (SB->empty() || BBAddr < getBasicBlockAddress(SB)) {
         continue;
       }
+      assert(SB->getTerminator() && "Decompiler::decompileFunction - getTerminator (missing llvm unreachable?)");
+      DEBUG(outs() << "SB: " << SB->getName()
+              << "\tRange: " << Dis->getDebugOffset(SB->begin()->getDebugLoc())
+              << " " << Dis->getDebugOffset(SB->getTerminator()->getDebugLoc())
+              << "\n");
+      if (BBAddr > Dis->getDebugOffset(SB->getTerminator()->getDebugLoc())) {
+        continue;
+      }
+
       // Reorder instructions based on Debug Location
       sortBasicBlock(SB);
       DEBUG(errs() << "Found Split Block: " << SB->getName() << "\n");
@@ -362,7 +380,7 @@ BasicBlock* Decompiler::decompileBasicBlock(MachineBasicBlock *MBB,
     NodeStack.pop();
     Emitter->EmitIR(BB, CurNode, NodeStack, OpMap);
   }
-
+  Emitter->endDAG();
   free(DAG);
 
   return BB;
@@ -443,27 +461,49 @@ SelectionDAG* Decompiler::createDAGFromMachineBasicBlock(
       Ops.insert(Ops.begin(), prevNode);
     }
 
-    MachineSDNode *MSD = DAG->getMachineNode(OpCode, Loc, ResultTypes, Ops);
-    MSD->setDebugLoc(I->getDebugLoc());
-    MSD->setMemRefs(I->memoperands_begin(), I->memoperands_end());
+    //This if block handles NOPs (hopefully just) and the else block handles everything else
+    //  NOPs appear to be the only OpCode that has a size of 0, which breaks getMachineNode
+    //  We are going to replace a NOP with an abstract CFR and then C2R which is extremely
+    //  similar to how NOPs are treated in the hardware (xchg).  It should also leave any
+    //  flag registers alone.
+    DEBUG(errs() << "Decompiler::createDAGFromMachineBasicBlock dumping I: \tOpCode: "
+              << OpCode << "\tSize: " << ResultTypes.size() << "\n");
+    DEBUG(I->dump());
+    if(ResultTypes.size() == 0){
+      uint64_t Address = Dis->getDebugOffset(I->getDebugLoc());
+      const long int InstrSize = Dis->getMCInst(Address)->size();
+      for(int j = 0; j<= InstrSize; j++){
+        DebugLoc *Location = Dis->setDebugLoc(Address+j);
+        //(unsigned) 1 should be a register on any platform.
+        SDValue CFRNode = DAG->getCopyFromReg(prevNode, Loc, (unsigned) 1, MVT::i32);
+        CFRNode.getNode()->setDebugLoc(*Location);
+        SDValue C2RNode = DAG->getCopyToReg(SDValue(CFRNode.getNode(),1), Loc, (unsigned) 1, CFRNode);
+        C2RNode.getNode()->setDebugLoc(*Location);
+        prevNode = C2RNode;
+      }
+    } else {
 
-    // If we were a chain, make us the prevNode.
-    if (isChain) {
-      prevNode = SDValue(MSD, ResultTypes.size() - 1);
-    }
-    // Update instruction Defs (should always get registers here)
-    for (unsigned i = 0, e = Defs.size(); i != e; ++i) {
-      Deps[Defs[i]->getReg()].first = SDValue(MSD, i);
-      // Also track the chain at the time this reg is defined (for insert later)
-      Deps[Defs[i]->getReg()].second = prevNode;
-      // Add CopyToReg for every register definition
-      SDValue CTR = DAG->getCopyToReg(prevNode, Loc, Defs[i]->getReg(),
-        SDValue(MSD, i));
-      CTR.getNode()->setDebugLoc(I->getDebugLoc());
-      prevNode = CTR;
+      MachineSDNode *MSD = DAG->getMachineNode(OpCode, Loc, ResultTypes, Ops);
+      MSD->setDebugLoc(I->getDebugLoc());
+      MSD->setMemRefs(I->memoperands_begin(), I->memoperands_end());
+
+      // If we were a chain, make us the prevNode.
+      if (isChain) {
+        prevNode = SDValue(MSD, ResultTypes.size() - 1);
+      }
+      // Update instruction Defs (should always get registers here)
+      for (unsigned i = 0, e = Defs.size(); i != e; ++i) {
+        Deps[Defs[i]->getReg()].first = SDValue(MSD, i);
+        // Also track the chain at the time this reg is defined (for insert later)
+        Deps[Defs[i]->getReg()].second = prevNode;
+        // Add CopyToReg for every register definition
+        SDValue CTR = DAG->getCopyToReg(prevNode, Loc, Defs[i]->getReg(),
+            SDValue(MSD, i));
+        CTR.getNode()->setDebugLoc(I->getDebugLoc());
+        prevNode = CTR;
+      }
     }
   }
-
   DAG->setRoot(prevNode);
 
   return DAG;
@@ -525,6 +565,8 @@ void Decompiler::printSDNode(std::map<SDValue, std::string> &OpMap,
   for (SDNode::use_iterator I = CurNode->use_begin(), E = CurNode->use_end();
       I != E; ++I) {
     // Save any chain uses to the Nodestack (to guarantee they get evaluated)
+    //I->dump();
+    //outs() << "EVT String: " << I.getUse().getValueType().getEVTString() << "\n";
     if (I.getUse().getValueType() == MVT::Other) {
       NodeStack.push(*I);
       continue;

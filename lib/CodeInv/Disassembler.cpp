@@ -167,21 +167,7 @@ unsigned Disassembler::decodeInstruction(unsigned Address,
   MCID->Size = InstSize;
 
   // Recover MachineInstr representation
-  // Note: Location stores offset of instruction, which is really a perverse
-  //       misuse of this field.
-  Type *Int64 = Type::getInt64Ty(*MC->getContext());
-  // The following sets the "scope" variable which actually holds the address.
-  uint64_t AddrMask = dwarf::DW_TAG_lexical_block;
-  std::vector<Value*> *Elts = new std::vector<Value*>();
-  Elts->push_back(ConstantInt::get(Int64, AddrMask));
-  Elts->push_back(ConstantInt::get(Int64, Address));
-  MDNode *Scope = MDNode::get(*MC->getContext(), *Elts);
-  // The following is here to fill in the value and not to be used to get
-  // offsets
-  unsigned ColVal = (Address & 0xFF000000) >> 24;
-  unsigned LineVal = Address & 0xFFFFFF;
-  DebugLoc *Location = new DebugLoc(DebugLoc::get(LineVal, ColVal,
-      Scope, NULL));
+  DebugLoc *Location = setDebugLoc(Address);
   MachineInstrBuilder MIB = BuildMI(Block, *Location, *MCID);
   unsigned int numDefs = MCID->getNumDefs();
   for (unsigned int i = 0; i < Inst->getNumOperands(); i++) {
@@ -249,6 +235,26 @@ unsigned Disassembler::decodeInstruction(unsigned Address,
   // Note: I don't know why they decided instruction size needed to be 64 bits,
   // but the following conversion shouldn't be an issue.
   return ((unsigned)InstSize);
+}
+
+DebugLoc* Disassembler::setDebugLoc(uint64_t Address) {
+  // Note: Location stores offset of instruction, which is really a perverse
+  //       misuse of this field.
+  Type *Int64 = Type::getInt64Ty(*MC->getContext());
+  // The following sets the "scope" variable which actually holds the address.
+  uint64_t AddrMask = dwarf::DW_TAG_lexical_block;
+  std::vector<Value*> *Elts = new std::vector<Value*>();
+  Elts->push_back(ConstantInt::get(Int64, AddrMask));
+  Elts->push_back(ConstantInt::get(Int64, Address));
+  MDNode *Scope = MDNode::get(*MC->getContext(), *Elts);
+  // The following is here to fill in the value and not to be used to get
+  // offsets
+  unsigned ColVal = (Address & 0xFF000000) >> 24;
+  unsigned LineVal = Address & 0xFFFFFF;
+  DebugLoc *Location = new DebugLoc(DebugLoc::get(LineVal, ColVal,
+      Scope, NULL));
+
+  return Location;
 }
 
 MachineFunction* Disassembler::getOrCreateFunction(unsigned Address) {
@@ -425,7 +431,7 @@ std::string Disassembler::getSymbolName(unsigned Address) {
   return "";
 }
 
-StringRef Disassembler::getFunctionName(unsigned Address) {
+const StringRef Disassembler::getFunctionName(unsigned Address) const {
   uint64_t SymAddr;
   error_code ec;
   StringRef NameRef;
@@ -553,6 +559,8 @@ const object::SectionRef Disassembler::getSectionByName(StringRef SectionName)
   error_code ec;
   for (object::section_iterator si = Executable->section_begin(), se =
          Executable->section_end(); si != se; ++si) {
+
+
 
     if (ec) {
       printError(ec.message());
