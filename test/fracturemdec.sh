@@ -7,6 +7,7 @@
 n=""
 binaries=0
 target=""
+triple=""
 stackdump=no
 targetdir=*
 checksum=no
@@ -17,9 +18,9 @@ do
 	case "${option}" 
 	in
 	i)	indivInst=yes;;
-	p)	target="PPC";;
-	a)	target="ARM" n="v6";;
-	x)	target="x86";;
+	p)	target="PPC" triple="ppc-unknown-unknown";;
+	a)	target="ARM" n="v6" triple="arm-unknown-unknown";;
+	x)	target="x86" triple="x86-unknown-unknown";;
 	s)	stackdump=yes;;
 	d)	stackdump=yes checksum=yes;;
 	h)	echo " FRACTURE DIRECTORY MASS DECOMPILER
@@ -32,7 +33,7 @@ do
 -m	=Set M Atribute
 -f	=Specify targed directory (If not specified the current directory will be used)
 -c	=Enable checksum print on failure
--i	=Target individual instruction filew, will dec from 0x0 by default
+-i	=Target individual instruction file, will dec from 0x0 by default
 -h	=HELP" 
 		exit 0
 		;;
@@ -49,7 +50,7 @@ then
 fi
 
 echo "Test Harness for $targetdir
-Tripple = $target - unknown - unknown">results.txt
+$triple">results.txt
 date>>results.txt
 hostname>>results.txt
 echo -e "\n  TYPE   |  DEC LOC   | RESULT\n">>results.txt
@@ -64,13 +65,8 @@ do
 		echo "sym .text		
 quit" | fracture -mattr=$n $fn>location.tmp
 		#read -p "SYM written to a temp... " -s
-	if [[ $indivInst = yes ]]
-	then
-		read -p "Hey you pressed -i" -n1 -s
-		echo "dec 0x0
-quit" | fracture -mattr=$n $fn&>ircode.tmp
-		printf "$target BIN | DEC 0x0  | ">>results.txt	
-	elif grep -q "main" location.tmp
+		
+	if grep -q "main" location.tmp
 	then	
 		#read -p "Got main, running dec..." -s		
 		echo "dec main
