@@ -17,6 +17,7 @@
 #include "CodeInv/InvISelDAG.h"
 #include "Target/ARM/ARMInvISelDAG.h"
 #include "Target/X86/X86InvISelDAG.h"
+#include "Target/PowerPC/PPCInvISelDAG.h"
 #include "llvm/IR/DataLayout.h"
 
 //#include "StringRef.h"
@@ -34,9 +35,11 @@ InvISelDAG* getTargetInvISelDAG(const TargetMachine *T, const Decompiler *TheDec
 
 	InvISelDAG *res = NULL;
 	if(triple.str().find("arm") == 0){
-		res = new ARMInvISelDAG(*T);
+		res = new ARMInvISelDAG(*T, CodeGenOpt::Default, TheDec);
 	} else if(triple.str().find("i386") == 0 || triple.str().find("x86_64") == 0) {
 		res = new X86InvISelDAG(*T, CodeGenOpt::Default, TheDec);
+	} else if(triple.str().find("powerpc64") == 0) {
+	  res = new PPCInvISelDAG(*T, CodeGenOpt::Default, TheDec);
 	} else {
 		outs() << "Decompiler doesn't support: " << triple.str().c_str() << cpu.str().c_str() << "\n";
 	}

@@ -20,6 +20,8 @@
 #include "ARMISD.h"
 #include "Target/ARM/ARMIREmitter.h"
 // #include "ARMRegs.h"
+#include "CodeInv/Decompiler.h"
+#include "CodeInv/Disassembler.h"
 
 namespace fracture {
 
@@ -32,7 +34,8 @@ enum AddrMode2Type {
 class ARMInvISelDAG : public InvISelDAG {
 public:
   ARMInvISelDAG(const TargetMachine &TMC,
-    CodeGenOpt::Level OL = CodeGenOpt::Default) : InvISelDAG(TMC, OL) {};
+      CodeGenOpt::Level OL = CodeGenOpt::Default,
+      const Decompiler *TheDec = NULL) : InvISelDAG(TMC, OL, TheDec), Dec(TheDec) {};
 
   ~ARMInvISelDAG() {};
 
@@ -140,6 +143,9 @@ public:
   // Increment, Before, WriteBack
   void InvLoadOrStoreMultiple(SDNode *N, bool Ld, bool Inc, bool B, bool WB);
   bool SelectCMOVPred(SDValue N, SDValue &Pred, SDValue &Reg);
+
+private:
+  const Decompiler *Dec;
 };
 
 } // end fracture namespace
