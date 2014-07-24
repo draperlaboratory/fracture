@@ -24,18 +24,18 @@ namespace fracture {
 
 
 //Coppied these from https://github.com/llvm-mirror/llvm/blob/f65712bfe35a038e5895ffc859bcf43fda35a8fd/lib/Target/ARM/MCTargetDesc/ARMAddressingModes.h#L413
-static inline unsigned getAM2Offset(unsigned AM2Opc) {
-  return AM2Opc & ((1 << 12)-1);
-}
-static inline unsigned getAM2Op(unsigned AM2Opc) {
-  return ((AM2Opc >> 12) & 1) ? 1 : 0;
-}
-static inline unsigned getAM2ShiftOpc(unsigned AM2Opc) {
-  return ((AM2Opc >> 13) & 7);
-}
-static inline unsigned getAM2IdxMode(unsigned AM2Opc) {
-  return (AM2Opc >> 16);
-}
+//static inline unsigned getAM2Offset(unsigned AM2Opc) {
+//  return AM2Opc & ((1 << 12)-1);
+//}
+//static inline unsigned getAM2Op(unsigned AM2Opc) {
+//  return ((AM2Opc >> 12) & 1) ? 1 : 0;
+//}
+//static inline unsigned getAM2ShiftOpc(unsigned AM2Opc) {
+//  return ((AM2Opc >> 13) & 7);
+//}
+//static inline unsigned getAM2IdxMode(unsigned AM2Opc) {
+//  return (AM2Opc >> 16);
+//}
 
 
 
@@ -59,11 +59,11 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
   }
 
   uint16_t TargetOpc = N->getMachineOpcode();
-  outs() << "Next Opc: " << TargetOpc << "\n";
+  //outs() << "Next Opc: " << TargetOpc << "\n";
 
   switch(TargetOpc) {
     default:
-        outs() << "TargetOpc: " << TargetOpc << "\n";
+        outs() << "To tablegen Opc: " << TargetOpc << "\n";
     	break;
     case ARM::CMPrr:
     case ARM::CMPri: {
@@ -221,29 +221,29 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
 //
           return NULL;
        }
-      /*
-    case ARM::LDRi12: {
-      //load the Ptr
-      //ldr chain [ptr offset]
 
-      SDValue Chain 	  = N->getOperand(0);
-      SDValue Ptr       = N->getOperand(1);
-      SDValue Offset    = N->getOperand(2);
-      SDLoc SL(N);
-  	  SDVTList VTList = CurDAG->getVTList(MVT::i32);
-
-
-  	  EVT LdType = N->getValueType(0);
-
-  	  SDValue Addr = CurDAG->getNode(ISD::ADD, SL, VTList, Ptr, Offset);
-   	  SDValue Ldr = CurDAG->getLoad(LdType, SL, Chain, Addr,
-          	        MachinePointerInfo::getConstantPool(), false, false, true, 0, 0);
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Ldr);
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), SDValue(Ldr.getNode(),1));
-      FixChainOp(Ldr.getNode());
-
-          	return NULL;
-          }
+//    case ARM::LDRi12: {
+//      //load the Ptr
+//      //ldr chain [ptr offset]
+//
+//      SDValue Chain 	  = N->getOperand(0);
+//      SDValue Ptr       = N->getOperand(1);
+//      SDValue Offset    = N->getOperand(2);
+//      SDLoc SL(N);
+//  	  SDVTList VTList = CurDAG->getVTList(MVT::i32);
+//
+//
+//  	  EVT LdType = N->getValueType(0);
+//
+//  	  SDValue Addr = CurDAG->getNode(ISD::ADD, SL, VTList, Ptr, Offset);
+//   	  SDValue Ldr = CurDAG->getLoad(LdType, SL, Chain, Addr,
+//          	        MachinePointerInfo::getConstantPool(), false, false, true, 0, 0);
+//      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Ldr);
+//      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), SDValue(Ldr.getNode(),1));
+//      FixChainOp(Ldr.getNode());
+//
+//          	return NULL;
+//      }
     case ARM::STRi12: {
       //store the tgt filled with the the stack space indicated by  base + offset
       //str Tgt [base offset]
@@ -269,13 +269,8 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
       SDValue Store = CurDAG->getStore(Chain, SL, Tgt, Addr, MMO);
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Store);
       FixChainOp(Store.getNode());
-
-   	      return NULL;
-
-
-    	  }
-
-      */
+	return NULL;
+      }
     case ARM::LDMIA:            // Load variations...
                             //   LD?  Inc?   Bef?    WB?
       InvLoadOrStoreMultiple(N, true, true, false, false);
@@ -346,19 +341,24 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
          break;
        }
     case ARM::BL:
+      //missing open bracket {
       SDValue Chain = N->getOperand(0);
       SDValue Offset = N->getOperand(1);
       SDLoc SL(N);
       SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::Other);
       SDValue CallNode =
-        CurDAG->getNode(ARMISD::CALL, SL, VTList, Offset, Chain);
+      CurDAG->getNode(ARMISD::CALL, SL, VTList, Offset, Chain);
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0),
-        SDValue(CallNode.getNode(), 0));
+      SDValue(CallNode.getNode(), 0));
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1),
-        SDValue(CallNode.getNode(), 1));
+      SDValue(CallNode.getNode(), 1));
       return NULL;
   }
 
+
+  //If Transmogrify fails to find the opcode then we will send it to the
+  //tablegen file to search for a match. If this fails, then fracture will
+  // crash with a debug code.
   SDNode* TheRes = InvertCode(N);
   return TheRes;
 }
