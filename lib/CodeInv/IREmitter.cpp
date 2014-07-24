@@ -436,7 +436,6 @@ Value* IREmitter::visitFTRUNC(const SDNode *N) { return NULL; }
 Value* IREmitter::visitFFLOOR(const SDNode *N) { return NULL; }
 Value* IREmitter::visitBRCOND(const SDNode *N) { return NULL; }
 Value* IREmitter::visitBR_CC(const SDNode *N) { return NULL; }
->>>>>>> 3c090a961cbe36677ad328ebbe3d3a8fa49bb02d
 
 Value* IREmitter::visitLOAD(const SDNode *N) { 
   // Operand 0 - Addr to load, should be a pointer
