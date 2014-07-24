@@ -62,11 +62,11 @@ do
 		binaries=$((binaries+1))
 		#echo "Filename is >>> $fn"
 		echo "sym .text		
-quit" | fracture -mattr=$n $fn>location.tmp
+quit" | fracture -mattr=$n $fn&>location.tmp
 		#read -p "SYM written to a temp... " -s
 	if [[ $indivInst = yes ]]
 	then
-		read -p "Hey you pressed -i" -n1 -s
+		#read -p "Hey you pressed -i" -n1 -s
 		echo "dec 0x0
 quit" | fracture -mattr=$n $fn&>ircode.tmp
 		printf "$target BIN | DEC 0x0  | ">>results.txt	
