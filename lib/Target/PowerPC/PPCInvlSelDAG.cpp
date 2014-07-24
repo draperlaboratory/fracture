@@ -184,10 +184,13 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
 
     	SDValue EA = CurDAG->getNode(ISD::ADD, SL, MVT::i32, RT, DS);
 
-      SDValue Load = CurDAG->getStore(Chain, SL, DS, EA, MMO);	// should be a getLoad, probably
+      //SDValue Load = CurDAG->getStore(Chain, SL, DS, EA, MMO);	// should be a getLoad, probably
+      SDValue Load = CurDAG->getLoad(N->getValueType(0), SL, Chain, EA,
+      		MachinePointerInfo::getConstantPool(), false, false, true, 0);
 
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 2), SDValue(Load.getNode(),1));   //Chain
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Load);
-    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), EA);   //Chain
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), EA);
       FixChainOp(Load.getNode());
 
     	return NULL;
