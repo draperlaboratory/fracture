@@ -23,13 +23,14 @@
 #include "llvm/CodeGen/ISDOpcodes.h"
 #include "Target/X86/X86IREmitter.h"
 // #include "ARMRegs.h"
+#include "CodeInv/Decompiler.h"
+#include "CodeInv/Disassembler.h"
 
 namespace fracture {
 
 class X86InvISelDAG : public InvISelDAG {
 public:
-	X86InvISelDAG(const TargetMachine &TMC,
-    CodeGenOpt::Level OL = CodeGenOpt::Default) : InvISelDAG(TMC, OL) {};
+	X86InvISelDAG(const TargetMachine &TMC, CodeGenOpt::Level OL = CodeGenOpt::Default, const Decompiler *TheDec = NULL) : InvISelDAG(TMC, OL, TheDec), Dec(TheDec) {};
 
   ~X86InvISelDAG() {};
 
@@ -40,8 +41,12 @@ public:
 
   SDNode* InvertCode(SDNode *N);
   SDNode* Transmogrify(SDNode *N);
+  bool OpOnLoad(SDNode *N, unsigned Opcode, SDValue Chain, SDValue EBP, SDValue BaseOffset, SDValue MathOp);
   bool JumpOnCondition(SDNode *N, ISD::CondCode cond);
   SDValue ConvertNoRegToZero(const SDValue N);
+private:
+  const Decompiler *Dec;
+
 };
 
 } // end fracture namespace

@@ -139,9 +139,11 @@ public:
   const TargetMachine *TM;
   SelectionDAG *CurDAG;
   MachineFunction *MF;
+  const Decompiler        *Dec;
 
   InvISelDAG(const TargetMachine &TMC, 
-    CodeGenOpt::Level OL = CodeGenOpt::Default);
+    CodeGenOpt::Level OL = CodeGenOpt::Default,
+    const Decompiler *TheDec = NULL);
  // {
  //    TLI = TMC.getTargetLowering();
  //    TM = &TMC;
@@ -223,7 +225,7 @@ public:
 /// \param T a pointer to the target.
 ///
 /// \returns InvISelDAG engine for Target, or null. 
-InvISelDAG* getTargetInvISelDAG(const TargetMachine *T);
+InvISelDAG* getTargetInvISelDAG(const TargetMachine *T, const Decompiler *TheDec = NULL);
 
 } // end fracture namespace
 

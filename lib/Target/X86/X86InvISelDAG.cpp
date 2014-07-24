@@ -48,6 +48,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
   }
 
   uint16_t TargetOpc = N->getMachineOpcode();
+  outs() << "Next OpC: " << TargetOpc << "\n";
   switch(TargetOpc) {
     default:
       outs() << "TargetOpc: " << TargetOpc << "\n";
@@ -138,7 +139,32 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
+    case X86::MOV8ri:{
+      /**<
+       * MOV8ri notes
+       *    1 i32 in, 1 i8 out.
+       */
+      SDNode *C2R = NULL;
+      for (SDNode::use_iterator I = N->use_begin(), E = N->use_end(); I != E; ++I) {
+        if (I->getOpcode() == ISD::CopyToReg) {
+          C2R = *I;
+          break;
+        }
+      }
 
+      assert(C2R && "Move instruction without CopytoReg!");
+      SDLoc SL(N);
+      C2R->setDebugLoc(SL.getDebugLoc());
+      SDValue DownConv = CurDAG->getSExtOrTrunc(N->getOperand(0), SL, MVT::i8);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N,0), DownConv);
+
+      return NULL;
+      break;
+    }
+    //case X86::MOV32ri:
+      /**<
+       *
+       */
     case X86::MOV32rr:{
       /**<
        * MOV32rr notes
@@ -156,45 +182,58 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       }
 
       assert(C2R && "Move instruction without CopytoReg!");
-      C2R->setDebugLoc(N->getDebugLoc());
+      //C2R->setDebugLoc(N->getDebugLoc());
+      SDLoc SL(N);
+      C2R->setDebugLoc(SL.getDebugLoc());
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N,0), N->getOperand(0));
 
       return NULL;
       break;
     }
-    /*
     case X86::MOV32rm:{
-      //EVT LdType = N->getValueType(0);
+      //6 inputs: Chain, EBP(i32), Constant<1>, NoReg(i1), Constant<-8>, NoReg(i1)
+      //2 outputs: i32, Chain
+
       SDValue Chain = N->getOperand(0);
       SDValue EBP = N->getOperand(1);
-      SDValue C1 = N->getOperand(2);
+      //SDValue C1 = N->getOperand(2);
+      //3 is NoReg
+      //RegisterSDNode *NoReg3 = dyn_cast<RegisterSDNode>(N->getOperand(3).getNode());
+      SDValue Cn8 = N->getOperand(4);
+      //5 is NoReg
+      //RegisterSDNode *NoReg5 = dyn_cast<RegisterSDNode>(N->getOperand(5).getNode());
 
-      //SDValue NoReg1 = N->getOperand(3);
-      //SDValue C2 = N->getOperand(4);
-      //SDValue NoReg2 = N->getOperand(5);
-
-      //const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
-      //MachineMemOperand *MMO = NULL;        //Basically a NOP
-      //if (MN->memoperands_empty()) {
-      //  errs() << "NO MACHINE OPS for MOV32rm!\n";
-      //} else {
-      //  MMO = *(MN->memoperands_begin());
+      //if(NoReg3->getReg() != X86::NoRegister || NoReg5->getReg() != X86::NoRegister){
+      //  llvm_unreachable("X86InvlSelDAG MOV32rm: NoReg not mapping properly...");
       //}
+
+      unsigned ImmSumLoad = 0;
+      MachineMemOperand *MMOLoad = new MachineMemOperand(MachinePointerInfo(0, ImmSumLoad),
+          MachineMemOperand::MOLoad, 4, 0);
+
       SDLoc SL(N);
-      //SDValue LoadEBP = CurDAG->getLoad(LdType, SL, Chain, EBP, MMO);  //Load from EBP
+      //need to add -8 to EBP
+      SDValue NewEBP = CurDAG->getNode(ISD::ADD, SL, EBP.getValueType(), EBP, Cn8);    //EBP += -8;
 
-      SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::Other);
+      SDValue LoadEBP = CurDAG->getLoad(EBP.getValueType(), SL, Chain, NewEBP, MMOLoad);  //Load from EBP
 
-      SDValue MovNode = CurDAG->getNode(ISD::STORE, SL, VTList, Chain, EBP, C1 );
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), MovNode);
+      //SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::Other);
+      //SDValue C2RNode = CurDAG->getNode(ISD::CopyToReg , SL, VTList, SDValue(LoadEBP.getNode(),1), LoadEBP, C1);
 
-      //CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), SDValue(LoadEBP.getNode(),1));   //Chain
+      //unsigned ImmSumStore = 0;
+      //MachineMemOperand *MMOStore = new MachineMemOperand(MachinePointerInfo(0, ImmSumStore),
+      //    MachineMemOperand::MOStore, 4, 0);
 
-      //FixChainOp(LoadEBP.getNode());
+      //SDValue StoreEBP = CurDAG->getStore(SDValue(C2RNode.getNode(),1), SL, NewEBP, C1, MMOStore);
+
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), LoadEBP);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), SDValue(LoadEBP.getNode(),1));   //Chain
+
+      FixChainOp(LoadEBP.getNode());
 
       return NULL;
       break;
-    }*/
+    }
     case X86::CALLpcrel32:{
       /**<
        * CALLpcrel32 notes
@@ -202,12 +241,12 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
        *    more easily handled later on.
        */
       SDValue Chain = N->getOperand(0);
-      uint64_t TarVal = N->getConstantOperandVal(1);
-      SDValue Target = CurDAG->getConstant(TarVal, MVT::i32);
+      SDValue Target = N->getOperand(1);
+      //uint64_t TarVal = N->getConstantOperandVal(1);
+      //SDValue Target = CurDAG->getConstant(TarVal, MVT::i32);
       //SDValue noReg = N->getOperand(2);
 
       SDLoc SL(N);
-
       SDValue CallNode = CurDAG->getNode(X86ISD::CALL, SL, MVT::Other, Target, Chain);
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), CallNode);
 
@@ -319,15 +358,57 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       break;
     }
     case X86::CMP32rm:{
-      EVT LdType = N->getValueType(0);
+      /*
+       * 7 inputs: Chain, EAX (i32), EBP (i32), Constant <1>, NoReg(i1), Constant(-12), NoReg(i1)
+       * 2 outputs: i32, Chain
+       * 08048616:   3B 45 F4                            cmpl    -0xc(%ebp), %eax
+       */
+      //EVT LdType = N->getValueType(0);
       SDValue Chain = N->getOperand(0);
       SDValue EAX = N->getOperand(1);
       SDValue EBP = N->getOperand(2);
+      SDValue Cn12 = N->getOperand(5);
 
       /*
       SDValue C1 = N->getOperand(3);
       SDValue NoReg1 = N->getOperand(4);
-      SDValue C2 = N->getOperand(5);
+
+      SDValue NoReg2 = N->getOperand(5);
+       */
+
+      const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
+      MachineMemOperand *MMO = NULL;        //Basically a NOP
+      if (MN->memoperands_empty()) {
+        errs() << "NO MACHINE OPS for CMP32rm!\n";
+      } else {
+        MMO = *(MN->memoperands_begin());
+      }
+
+      SDLoc SL(N);
+      SDValue AddrEBP = CurDAG->getNode(ISD::ADD, SL, EBP.getValueType(), EBP, Cn12);
+      SDValue ValEBP = CurDAG->getLoad(EBP.getValueType(), SL, Chain, AddrEBP, MMO);  //Load from EBP
+
+      SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::Other);
+      SDValue NodeCMP = CurDAG->getNode(X86ISD::CMP , SL, VTList, SDValue(ValEBP.getNode(),1), EAX, ValEBP); //EAX == EBP;
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), NodeCMP);
+
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), SDValue(NodeCMP.getNode(),1));   //Chain
+
+      FixChainOp(ValEBP.getNode());
+
+      return NULL;
+      break;
+    }
+    case X86::CMP32mr:{
+      EVT LdType = N->getValueType(0);
+      SDValue Chain = N->getOperand(0);
+      SDValue EBP = N->getOperand(1);
+      SDValue EAX = N->getOperand(6);
+
+      /*
+      SDValue C1 = N->getOperand(2);
+      SDValue NoReg1 = N->getOperand(3);
+      SDValue C2 = N->getOperand(4);
       SDValue NoReg2 = N->getOperand(5);
        */
 
@@ -353,6 +434,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
+    case X86::JNE_4:
     case X86::JNE_1:{
       /**<
        * JNE_1 (Jump short if Not Equal) Pseudo code
@@ -383,46 +465,8 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
-    case X86::JL_1:{
-      /**<
-       * JL_1 - Jump if less than
-       */
-
-      JumpOnCondition(N, ISD::SETLT);
-
-      return NULL;
-      break;
-    }
-    case X86::JLE_1:{
-      /**<
-       * JLE_1 - Jump if less or equal
-       */
-
-      JumpOnCondition(N, ISD::SETLE);
-
-      return NULL;
-      break;
-    }
-    case X86::JG_1:{
-      /**<
-       * JG_1 - Jump if Greater/not less or equal
-       */
-
-      JumpOnCondition(N, ISD::SETGT);
-
-      return NULL;
-      break;
-    }
-    case X86::JGE_1:{
-      /**<
-       * JGE_1 - Jump if Greater or equal
-       */
-
-      JumpOnCondition(N, ISD::SETGE);
-
-      return NULL;
-      break;
-    }
+    case X86::JLE_1:    //Need to add to IREMitter...
+    case X86::JBE_4:
     case X86::JBE_1:{
       /**<
        * JBE_1 - Jump if Below or Equal
@@ -433,6 +477,19 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
+    case X86::JL_1:     //Need to add to IREMitter...
+    case X86::JB_1:{
+      /**<
+       * JB_1 - Jump if Below
+       */
+
+      JumpOnCondition(N, ISD::SETLT);
+
+      return NULL;
+      break;
+    }
+    case X86::JGE_1:    //Need to add to IREMitter...
+    case X86::JAE_4:
     case X86::JAE_1:{
       /**<
        * JAE_1 - Jump if Above or Equal
@@ -443,6 +500,8 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
+    case X86::JG_1:     //Need to add to IREMitter...
+    case X86::JA_4:
     case X86::JA_1:{
       /**<
        * JA_1 - Jump if Above
@@ -471,13 +530,14 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       //Calling Jump On Condition with the always true variable.
       //EFLAGS isn't used in JumpOnCondition, so this should work, however there may be
       //    subtle differences if compiled back...
-      JumpOnCondition(N, ISD::SETTRUE2);
+      //JumpOnCondition(N, ISD::SETTRUE2);
 
       //Original logic if differences are a concern.
-      /*
+
       SDValue Chain = N->getOperand(0);
-      uint64_t TarVal = N->getConstantOperandVal(1);
-      SDValue tempEIP = CurDAG->getConstant(TarVal, MVT::i32);
+      SDValue tempEIP = N->getOperand(1);
+      //uint64_t TarVal = N->getConstantOperandVal(1);
+      //SDValue tempEIP = CurDAG->getConstant(TarVal, MVT::i32);
 
       SDLoc SL(N);
       // Calculate the Branch Target
@@ -485,41 +545,55 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
 
       SDValue BrNode = CurDAG->getNode(ISD::BR, SL, MVT::Other, TempEIPval, Chain);
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
-      */
+
       return NULL;
       break;
     }
-    case X86::ADD32i32:{
+    case X86::SUB32ri8:{
       /**<
-       * Takes two inputs - a constant and a register and has two outputs.
-       *    Current question, not sure what to do about the extra output...
+       * 2 i32 in (Reg, Const) -> 2 i32 out
+       * dec fastfib_v2 (O1 gcc)
        */
-      SDValue C1 = N->getOperand(0);
-      SDValue C2 = N->getOperand(1);
-
+      SDValue Reg = N->getOperand(0);
+      SDValue Constant = N->getOperand(1);
+      //uint64_t C1val = N->getConstantOperandVal(1);
+      //SDValue Constant = CurDAG->getConstant(C1val, MVT::i32);
       SDLoc SL(N);
       SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::i32);
 
-      SDValue Node = CurDAG->getNode(ISD::ADD, SL, VTList, C2, C1);
+      SDValue Node = CurDAG->getNode(ISD::SUB, SL, VTList, Constant, Reg);
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Node);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), SDValue(Node.getNode(),1));
 
       return NULL;
       break;
     }
     case X86::SUB32i32:{
-      /**<
-       * Not correct yet, 2nd output argument is mapping to first...
-       *    Makes sense based on the diagram, but not really sane...
-       *    dec fib (O0 LLVM)
-       */
-      uint64_t C1val = N->getConstantOperandVal(0);
-      SDValue C1 = CurDAG->getConstant(C1val, MVT::i32);
+      //uint64_t C1val = N->getConstantOperandVal(0);
+      //SDValue C1 = CurDAG->getConstant(C1val, MVT::i32);
+      SDValue C1 = N->getOperand(1);
       SDValue C2 = N->getOperand(1);
 
       SDLoc SL(N);
       SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::i32);
 
       SDValue Node = CurDAG->getNode(ISD::SUB, SL, VTList, C2, C1);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Node);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Node);
+
+      return NULL;
+      break;
+    }
+    case X86::ADD32i32:{
+      //uint64_t C1val = N->getConstantOperandVal(0);
+      //SDValue C1 = CurDAG->getConstant(C1val, MVT::i32);
+      SDValue C1 = N->getOperand(1);
+      SDValue C2 = N->getOperand(1);
+
+      SDLoc SL(N);
+      SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::i32);
+
+      SDValue Node = CurDAG->getNode(ISD::ADD, SL, VTList, C2, C1);
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Node);
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Node);
 
@@ -534,7 +608,6 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       SDValue Chain = N->getOperand(0);
       SDValue EAX = N->getOperand(1);
       SDValue EBP = N->getOperand(2);
-
       /*
       SDValue C1 = N->getOperand(3);
       SDValue NoReg1 = N->getOperand(4);
@@ -551,16 +624,112 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       }
 
       SDLoc SL(N);
-      SDValue LoadEBP = CurDAG->getLoad(LdType, SL, Chain, EBP, MMO);  //Load from EBP
+      SDValue Load = CurDAG->getLoad(LdType, SL, Chain, EBP, MMO);  //Load from EBP
 
-      SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::i32, MVT::Other);
-      SDValue NewESP = CurDAG->getNode(X86ISD::ADD , SL, VTList, SDValue(LoadEBP.getNode(),1), EAX, LoadEBP); //EAX + EBP;
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), NewESP);
+      //SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::i32, MVT::Other);
+      SDVTList VTList = CurDAG->getVTList(MVT::i32);
+      //Prob need to switch to x86ISD::add when code with eflags pops up.
+      SDValue AddNode = CurDAG->getNode(ISD::ADD, SL, VTList, SDValue(Load.getNode(),1), EAX, Load);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), AddNode);
 
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), SDValue(NewESP.getNode(),1));   //Chain
+      //CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), EFLAGS);   //Ignore for time being...
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), CurDAG->getUNDEF(MVT::i32));
 
-      FixChainOp(LoadEBP.getNode());
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 2), SDValue(Load.getNode(),1));   //Chain
 
+      FixChainOp(Load.getNode());
+
+      return NULL;
+      break;
+    }
+    case X86::ADD32mi8:{
+      /**<
+       * 7 inputs: Chain, EBP, Constant<1>, NoReg<i1>, Constant<-12>, NoReg<i1>, Constant<1>,
+       * 2 outputs: i32, Chain
+       * 0804860C:   83 45 F4 01                         addl    $0x1, -0xc(%ebp)
+       * ADD32mi8 Manual Description
+       *
+       */
+
+      //EVT LdType = N->getValueType(0);
+      SDValue Chain = N->getOperand(0);
+      SDValue EBP = N->getOperand(1);
+      SDValue C1 = N->getOperand(2);
+      SDValue Cn12 = N->getOperand(4);
+      /*
+      SDValue NoReg1 = N->getOperand(3);
+      SDValue NoReg2 = N->getOperand(5);
+      SDValue C3 = N->getOperand(6);
+       */
+
+      OpOnLoad(N, ISD::ADD, Chain, EBP, Cn12, C1);
+
+      /*
+      unsigned ImmSumLoad = 0;
+      MachineMemOperand *MMOLoad = new MachineMemOperand(MachinePointerInfo(0, ImmSumLoad),
+          MachineMemOperand::MOLoad, 4, 0);
+
+      SDLoc SL(N);
+
+      SDValue AddrEBP = CurDAG->getNode(ISD::ADD, SL, EBP.getValueType(), EBP, Cn12);    //EBP += -8;  EBP.getValueType()
+      SDValue ValEBP = CurDAG->getLoad(EBP.getValueType(), SL, Chain, AddrEBP, MMOLoad);  //Load from EBP
+
+      SDValue AddNode = CurDAG->getNode(ISD::ADD , SL, EBP.getValueType(), ValEBP, C1);
+
+      unsigned ImmSumStore = 0;
+      MachineMemOperand *MMOStore = new MachineMemOperand(MachinePointerInfo(0, ImmSumStore),
+          MachineMemOperand::MOStore, 4, 0);
+
+      SDValue StoreEBP = CurDAG->getStore(SDValue(ValEBP.getNode(),1), SL, ValEBP, Cn12, MMOStore);
+
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), StoreEBP);   //Chain
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), AddNode);
+
+      FixChainOp(ValEBP.getNode());
+      FixChainOp(StoreEBP.getNode());
+      */
+      return NULL;
+      break;
+    }
+    case X86::ADD32mr:{
+      //7 inputs: Chain, EBP(i32), Constant<1>, noreg(i1), Constant -8, noreg(i1), EAX(i32)
+      //2 outputs: i32, Chain
+
+      //EVT LdType = N->getValueType(0);
+      SDValue Chain = N->getOperand(0);
+      SDValue EBP = N->getOperand(1);
+      //SDValue C1 = N->getOperand(2);    //could also be an EAX dup...
+      //3 is noReg
+      SDValue Cn8 = N->getOperand(4);   //Constant<-8>
+      //5 is noReg
+      SDValue EAX = N->getOperand(6);
+
+      OpOnLoad(N, ISD::ADD, Chain, EBP, Cn8, EAX);
+
+      /*
+      unsigned ImmSumLoad = 0;
+      MachineMemOperand *MMOLoad = new MachineMemOperand(MachinePointerInfo(0, ImmSumLoad),
+          MachineMemOperand::MOLoad, 4, 0);
+
+      SDLoc SL(N);
+
+      SDValue AddrEBP = CurDAG->getNode(ISD::ADD, SL, EBP.getValueType(), EBP, Cn8);    //EBP += -8;  EBP.getValueType()
+      SDValue ValEBP = CurDAG->getLoad(EBP.getValueType(), SL, Chain, AddrEBP, MMOLoad);  //Load from EBP
+
+      SDValue AddNode = CurDAG->getNode(ISD::ADD , SL, EBP.getValueType(), ValEBP, EAX);
+
+      unsigned ImmSumStore = 0;
+      MachineMemOperand *MMOStore = new MachineMemOperand(MachinePointerInfo(0, ImmSumStore),
+          MachineMemOperand::MOStore, 4, 0);
+
+      SDValue StoreEBP = CurDAG->getStore(SDValue(ValEBP.getNode(),1), SL, ValEBP, Cn8, MMOStore);
+
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), StoreEBP);   //Chain
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), AddNode);
+
+      FixChainOp(ValEBP.getNode());
+      FixChainOp(StoreEBP.getNode());
+      */
       return NULL;
       break;
     }
@@ -628,8 +797,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       SDValue EDXShl = CurDAG->getNode(ISD::SHL , SL, MVT::i32, EDX, Constant );    //EAX = EAX << Constant;
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), EDXShl);
 
-      uint64_t SizeOperand = N->getConstantOperandVal(32);
-      SDValue SizeVal = CurDAG->getConstant(SizeOperand, MVT::i32);                 //SizeVal = (sizeof(EDX)*8)
+      SDValue SizeVal = CurDAG->getConstant(32, MVT::i32);                          //SizeVal = (sizeof(EDX)*8)
       SDValue SubInst = CurDAG->getNode(ISD::SUB, SL, MVT::i32, SizeVal, Constant); //SubInst = (SizeVal - Constant)
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), SubInst);
 
@@ -642,9 +810,12 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
-    //case X86::IMUL32rr:{
-      /**<
+    case X86::IMUL32rr:{
+      /**<Decompiler
        * Two inputs and two i32 outputs
+       *
+       * Pseudo Code:
+       *    EDX:EAX ← EAX ∗ SRC (* Signed multiplication *)
        *
        * ASM
        *    0804846E:   89 C8                               movl    %ecx, %eax
@@ -655,24 +826,34 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
        *    0804847C:   01 F7                               addl    %esi, %edi
        *
        */
-    /*
+
       SDValue EDI = N->getOperand(0);
-      SDValue ECX = N->getOperand(0);
+      SDValue ECX = N->getOperand(1);   //Was 0 - looked like a mistake...
 
       SDLoc SL(N);
       SDValue MulOut = CurDAG->getNode(ISD::MUL , SL, MVT::i32, EDI, ECX); //EDI * ECX;
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), MulOut);
+
+      //EDX
+      SDValue DownVal = CurDAG->getConstant(4, MVT::i32);
+      SDValue MulHighShift = CurDAG->getNode(ISD::SRL , SL, MVT::i32, MulOut, DownVal );
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), MulHighShift);
+
+      //EAX
+      SDValue LowVal = CurDAG->getConstant(65535, MVT::i32);                //Low 2 bytes (0x0000FFFF)
+      SDValue MulLow = CurDAG->getNode(ISD::AND , SL, MVT::i32, MulOut, LowVal);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), MulLow);
+
 
       return NULL;
       break;
-    }*/
-    //case X86::MUL32r:{
+    }
+    case X86::MUL32r:{
       /*
-       * 2 Inputs (EDX, EAX) and 3 i32 outputs. 3 outputs seem odd...
-       *    Each goto CopyToReg arg 2.  Each CopyToReg is in the chain.
-       *    Therefore assuming each i32 is the same.
+       * 2 i32 Inputs (EDX, EAX) and 3 i32 outputs. 3 outputs seem odd...
+       *    Each goto CopyToReDecompilerg arg 2.  Each CopyToReg is in the chain.
+       *    Therefore assuming each i32 is the same?
        */
-    /*
+
       SDValue EDX = N->getOperand(0);
       SDValue EAX = N->getOperand(1);
 
@@ -684,56 +865,45 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
 
       return NULL;
       break;
-    }*/
+    }
+    //case X86::NOOPW:  Working to handle NOP in the decompiler.  Looks to be a similar problem on multiple platforms {x86, PPC}
+    //case X86::NOOPL:
+    //case X86::NOOP:{
+    //  errs() << "NOOP!\n";
+    //  return NULL;
+    //  break;
+    //}
     /*
+    case X86::ADD32rr:{
+       // Takes two inputs - a constant and a register and has two outputs.
+       //
+       // Pseudo Code (from: llvm/trunk/lib/Target/X86/X86ISelSimple.cpp)
+       //    AH*BL+(AL*BL >> 32)
+       //
+    SDValue EDI = N->getOperand(0);
+      SDValue ESI = N->getOperand(0);
 
-    case X86::CMP32mr:{
-      To Do...
+      SDLoc SL(N);
+      SDValue AddOut = CurDAG->getNode(ISD::ADD , SL, MVT::i32, EDI, ESI); //EDI * ESI;
+
+      //EDX
+      uint64_t DownShift = N->getConstantOperandVal(8);                                     //High 2 bytes
+      SDValue DownVal = CurDAG->getConstant(DownShift, MVT::i32);
+      SDValue AddHighShift = CurDAG->getNode(ISD::SRL , SL, MVT::i32, AddOut, DownVal );    //Right Shift (2 MSBs in 2 LSBs)
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), AddHighShift);
+Scope
+      //EAX
+      uint64_t LowBytes = N->getConstantOperandVal(65535);                                  //Low 2 bytes
+      SDValue LowVal = CurDAG->getConstant(LowBytes, MVT::i32);
+      SDValue AddLow = CurDAG->getNode(ISD::AND , SL, MVT::i32, AddOut, LowVal);            //Remove 2 MSBs
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), AddLow);
+
+      return NULL;
+      break;Decompiler
     }
     //case X86::MOV32mi:
     //case X86::MOV32rr_REV:
     //case X86::MOV64rr:
-
-    case X86::ADD32mi8:{
-      SDValue Chain = N->getOperand(0);
-      SDValue EBP = N->getOperand(1);
-      uint64_t C2val = N->getConstantOperandVal(2);
-      SDValue C2 = CurDAG->getConstant(C2val, MVT::i32);
-      //3 is undef
-      uint64_t Cn4val = N->getConstantOperandVal(4);
-      SDValue Cn4 = CurDAG->getConstant(C      //return CurDAG->getUNDEF(R->getValueType(0));n4val, MVT::i32);
-      //4 is undef
-      //6 is Constant 1
-
-      SDLoc SL(N);
-      SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::Other);
-      // AJG: Not sure how fill in semantics yet.
-      //SDValue v2 = N->getOperand(2);
-
-
-      //SDValue Node = CurDAG->getNode(ISD::ADD, SL, VTList, v1, v2, Chain);
-      //CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Node);
-
-
-      return NULL;
-      break;
-    }
-    case X86::ADD32mr:{
-      SDValue Chain = N->getOperand(0);
-      SDValue EBP = N->getOperand(1);
-      uint64_t C1val = N->getConstantOperandVal(2);== When to use getStore ==
-      SDValue C1 = CurDAG->getConstant(C1val, MVT::i32);
-      //3 is noReg
-      uint64_t Cn4val = N->getConstantOperandVal(4);
-      SDValue Cn4 = CurDAG->getConstant(Cn4val, MVT::i32);
-      //5 is noReg
-
-      SDLoc SL(N);
-      SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::Other);
-
-      return NULL;
-      break;
-    }
     case X86::ADD32rr_REV:{ //Note: no chain, two input, two output
       SDValue ESI = N->getOperand(0);
       SDValue EAX = N->getOperand(1);
@@ -747,14 +917,38 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
-
-    case X86::SUB32ri8:
     */
 
   }
 
   SDNode* TheRes = InvertCode(N);
   return TheRes;
+}
+
+bool X86InvISelDAG::OpOnLoad(SDNode *N, unsigned Opcode, SDValue Chain, SDValue EBP, SDValue BaseOffset, SDValue MathOp){
+  unsigned ImmSum = 0;
+  MachineMemOperand *MMOLoad = new MachineMemOperand(MachinePointerInfo(0, ImmSum),
+      MachineMemOperand::MOLoad, 4, 0);
+
+  SDLoc SL(N);
+
+  SDValue AddrEBP = CurDAG->getNode(ISD::ADD, SL, EBP.getValueType(), EBP, BaseOffset);    //EBP += -8;  EBP.getValueType()
+  SDValue ValEBP = CurDAG->getLoad(EBP.getValueType(), SL, Chain, AddrEBP, MMOLoad);  //Load from EBP
+
+  SDValue AddNode = CurDAG->getNode(Opcode, SL, EBP.getValueType(), ValEBP, MathOp);
+
+  MachineMemOperand *MMOStore = new MachineMemOperand(MachinePointerInfo(0, ImmSum),
+      MachineMemOperand::MOStore, 4, 0);
+
+  SDValue StoreEBP = CurDAG->getStore(SDValue(ValEBP.getNode(),1), SL, AddNode, AddrEBP, MMOStore);
+
+  CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), AddNode);
+  CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), StoreEBP);   //Chain
+
+  FixChainOp(ValEBP.getNode());
+  FixChainOp(StoreEBP.getNode());
+
+  return true;
 }
 
 /*! \brief JumpOnCondition Jump on a specific condition.
@@ -766,9 +960,19 @@ bool X86InvISelDAG::JumpOnCondition(SDNode *N, ISD::CondCode cond) {
   //Comparison should be before this instruction, result stored in EFLAGS
   SDValue Chain = N->getOperand(0);
   uint64_t TarVal = N->getConstantOperandVal(1);
-  SDValue tempEIP = CurDAG->getConstant(TarVal, MVT::i32);
-  //SDValue EFLAGSCFR = N->getOperand(2);
+  SDValue EFLAGSCFR = N->getOperand(2);
 
+  // Recover Instruction information
+  //const MCInstrInfo *MII = TM->getTarget().createMCInstrInfo();
+  //MCInstrDesc *MCID = new MCInstrDesc(MII->get(N->getMachineOpcode()));
+  //uint64_t InstSize = MCID->Size;
+
+  const Disassembler *Dis = Dec->getDisassembler();
+  uint64_t InstSize = Dis->getMachineInstr(Dis->getDebugOffset(N->getDebugLoc()))->getDesc().Size;
+  //AJG - Comment out when working...
+  //outs() << "----- INST SIZE ----- " <<  InstSize << "\n";
+  TarVal += InstSize;
+  SDValue tempEIP = CurDAG->getConstant(TarVal, MVT::i32);
 
   SDLoc SL(N);
   // Calculate the Branch Target
@@ -776,7 +980,7 @@ bool X86InvISelDAG::JumpOnCondition(SDNode *N, ISD::CondCode cond) {
 
   // Condition Code is "Below or Equal" <=
   SDValue Condition = CurDAG->getCondCode(cond);
-  SDValue BrNode = CurDAG->getNode(ISD::BRCOND, SL, MVT::Other, Condition, TempEIPval, Chain);
+  SDValue BrNode = CurDAG->getNode(X86ISD::BRCOND, SL, MVT::Other, Condition, TempEIPval, EFLAGSCFR, Chain);
   CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
 
   return true;
@@ -797,4 +1001,4 @@ SDValue X86InvISelDAG::ConvertNoRegToZero(const SDValue N){
 }
 
 
-}
+} //End namespace fracture
