@@ -59,8 +59,12 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
   }
 
   uint16_t TargetOpc = N->getMachineOpcode();
+  outs() << "Next Opc: " << TargetOpc << "\n";
+
   switch(TargetOpc) {
-    default: break;
+    default:
+        outs() << "TargetOpc: " << TargetOpc << "\n";
+    	break;
     case ARM::CMPrr:
     case ARM::CMPri: {
       // NOTE: Pattern in ARM DAG Selector is busted as not handling CPSR
@@ -143,37 +147,38 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
     }
     case ARM::STRD_POST: {
-         // Store register , decrement, post index
-    	 // mem[Rn+Rm/#imm] = Rd (32 bit copy)
-    	 //
-         SDValue Chain = N->getOperand(0);
-         SDValue Tgt1 = N->getOperand(1);
-         SDValue Tgt2 = N->getOperand(2);
-         SDValue Base = N->getOperand(3);
-         SDValue Offset = N->getOperand(4);
+      // Store register , decrement, post index
+      // mem[Rn+Rm/#imm] = Rd (32 bit copy)
+   	  //
+      SDValue Chain = N->getOperand(0);
+      SDValue Tgt1 = N->getOperand(1);
+      SDValue Tgt2 = N->getOperand(2);
+      SDValue Base = N->getOperand(3);
+      SDValue Offset = N->getOperand(4);
 
-         SDLoc SL(N);
-         SDVTList AddVTList = CurDAG->getVTList(MVT::i32);
+      SDLoc SL(N);
+      SDVTList AddVTList = CurDAG->getVTList(MVT::i32);
 
-         SDValue Addr1 = CurDAG->getNode(ISD::SUB, SL, AddVTList, Base, Offset);
+      SDValue Addr1 = CurDAG->getNode(ISD::SUB, SL, AddVTList, Base, Offset);
 
-         // memops might be null here, but not sure if we need to check.
-         const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
-         MachineMemOperand *MMO = NULL;
-         if (MN->memoperands_empty()) {
-           errs() << "NO MACHINE OPS for STRD_POST!\n";
-         } else {
+      // memops might be null here, but not sure if we need to check.
+      const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
+      MachineMemOperand *MMO = NULL;
+      if (MN->memoperands_empty()) {
+    	  errs() << "NO MACHINE OPS for STRD_POST!\n";
+         }
+      else {
            MMO = *(MN->memoperands_begin());
          }
-         SDValue Four = CurDAG->getConstant(4, MVT::i32, false, false);
-         SDValue Store = CurDAG->getStore(Chain, SL, Tgt1, Addr1, MMO);
-         SDValue Addr2 = CurDAG->getNode(ISD::ADD, SL, AddVTList, Addr1, Four);
-         SDValue Store2 = CurDAG->getStore(Store, SL, Tgt2, Addr2, MMO);
-         SDValue Addr3 = CurDAG->getNode(ISD::ADD, SL, AddVTList, Addr2, Four);
-         CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Addr3);
-         CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Store2);
-         FixChainOp(Store.getNode());
-         FixChainOp(Store2.getNode());
+      SDValue Four = CurDAG->getConstant(4, MVT::i32, false, false);
+      SDValue Store = CurDAG->getStore(Chain, SL, Tgt1, Addr1, MMO);
+      SDValue Addr2 = CurDAG->getNode(ISD::ADD, SL, AddVTList, Addr1, Four);
+      SDValue Store2 = CurDAG->getStore(Store, SL, Tgt2, Addr2, MMO);
+      SDValue Addr3 = CurDAG->getNode(ISD::ADD, SL, AddVTList, Addr2, Four);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Addr3);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Store2);
+      FixChainOp(Store.getNode());
+      FixChainOp(Store2.getNode());
 
          return NULL;
        }
@@ -182,18 +187,18 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
 
     case ARM::LDR_POST_IMM: {
 
-//           SDValue Chain = N->getOperand(0);
-//           SDValue Tgt1 = N->getOperand(1);
-             SDValue AM2Offset = N->getOperand(3);
-//           SDValue Offset = N->getOperand(4);
+//    SDValue Chain = N->getOperand(0);
+//    SDValue Tgt1 = N->getOperand(1);
+//    SDValue AM2Offset = N->getOperand(3);
+//    SDValue Offset = N->getOperand(4);
 
-	    unsigned AM2var = cast<ConstantSDNode>(AM2Offset)->getZExtValue();
-//	    outs() << "offset:" << getAM2Offset(AM2var);
-//	    outs() << "opcode:" << getAM2Op(AM2var);
-	    outs() << "Shiftop:" << getAM2ShiftOpc(AM2var);
-//	    outs() << "index:" << getAM2IdxMode(AM2var);
-//          SDLoc SL(N);
-//          SDVTList AddVTList = CurDAG->getVTList(MVT::i32);
+//           unsigned AM2var = cast<ConstantSDNode>(AM2Offset)->getZExtValue();
+//	  	     outs() << "offset:" << getAM2Offset(AM2var);
+//	   	     outs() << "opcode:" << getAM2Op(AM2var);
+//           outs() << "Shiftop:" << getAM2ShiftOpc(AM2var);
+//	    	 outs() << "index:" << getAM2IdxMode(AM2var);
+//           SDLoc SL(N);
+//           SDVTList AddVTList = CurDAG->getVTList(MVT::i32);
 //
 //          SDValue Addr = CurDAG->getNode(ISD::ADD, SL, AddVTList, Base, Offset);
 //          CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Addr);
@@ -218,37 +223,57 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
        }
       /*
     case ARM::LDRi12: {
-        //ldr  r0, [pc, #12]
-        //Here we are loading whatever is in r0 into the register indicated by
-        //the pc with an offset of 12
-          	SDValue Chain 	  = N->getOperand(0);
-          	SDValue Ptr       = N->getOperand(1);
-        //  SDValue Offset = CurDAG->getConstant(4, EVT(MVT::i32), false);
-  			SDLoc SL(N);
-  			SDValue UsePtr;
-  		//	SDVTList VTList = CurDAG->getVTList(MVT::i32);
-  			unsigned ImmSum = 0;
+      //load the Ptr
+      //ldr chain [ptr offset]
 
-  			EVT LdType = N->getValueType(0);
+      SDValue Chain 	  = N->getOperand(0);
+      SDValue Ptr       = N->getOperand(1);
+      SDValue Offset    = N->getOperand(2);
+      SDLoc SL(N);
+  	  SDVTList VTList = CurDAG->getVTList(MVT::i32);
 
 
-          	Ptr = CurDAG->getLoad(LdType, SL, Chain, UsePtr,
-          	        MachinePointerInfo::getConstantPool(), false, false, true, 0);
+  	  EVT LdType = N->getValueType(0);
 
-          	 MachineMemOperand* MMO =
-          	      new MachineMemOperand(MachinePointerInfo(0, ImmSum),
-          	        MachineMemOperand::MOStore, 4, 0);
+  	  SDValue Addr = CurDAG->getNode(ISD::ADD, SL, VTList, Ptr, Offset);
+   	  SDValue Ldr = CurDAG->getLoad(LdType, SL, Chain, Addr,
+          	        MachinePointerInfo::getConstantPool(), false, false, true, 0, 0);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Ldr);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), SDValue(Ldr.getNode(),1));
+      FixChainOp(Ldr.getNode());
 
-          	// RegisterSDNode *RegNode =
-          	     //  dyn_cast<RegisterSDNode>(Val->getOperand(1));
-
-          	//SDValue C2R = CurDAG->getCopyToReg(Ptr.getValue(1), SL,
-  			Ptr = CurDAG->getStore(Chain, SL, UsePtr, UsePtr, MMO);
-        Chain = Ptr;
-
-      FixChainOp(Ptr.getNode());
-          	break;
+          	return NULL;
           }
+    case ARM::STRi12: {
+      //store the tgt filled with the the stack space indicated by  base + offset
+      //str Tgt [base offset]
+
+      SDValue Chain = N->getOperand(0);
+      SDValue Tgt = N->getOperand(1);
+      SDValue Base = N->getOperand(2);
+      SDValue Offset = N->getOperand(3);
+
+      SDLoc SL(N);
+      SDVTList AddVTList = CurDAG->getVTList(MVT::i32);
+      SDValue Addr = CurDAG->getNode(ISD::ADD, SL, AddVTList, Base, Offset);
+
+
+      // memops might be null here, but not sure if we need to check.
+      const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
+      MachineMemOperand *MMO = NULL;
+      if (MN->memoperands_empty()) {
+        errs() << "NO MACHINE OPS for STRi12!\n";
+    	    } else {
+    	      MMO = *(MN->memoperands_begin());
+    	    }
+      SDValue Store = CurDAG->getStore(Chain, SL, Tgt, Addr, MMO);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Store);
+      FixChainOp(Store.getNode());
+
+   	      return NULL;
+
+
+    	  }
 
       */
     case ARM::LDMIA:            // Load variations...
