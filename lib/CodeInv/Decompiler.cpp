@@ -158,9 +158,9 @@ Function* Decompiler::decompileFunction(unsigned Address) {
     size_t Off = F->getName().size() + 1;
     size_t Size = Name.size() - Off;
 
-    outs() << "-----I------\n";
-    outs() << "Name: " << Name << " Offset: " << Off << " Size: " << Size << "\n";
-    I->dump();
+    //outs() << "-----I------\n";
+    //outs() << "Name: " << Name << " Offset: " << Off << " Size: " << Size << "\n";
+    //I->dump();
 
     StringRef BBAddrStr = Name.substr(Off, Size);
     unsigned long long BBAddr;

@@ -462,11 +462,15 @@ Value* X86IREmitter::visitBRCONDAdvanced(const SDNode *N) {
    *    Section 3.4.3.1 has descriptions
    */
 
-  //The switch needs to evolve to look at EFLAGS bit hunting...
   Value *Cmp = NULL;
-  //Value *LHS = visit(CMPNode->getOperand(0).getNode());
-  //Value *RHS = visit(CMPNode->getOperand(1).getNode());
   Value *Vis = visit(BinOpNode);
+  if(Vis == NULL){
+    errs() << "Compare Node:\n";
+    CMPNode->dump();
+    errs() << "BinOp Node:\n";
+    BinOpNode->dump();
+    llvm_unreachable("X86IREmitter::visitBRCONDAdvanced - RHS is NULL - is the IREmitter returning NULL somewhere?");
+  }
   //Get the current context - this includes the operation that populated EFLAGS
   //    That operation is the key component so that EFLAGS can be abstracted to
   //    native LLVM IR.
@@ -608,15 +612,48 @@ Value* X86IREmitter::visitSMUL(const SDNode *N) { llvm_unreachable("visitSMUL Un
 Value* X86IREmitter::visitINC(const SDNode *N) {
   //Looks like there are two valid operands based on inc def:
   //2/*#VTs*/, MVT::i16, MVT::i32, 1/*#Ops*/, 0,  // Results = #1 #2
-  //return IREmitter::visitADD(N);
-  return NULL; //Todo - how do constants work in the IREmitter?
+
+  // Operand 0 and 1 are values to add
+  Value *Op0 = visit(N->getOperand(0).getNode());
+
+  Constant *Initializer = Constant::getAllOnesValue(Op0->getType());
+  Value *Op1 = Initializer->stripInBoundsConstantOffsets();
+
+  StringRef BaseName = getInstructionName(N);
+  if (BaseName.empty()) {
+    BaseName = getBaseValueName(Op0->getName());
+  }
+  if (BaseName.empty()) {
+    BaseName = getBaseValueName(Op1->getName());
+  }
+  StringRef Name = getIndexedValueName(BaseName);
+  Instruction *Res = dyn_cast<Instruction>(IRB->CreateAdd(Op0, Op1, Name));
+  Res->setDebugLoc(N->getDebugLoc());
+  VisitMap[N] = Res;
+  return Res;
 }
 //in fib_O1_llvm_elf_x86
 Value* X86IREmitter::visitDEC(const SDNode *N) {
   //Looks like there are two valid operands based on dec def:
   //2/*#VTs*/, MVT::i16, MVT::i32, 1/*#Ops*/, 0,  // Results = #1 #2
-  //return IREmitter::visitSUB(N);
-  return NULL; //Todo - how do constants work in the IREmitter?
+
+  // Operand 0 and 1 are values to add
+  Value *Op0 = visit(N->getOperand(0).getNode());
+  Constant *Initializer = Constant::getAllOnesValue(Op0->getType());
+  Value *Op1 = Initializer->stripInBoundsConstantOffsets();
+
+  StringRef BaseName = getInstructionName(N);
+  if (BaseName.empty()) {
+    BaseName = getBaseValueName(Op0->getName());
+  }
+  if (BaseName.empty()) {
+    BaseName = getBaseValueName(Op1->getName());
+  }
+  StringRef Name = getIndexedValueName(BaseName);
+  Instruction *Res = dyn_cast<Instruction>(IRB->CreateSub(Op0, Op1, Name));
+  Res->setDebugLoc(N->getDebugLoc());
+  VisitMap[N] = Res;
+  return Res;
 }
 Value* X86IREmitter::visitOR(const SDNode *N) { llvm_unreachable("visitOR Unimplemented X86 visit..."); return NULL; }
 Value* X86IREmitter::visitXOR(const SDNode *N) {
@@ -703,6 +740,6 @@ Value* X86IREmitter::visitFP_TO_INT64_IN_MEM(const SDNode *N) { llvm_unreachable
 Value* X86IREmitter::visitFILD_FLAG(const SDNode *N) { llvm_unreachable("visitFILD_FLAG Unimplemented X86 visit..."); return NULL; }
 Value* X86IREmitter::visitFLD(const SDNode *N) { llvm_unreachable("visitFLD Unimplemented X86 visit..."); return NULL; }
 Value* X86IREmitter::visitFST(const SDNode *N) { llvm_unreachable("visitFST Unimplemented X86 visit..."); return NULL; }
-Value* X86IREmitter::visitVAARG_64(const SDNode *N) { llvm_unreachable("visitVAARG_64 Unimplemented w"); return NULL; }
+Value* X86IREmitter::visitVAARG_64(const SDNode *N) { llvm_unreachable("visitVAARG_64 Unimplemented X86 visit..."); return NULL; }
 
 } // end fracture namespace
