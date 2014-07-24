@@ -310,6 +310,11 @@ bool InvTreePatternNode::UpdateNodeTypeFromInst(unsigned ResNo,
     return true;
   }
 
+  if (Operand->isSubClassOf("ValueType")) {
+    setType(ResNo, getValueType(Operand));
+    return true;
+  }
+
   return false;
 }
 
@@ -629,7 +634,9 @@ void CodeInvDAGPatterns::ParseInstructions() {
           }
 
           if(!Inst->UpdateNodeTypeFromInst(i, VTOp, Target)) {
-            errs() << "Couldn't get type!\n";
+            errs() << "Couldn't get source type for ";
+            Inst->print(errs());
+            errs() << "!\n";
           }
         }
         Src = Inst;
@@ -654,7 +661,9 @@ void CodeInvDAGPatterns::ParseInstructions() {
           }
 
           if(!Inst->UpdateNodeTypeFromInst(i, VTOp, Target)) {
-            errs() << "Couldn't get type!\n";
+            errs() << "Couldn't get dest type for ";
+            Inst->print(errs());
+            errs() << "!\n";
           }
         }
         Dst = Inst;

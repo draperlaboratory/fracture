@@ -355,6 +355,7 @@ Value* IREmitter::visitSUB(const SDNode *N) {
   return Res;
 }
 
+<<<<<<< HEAD
 Value* IREmitter::visitADDC(const SDNode *N) { llvm_unreachable("visitADDC Unimplemented visit..."); return NULL; }
 Value* IREmitter::visitSUBC(const SDNode *N) { llvm_unreachable("visitSUBC Unimplemented visit..."); return NULL; }
 Value* IREmitter::visitADDE(const SDNode *N) { llvm_unreachable("visitADDE Unimplemented visit..."); return NULL; }
@@ -494,6 +495,89 @@ Value* IREmitter::visitBR(const SDNode *N) {
 }
 
 Value* IREmitter::visitBR_CC(const SDNode *N) { llvm_unreachable("visitBR_CC Unimplemented visit..."); return NULL; }
+=======
+Value* IREmitter::visitADDC(const SDNode *N) { return NULL; }
+Value* IREmitter::visitSUBC(const SDNode *N) { return NULL; }
+Value* IREmitter::visitADDE(const SDNode *N) { return NULL; }
+Value* IREmitter::visitSUBE(const SDNode *N) { return NULL; }
+Value* IREmitter::visitMUL(const SDNode *N) { return NULL; }
+Value* IREmitter::visitSDIV(const SDNode *N) { return NULL; }
+Value* IREmitter::visitUDIV(const SDNode *N) { return NULL; }
+Value* IREmitter::visitSREM(const SDNode *N) { return NULL; }
+Value* IREmitter::visitUREM(const SDNode *N) { return NULL; }
+Value* IREmitter::visitMULHU(const SDNode *N) { return NULL; }
+Value* IREmitter::visitMULHS(const SDNode *N) { return NULL; }
+Value* IREmitter::visitSMUL_LOHI(const SDNode *N) { return NULL; }
+Value* IREmitter::visitUMUL_LOHI(const SDNode *N) { return NULL; }
+Value* IREmitter::visitSMULO(const SDNode *N) { return NULL; }
+Value* IREmitter::visitUMULO(const SDNode *N) { return NULL; }
+Value* IREmitter::visitSDIVREM(const SDNode *N) { return NULL; }
+Value* IREmitter::visitUDIVREM(const SDNode *N) { return NULL; }
+Value* IREmitter::visitAND(const SDNode *N) {
+	Value* Source1 = visit(N->getOperand(0).getNode());
+	Value* Source2 = visit(N->getOperand(0).getNode());
+  StringRef BaseName = getBaseValueName(Source1->getName());
+  StringRef Name = getIndexedValueName(BaseName);
+	Value* And = IRB->CreateAnd(Source1, Source2, Name);
+	return And;
+}
+Value* IREmitter::visitOR(const SDNode *N) { return NULL; }
+Value* IREmitter::visitXOR(const SDNode *N) { return NULL; }
+Value* IREmitter::visitSHL(const SDNode *N) { return NULL; }
+Value* IREmitter::visitSRA(const SDNode *N) { return NULL; }
+Value* IREmitter::visitSRL(const SDNode *N) { return NULL; }
+Value* IREmitter::visitCTLZ(const SDNode *N) { return NULL; }
+Value* IREmitter::visitCTLZ_ZERO_UNDEF(const SDNode *N) { return NULL; }
+Value* IREmitter::visitCTTZ(const SDNode *N) { return NULL; }
+Value* IREmitter::visitCTTZ_ZERO_UNDEF(const SDNode *N) { return NULL; }
+Value* IREmitter::visitCTPOP(const SDNode *N) { return NULL; }
+Value* IREmitter::visitSELECT(const SDNode *N) { return NULL; }
+Value* IREmitter::visitVSELECT(const SDNode *N) { return NULL; }
+Value* IREmitter::visitSELECT_CC(const SDNode *N) { return NULL; }
+Value* IREmitter::visitSETCC(const SDNode *N) { return NULL; }
+Value* IREmitter::visitSIGN_EXTEND(const SDNode *N) {
+	Value* Source = visit(N->getOperand(0).getNode());
+  StringRef BaseName = getBaseValueName(Source->getName());
+  StringRef Name = getIndexedValueName(BaseName);
+  Type* DstTy = N->getValueType(0).getTypeForEVT(getGlobalContext());
+	Value* SExt = IRB->CreateSExt(Source, DstTy, Name);
+	return SExt;
+}
+Value* IREmitter::visitZERO_EXTEND(const SDNode *N) {
+	Value *Source = visit(N->getOperand(0).getNode());
+  StringRef BaseName = getBaseValueName(Source->getName());
+  StringRef Name = getIndexedValueName(BaseName);
+  Type* DstTy = N->getValueType(0).getTypeForEVT(getGlobalContext());
+	Value* ZExt = IRB->CreateZExt(Source, DstTy, Name);
+	return ZExt;
+}
+Value* IREmitter::visitANY_EXTEND(const SDNode *N) { return NULL; }
+Value* IREmitter::visitSIGN_EXTEND_INREG(const SDNode *N) { return NULL; }
+Value* IREmitter::visitTRUNCATE(const SDNode *N) { return NULL; }
+Value* IREmitter::visitBITCAST(const SDNode *N) { return NULL; }
+Value* IREmitter::visitBUILD_PAIR(const SDNode *N) { return NULL; }
+Value* IREmitter::visitFADD(const SDNode *N) { return NULL; }
+Value* IREmitter::visitFSUB(const SDNode *N) { return NULL; }
+Value* IREmitter::visitFMUL(const SDNode *N) { return NULL; }
+Value* IREmitter::visitFMA(const SDNode *N) { return NULL; }
+Value* IREmitter::visitFDIV(const SDNode *N) { return NULL; }
+Value* IREmitter::visitFREM(const SDNode *N) { return NULL; }
+Value* IREmitter::visitFCOPYSIGN(const SDNode *N) { return NULL; }
+Value* IREmitter::visitSINT_TO_FP(const SDNode *N) { return NULL; }
+Value* IREmitter::visitUINT_TO_FP(const SDNode *N) { return NULL; }
+Value* IREmitter::visitFP_TO_SINT(const SDNode *N) { return NULL; }
+Value* IREmitter::visitFP_TO_UINT(const SDNode *N) { return NULL; }
+Value* IREmitter::visitFP_ROUND(const SDNode *N) { return NULL; }
+Value* IREmitter::visitFP_ROUND_INREG(const SDNode *N) { return NULL; }
+Value* IREmitter::visitFP_EXTEND(const SDNode *N) { return NULL; }
+Value* IREmitter::visitFNEG(const SDNode *N) { return NULL; }
+Value* IREmitter::visitFABS(const SDNode *N) { return NULL; }
+Value* IREmitter::visitFCEIL(const SDNode *N) { return NULL; }
+Value* IREmitter::visitFTRUNC(const SDNode *N) { return NULL; }
+Value* IREmitter::visitFFLOOR(const SDNode *N) { return NULL; }
+Value* IREmitter::visitBRCOND(const SDNode *N) { return NULL; }
+Value* IREmitter::visitBR_CC(const SDNode *N) { return NULL; }
+>>>>>>> 3c090a961cbe36677ad328ebbe3d3a8fa49bb02d
 
 Value* IREmitter::visitLOAD(const SDNode *N) { 
   // Operand 0 - Addr to load, should be a pointer

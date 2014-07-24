@@ -48,10 +48,13 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
   }
 
   uint16_t TargetOpc = N->getMachineOpcode();
+
+  errs() << "opcode " << TargetOpc << " is coming.\n";
   switch(TargetOpc) {
     default:
       outs() << "TargetOpc: " << TargetOpc << "\n";
       break;
+
     case PPC::STD:{
 
     	/*
@@ -77,59 +80,599 @@ SDNode* PPCInvISelDAG::Transmogrify(SDNode *N) {
       if (MN->memoperands_empty()) {
         errs() << "NO MACHINE OPS for LEAVE!\n";
       } else {
-        MMO = *(MN->memoperands_begin());
+      	MMO = new MachineMemOperand(
+      			MachinePointerInfo(0, 0), MachineMemOperand::MOStore, 8, 0);	// need 8bytes for ppc64
       }
 
-      EVT LdType = N->getValueType(0);
       SDLoc SL(N);
 
-      /* SDValue B;  TODO: branch condition
-      if (RA == 0)
-      	B = CurDAG->getConstant(0x0, LdType);
-      else*/
-      SDValue	B = CurDAG->getLoad(LdType, SL, Chain, RA, MMO); //Load from RA
+    	SDValue EA = CurDAG->getNode(ISD::ADD, SL, MVT::i32, DS, RA);
+    	SDValue EAext = CurDAG->getZExtOrTrunc(EA, SL, MVT::i64);
+      SDValue Store = CurDAG->getStore(Chain, SL, X9, EAext, MMO);
 
-    	SDValue C1 = CurDAG->getConstant(0xb00, LdType);
-    	SDValue EA_or = CurDAG->getNode(ISD::OR, SL, LdType, SDValue(B.getNode(),1), DS, C1);   // DS || 0xb00
-    	// TODO: sign extend EA_or
 
-    	SDValue EA = CurDAG->getNode(ISD::ADD, SL, LdType, SDValue(EA_or.getNode(),1), EA_or, B);
-
-    	SDValue X9_val = CurDAG->getLoad(LdType, SL, SDValue(EA.getNode(),1), X9, MMO); //Load from X9
-      SDValue Store = CurDAG->getStore(SDValue(X9_val.getNode(),1), SL, X9_val, EA, MMO);
-
-    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), SDValue(Store.getNode(),1));   //Chain
-
-      //For getLoad or getStore
-      FixChainOp(B.getNode());
-      FixChainOp(X9_val.getNode());
+    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Store);   //Chain
       FixChainOp(Store.getNode());
+
 
     	return NULL;
     	break;
     }
-    	/*
-    case PPC::RLDICL:
+    case PPC::MFLR:{
 
-
-    	 * 	n <- sh5 || sh0:4
-				  r <- ROTL64((RS), n)
-					b <- mb5 || mb0:4
-					m <- MASK(b, 63)
-					RA <- r & m
+    	/* Move from special purpose register
+    	 * opcode 467
+    	 *
+    	 * mfspr Rx,8
+    	 *
     	 */
 
+      SDNode *C2R = NULL;
+      for (SDNode::use_iterator I = N->use_begin(), E = N->use_end(); I != E; ++I) {
+        if (I->getOpcode() == ISD::CopyToReg) {
+          C2R = *I;
+          break;
+        }
+      }
 
-    	/*
-      SDValue RS = N->getOperand(0);	// register x9
-      SDValue SH = N->getOperand(1);	// const: 0
-      SDValue MB = N->getOperand(2);	// const: 32
-
+      assert(C2R && "Move instruction without CopytoReg!");
+      C2R->setDebugLoc(N->getDebugLoc());
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N,0), N->getOperand(0));
 
 
     	return NULL;
     	break;
+    }
+    case PPC::MTCTR: // mtspr 9,Rx
+    case PPC::MTLR:{
+
+    	/* Move to special purpose register
+    	 * opcode 488
+    	 *
+    	 * mtspr Rx,8
+    	 *
+    	 */
+
+      SDNode *C2R = NULL;
+      for (SDNode::use_iterator I = N->use_begin(), E = N->use_end(); I != E; ++I) {
+        if (I->getOpcode() == ISD::CopyToReg) {
+          C2R = *I;
+          break;
+        }
+      }
+
+      assert(C2R && "Move instruction without CopytoReg!");
+      C2R->setDebugLoc(N->getDebugLoc());
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N,0), N->getOperand(0));
+
+
+    	return NULL;
+    	break;
+    }
+    case PPC::LDU:{
+    	/* load doubleword with update
+    	// opcode: 396
+    	 *
+    	 * ldu RT,DS(RA)
+    	 *
+    	 * EA <- (RA) + EXTS(DS || 0b00)
+					RT <- MEM(EA, 8)
+					RA <- EA
+
+				Let the effective address (EA) be the sum
+					(RA)+ (DS||0b00). The doubleword in storage
+					addressed by EA is loaded into RT.
+					EA is placed into register RA.
+					If RA=0 or RA=RT, the instruction form is invalid.
+    	 *
+    	 */
+
+    	SDValue Chain = N->getOperand(0);
+    	SDValue RT = N->getOperand(1);	// const -8, 32bit
+    	SDValue DS = N->getOperand(2);	// reg r31, 32bit
+
+      const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
+      MachineMemOperand *MMO = NULL;
+      if (MN->memoperands_empty()) {
+        errs() << "NO MACHINE OPS for LEAVE!\n";
+      } else {
+      	MMO = new MachineMemOperand(
+      			MachinePointerInfo(0, 0), MachineMemOperand::MOStore, 4, 0);	// need 8bytes for ppc64
+      }
+
+      SDLoc SL(N);
+
+    	SDValue EA = CurDAG->getNode(ISD::ADD, SL, MVT::i32, RT, DS);
+
+      //SDValue Load = CurDAG->getStore(Chain, SL, DS, EA, MMO);	// should be a getLoad, probably
+      SDValue Load = CurDAG->getLoad(N->getValueType(0), SL, Chain, EA,
+      		MachinePointerInfo::getConstantPool(), false, false, true, 0);
+
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 2), SDValue(Load.getNode(),1));   //Chain
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Load);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), EA);
+      FixChainOp(Load.getNode());
+
+    	return NULL;
+    	break;
+    }
+    case PPC::STDU:{
+
+    	/*
+    	 *
+    	 * EA <- (RA) + EXTS(DS || 0b00)
+				MEM(EA, 8) <- (RS)
+				RA <- EA
+
+				Let the effective address (EA) be the sum
+				(RA)+ (DS||0b00). (RS) is stored into the doubleword in
+				storage addressed by EA.
+				EA is placed into register RA.
+				If RA=0, the instruction form is invalid.
+    	 *
+    	 *
+    	 */
+
+    	SDValue Chain = N->getOperand(0);
+    	SDValue X1 = N->getOperand(1);	// register x1 a.k.a. RS, 64bit
+    	SDValue DS = N->getOperand(2);	// const -96, 32bit
+    	//SDValue RA = N->getOperand(3);	// r1, 32bit
+
+      const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
+      MachineMemOperand *MMO = NULL;
+      if (MN->memoperands_empty()) {
+        errs() << "NO MACHINE OPS for LEAVE!\n";
+      } else {
+      	MMO = new MachineMemOperand(
+      			MachinePointerInfo(0, 0), MachineMemOperand::MOStore, 8, 0);	// need 8bytes for ppc64
+      }
+
+      SDLoc SL(N);
+
+    	SDValue DSext = CurDAG->getSExtOrTrunc(DS, SL, MVT::i64);
+    	SDValue EA = CurDAG->getNode(ISD::ADD, SL, MVT::i64, DSext, X1);
+    	SDValue DStrunc = CurDAG->getSExtOrTrunc(EA, SL, MVT::i32);
+
+      SDValue Store = CurDAG->getStore(Chain, SL, X1, EA, MMO);
+
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Store);
+    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), DStrunc);   //Chain
+      FixChainOp(Store.getNode());
+
+
+    	return NULL;
+    	break;
+    }
+    case PPC::STW:{
+    	/*
+    	 * opcode 645
+    	 * if RA = 0 then b <- 0
+				else b <- (RA)
+				EA <- b + EXTS(D)
+				MEM(EA, 4) <- (RS)32:63
+				Let the effective address (EA) be the sum (RA|0)+ D.
+				(RS)32:63 are stored into the word in storage addressed
+				by EA.
+
+    	 */
+
+    	SDValue Chain = N->getOperand(0);
+    	SDValue X9 = N->getOperand(1);	// register x9 a.k.a. RS
+    	SDValue D = N->getOperand(2);		//
+    	SDValue RA = N->getOperand(3);	// r31
+
+      const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
+      MachineMemOperand *MMO = NULL;
+      if (MN->memoperands_empty()) {
+        errs() << "NO MACHINE OPS for LEAVE!\n";
+      } else {
+      	MMO = new MachineMemOperand(
+      			MachinePointerInfo(0, 0), MachineMemOperand::MOStore, 4, 0);	//MCO.getImm()
+      }
+
+      SDLoc SL(N);
+
+    	SDValue EA = CurDAG->getNode(ISD::ADD, SL, MVT::i32, D, RA);
+
+      SDValue Store = CurDAG->getStore(Chain, SL, X9, EA, MMO);
+    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Store);   //Chain
+
+      FixChainOp(Store.getNode());
+
+
+    	return NULL;
+    	break;
+    }
+    case PPC::ADDZEo:{
+    	// add to zero extended
+
+    	SDValue RAConst = N->getOperand(0);
+    	SDValue CAConst = N->getOperand(1);
+      SDLoc SL(N);
+
+    	//uint64_t RAConst = N->getConstantOperandVal(0);	// get sign extended value?
+    	//uint64_t UIConst = N->getConstantOperandVal(1);
+
+    	SDNode *C2RUser = NULL;
+    	for (SDNode::use_iterator S = N->use_begin(), E = N->use_end(); S != E; ++S) {
+    		if (S->getOpcode() == ISD::CopyToReg) {
+    			C2RUser = *S;
+    		}
+    	}
+    	if (C2RUser == NULL) {
+    		llvm_unreachable("Invalid CMPLWI User!");
+    	}
+    	SDValue Chain = C2RUser->getOperand(0);
+
+    	SDValue Add = CurDAG->getNode(ISD::ADD, SL, MVT::i32, RAConst, CAConst);
+    	//SDValue C2REQ = CurDAG->getCopyToReg(Chain, SL , Add);
+
+    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(C2RUser, 0), Add);
+    	// store C in 4 bits of CR
+
+    	return NULL;
+    	break;
+    }
+    case PPC::ANDISo:{
+    	// AND immediate shifted. Not sure what the -o suffix means.
+    	// should be 32bit and 16bit input, but it's two 32bit
+
+    	// RA <- RS & (UI << 16)
+
+    	SDValue RS = N->getOperand(0);
+    	SDValue UI = N->getOperand(1);
+
+    	SDLoc SL(N);
+
+      SDValue Shiftsize = CurDAG->getConstant(16, MVT::i32);
+
+    	SDValue UIshift = CurDAG->getNode(ISD::SHL, SL, MVT::i32, UI, Shiftsize);
+
+    	SDValue And = CurDAG->getNode(ISD::AND, SL, MVT::i32, RS, UIshift);
+    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), And);
+    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), UIshift);	// this section needs help
+
+
+    	return NULL;
+    	break;
+    }
+    case PPC::SUBF:{
+    	//subtract from
+    	// swap args to be a SUB
+
+    	SDLoc SL(N);
+    	SDValue Subtractor = N->getOperand(1);
+    	SDValue Subtractee = N->getOperand(0);
+
+    	SDValue Sub = CurDAG->getNode(ISD::SUB, SL, MVT::i32, Subtractor, Subtractee);
+
+    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Sub);
+
+    	return NULL;
+    	break;
+    }
+    case PPC::CMPLWI:{
+    	/*
+    	 * opcode: 185
+    	 *
+    	 * two inputs: i32 copy from reg, and constant
+    	 *
+    	 * cmplwi cr3,Rx,value is comparable to cmpli 3,0,Rx,value
+    	 * cmpli BF,L,RA,UI
+    	 *
+    	 * a <- (RA)32:63
+		 	 	 if a <u (UI) then c <- 0b100
+		 	 	 else if a >u (480 || UI) then c <- 0b010
+		 	 	 else c <- 0b001
+		 	 	 CR4xBF:4xBF+3 <- c || XERSO	// XER is fixed point exception register
+    	 *
+    	 *
+		 *The contents of register (RA)32:63 zero-extended
+		 are compared with UI, treating
+		 the operands as unsigned integers. The result of the
+		 comparison is placed into CR field BF.
+    	 */
+
+    	SDValue RAConst = N->getOperand(0);
+    	SDValue SIConst = N->getOperand(1);
+      SDLoc SL(N);
+
+    	//uint64_t RAConst = N->getConstantOperandVal(0);	// get sign extended value?
+    	//uint64_t UIConst = N->getConstantOperandVal(1);
+
+    	SDNode *C2RUser = NULL;
+    	for (SDNode::use_iterator S = N->use_begin(), E = N->use_end(); S != E; ++S) {
+    		if (S->getOpcode() == ISD::CopyToReg) {
+    			C2RUser = *S;
+    		}
+    	}
+    	if (C2RUser == NULL) {
+    		llvm_unreachable("Invalid CMPLWI User!");
+    	}
+    	SDValue Chain = C2RUser->getOperand(0);
+
+    	SDValue Equals = CurDAG->getSetCC(SL, MVT::i32, RAConst, SIConst, ISD::SETEQ);
+    	SDValue C2REQ = CurDAG->getCopyToReg(Chain, SL, PPC::CR7EQ, Equals);
+    	SDValue GreaterThan = CurDAG->getSetCC(SL, MVT::i32, RAConst, SIConst, ISD::SETGT);
+    	SDValue C2RGT = CurDAG->getCopyToReg(C2REQ, SL, PPC::CR7GT, GreaterThan);
+    	SDValue LessThan = CurDAG->getSetCC(SL, MVT::i32, RAConst, SIConst, ISD::SETLT);
+    	SDValue C2RLT = CurDAG->getCopyToReg(C2RGT, SL, PPC::CR7LT, LessThan);
+
+    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(C2RUser, 0), C2RLT);
+    	// store C in 4 bits of CR
+
+    	return NULL;
+    	break;
+    }
+    case PPC::CMPLD:
+    case PPC::CMPLDI:
+    case PPC::CMPWI:
+    case PPC::CMPD:
+    case PPC::CMPLW:
+    case PPC::CMPDI:{
+    	/*
+    	 * opcode: 181
+    	 *
+    	 * two inputs: i32 copy from reg, and constant
+    	 *
+    	 * cmpdi Rx,value is comparable to cmpi 0,1,Rx,value
+    	 * cmpi BF,L,RA,SI
+    	 *
+    	 * a <- (RA)
+		 	 	 if a < EXTS(SI) then c <- 0b100
+		 	 	 else if a > EXTS(SI) then c <- 0b010
+		 	 	 else c <- 0b001
+		 	 	 CR4xBF:4xBF+3 <- c || XERSO	// XER is fixed point exception register
+    	 *
+    	 *
+		 *The contents of register RA are compared with the sign-extended
+			value of the SI field, treating the operands as signed
+			integers. The result of the comparison is placed into
+			CR field BF.
+    	 */
+
+    	SDValue RAConst = N->getOperand(0);
+    	SDValue SIConst = N->getOperand(1);
+      SDLoc SL(N);
+
+    	//uint64_t RAConst = N->getConstantOperandVal(0);	// get sign extended value?
+    	//uint64_t UIConst = N->getConstantOperandVal(1);
+
+    	SDNode *C2RUser = NULL;
+    	for (SDNode::use_iterator S = N->use_begin(), E = N->use_end(); S != E; ++S) {
+    		if (S->getOpcode() == ISD::CopyToReg) {
+    			C2RUser = *S;
+    		}
+    	}
+    	if (C2RUser == NULL) {
+    		llvm_unreachable("Invalid CMPDI User!");
+    	}
+    	SDValue Chain = C2RUser->getOperand(0);
+
+    	SDValue Equals = CurDAG->getSetCC(SL, MVT::i32, RAConst, SIConst, ISD::SETEQ);
+    	SDValue C2REQ = CurDAG->getCopyToReg(Chain, SL, PPC::CR7EQ, Equals);
+    	SDValue GreaterThan = CurDAG->getSetCC(SL, MVT::i32, RAConst, SIConst, ISD::SETGT);
+    	SDValue C2RGT = CurDAG->getCopyToReg(C2REQ, SL, PPC::CR7GT, GreaterThan);
+    	SDValue LessThan = CurDAG->getSetCC(SL, MVT::i32, RAConst, SIConst, ISD::SETLT);
+    	SDValue C2RLT = CurDAG->getCopyToReg(C2RGT, SL, PPC::CR7LT, LessThan);
+
+    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(C2RUser, 0), C2RLT);
+    	// store C in 4 bits of CR
+
+    	return NULL;
+    	break;
+    }
+    case PPC::B:{
+
+      SDValue Chain = N->getOperand(0);
+      SDValue Offset = CurDAG->getConstant(1, MVT::i32);
+
+      SDLoc SL(N);
+
+      SDValue BrNode = CurDAG->getNode(ISD::BR, SL, MVT::Other, Offset, Chain);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
+
+
+    	return NULL;
+    	break;
+    }
+    case PPC::BCTR:
+    case PPC::BCTRL:
+    case PPC::BL:{
+    	// opcode 161
+    	//TODO:LR <-iea CIA + 4
+    	// CIA == current instruction address
+      SDValue Chain = N->getOperand(0);
+      SDValue Offset = CurDAG->getConstant(1, MVT::i32);
+
+      SDLoc SL(N);
+
+      SDValue BrNode = CurDAG->getNode(ISD::BR, SL, MVT::Other, Offset, Chain);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
+
+
+    	return NULL;
+    	break;
+
+    }
+    case PPC::gBCL:
+    case PPC::gBC:{
+    	/* opcode 877
+
+    	 this is not mentioned anywhere - I am assuming it's related to branch conditional
+
+			 4 inputs, 2 outputs: 5 i32, 1 chain
+
+    	 bc BO,BI,target_addr
+
+				if ¬BO2 then CTR <- CTR - 1
+				ctr_ok <- BO2 | ((CTR != 0) XOR BO3)
+				cond_ok <- BO0 | (CRBI === BO1) // CR is condition register
+				if ctr_ok & cond_ok then
+					NIA <-iea EXTS(BD || 0b00)
+
+
+		 The BI field specifies the Condition Register bit to be
+		 tested. The BO field is used to resolve the branch as
+		 described in Figure 21. target_addr specifies the
+		 branch target address.
+		 If AA=0 then the branch target address is the sum of
+		 BD || 0b00 sign-extended and the address of this
+		 instruction, with the high-order 32 bits of the branch target
+		 address set to 0 in 32-bit mode.
     	*/
+
+      SDValue Chain = N->getOperand(0);
+      //SDValue Op1 = N->getOperand(1); // const 4 - branch if false
+      // page 6 of http://cache.freescale.com/files/32bit/doc/app_note/AN2491.pdf
+      // page 30 of PowerPC User Instruction Set Architecture
+      //SDValue Op2 = N->getOperand(2); // cond code
+      uint64_t Op3 = N->getConstantOperandVal(3);
+      																// const * 4 for branch target offset
+      																// always multiply by 4.
+
+      SDValue BranchTarget = CurDAG->getConstant(Op3 * 4, MVT::i32);
+
+      //SDValue Op4 = N->getOperand(4); // CTR register? implicit use/def
+      ///SDValue Op5 = N->getOperand(5); // RM register? implicit use
+
+      SDLoc SL(N);
+      // Calculate the Branch Target
+
+      // Condition Code is "LTE", based on BO
+      SDValue Condition = CurDAG->getCondCode(ISD::SETLE);
+      SDValue BrNode = CurDAG->getNode(ISD::BRCOND, SL, MVT::Other, Condition, BranchTarget, Chain);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
+
+    	return NULL;
+    	break;
+
+    }
+    case PPC::BCTR8:
+    case PPC::gBCLR:{
+    	/* Branch Conditional to Link Register
+    	 * opcode 883
+    	 *
+    	 *	bclr BO,BI,BH
+    	 *
+    	 *	7 inputs, 2 outputs: i32 and chain
+    	 *
+    	 * if (64-bit mode)
+					then M <- 0
+				else M <- 32
+				if ¬BO2 then CTR <- CTR - 1
+				ctr_ok <- BO2 | ((CTRM:63 != 0) XOR BO3
+				cond_ok <- BO0 | (CRBI == BO1)
+				if ctr_ok & cond_ok then NIA <-iea LR0:61 || 0b00
+if LK then LR iea CIA + 4
+    	 *
+    	 *
+    	 *
+    	 * The BI field specifies the Condition Register bit to be
+					tested. The BO field is used to resolve the branch as
+					described in Figure 21. The BH field is used as
+					described in Figure 23. The branch target address is
+					LR0:61 || 0b00, with the high-order 32 bits of the branch
+					target address set to 0 in 32-bit mode.
+    	 *
+    	 */
+
+    	//copied from gBC
+      SDValue Chain = N->getOperand(0);
+
+      uint64_t Op3 = N->getConstantOperandVal(3);
+      SDValue BranchTarget = CurDAG->getConstant(Op3 * 4, MVT::i32);
+      SDLoc SL(N);
+
+      SDValue Condition = CurDAG->getCondCode(ISD::SETLE);
+      SDValue BrNode = CurDAG->getNode(ISD::BRCOND, SL, MVT::Other, Condition, BranchTarget, Chain);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), BrNode);
+
+      return NULL;
+      break;
+    }
+    case PPC::SRADI:{
+        	 /*
+        	  * Shift Right Algebraic Doubleword Immediate
+        	  * The documentation on this has a ROTL in pseudocode, and a shift right in description
+        	  * n <- sh5 || sh0:4
+    				  r <- ROTL64((RS), n)
+    					m <- MASK(n, 63)
+    					RA <- r & m
+
+    					The contents of register RS are shifted right SH bits.
+							Bits shifted out of position 63 are lost. Bit 0 of RS is
+							replicated to fill the vacated positions on the left. The
+							result is placed into register RA. CA is set to 1 if (RS) is
+							negative and any 1-bits are shifted out of position 63;
+							otherwise CA is set to 0. A shift amount of zero causes
+							RA to be set equal to (RS), and CA to be set to 0.
+
+    					MASK(x, y) Mask having 1s in positions x through y
+    					(wrapping if x > y) and 0s elsewhere
+        	 */
+
+          SDValue RS = N->getOperand(0);	// register x4, 64bit
+          SDValue SH = N->getOperand(1);	// const: 1, 32bit
+          SDLoc SL(N);
+
+          // SHL, SRA, SRL - shift left, shift right arithmetic (sext), shift right logical (zext)
+          SDValue R = CurDAG->getNode(ISD::SRA, SL, RS.getValueType(), RS, SH);
+          // TODO: replace i32 output to get rid of SRADI node completely
+          CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), R);
+
+        	return NULL;
+        	break;
+        }
+    case PPC::RLDICR:
+    case PPC::RLDICL:{
+    	 /*
+    	  * Rotate Left Double Word Immediate then Clear Left
+    	  * n <- sh5 || sh0:4
+				  r <- ROTL64((RS), n)
+					b <- mb5 || mb0:4
+					m <- MASK(b, 63)
+					RA <- r & m
+
+					The contents of register RS are rotated64 left SH bits.
+					A mask is generated having 1-bits from bit MB through
+					bit 63 and 0-bits elsewhere. The rotated data are
+					ANDed with the generated mask and the result is
+					placed into register RA.
+
+					MASK(x, y) Mask having 1s in positions x through y
+					(wrapping if x > y) and 0s elsewhere
+    	 */
+
+      SDValue RS = N->getOperand(0);	// register x9
+      SDValue SH = N->getOperand(1);	// const: 0
+      //SDValue MB = N->getOperand(2);	// const: 32
+      SDLoc SL(N);
+
+      SDValue R = CurDAG->getNode(ISD::ROTL, SL, RS.getValueType(), RS, SH);	//breaking on this line
+
+      uint64_t MBVal = N->getConstantOperandVal(2);	// get value of MB
+      // TODO: MASK(x, y) Mask having 1s in positions x through y (wrapping if x > y)
+      //build bitmask
+      uint64_t C1 = 0;
+      for (uint64_t i = 0; i < MBVal; ++i) {
+      		C1 += 1ULL << i;
+      }
+      uint64_t Shift = 64 - MBVal;
+      C1 = C1 << Shift;
+      // if MBVal == 32, Windows Calculator won't convert decimal->binary
+      // outputs correctly for unsigned ints.
+
+      SDValue M = CurDAG->getConstant(C1, MVT::i64);
+
+      SDValue RA = CurDAG->getNode(ISD::AND, SL, MVT::i64, R, M);
+
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), RA);
+
+    	return NULL;
+    	break;
+    }
+
   }
 
 
