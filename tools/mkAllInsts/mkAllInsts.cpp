@@ -12,12 +12,6 @@
 //
 // NOTE: Fracture must be able to handle the BX_RET opcode correctly in order
 //		 for these binaries to be useful
-// NOTE: For each target you may have to add three symlinks in the folder
-//		 llvm/lib/Target/<target>/MCTargetDesc:
-//			<target>GenInstrInfo.inc -> ../<target>GenInstrInfo.inc
-//			<target>GenRegisterInfo.inc -> ../<target>GenRegisterInfo.inc
-//			<target>GenSubtargetInfo.inc -> ../<target>GenSubtargetInfo.inc
-//		 where <target> = ARM or X86
 //
 // Author: cjw3357
 // Date: July 21, 2014
