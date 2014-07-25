@@ -866,6 +866,27 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
+    case X86::XOR8rr:{
+      /*
+       * 2 inputs: i8 (bl), i8 (bl)
+       * 2 outputs: i8 (bl), i32 (eflags)
+       *
+       * Fib 02 GCC Elf in Main:
+       * 08048364:   30 DB                               xorb    %bl, %bl
+       */
+
+      SDValue Bl1 = N->getOperand(0);   //i8
+      SDValue Bl2 = N->getOperand(1);   //i8
+
+      SDLoc SL(N);
+      SDValue XorNode = CurDAG->getNode(ISD::XOR , SL, MVT::i8, Bl1, Bl2);
+
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), XorNode);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), CurDAG->getUNDEF(MVT::i32));
+
+      return NULL;
+      break;
+    }
     //case X86::NOOPW:  Working to handle NOP in the decompiler.  Looks to be a similar problem on multiple platforms {x86, PPC}
     //case X86::NOOPL:
     //case X86::NOOP:{
