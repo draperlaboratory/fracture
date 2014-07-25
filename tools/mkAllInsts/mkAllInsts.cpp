@@ -12,6 +12,12 @@
 //
 // NOTE: Fracture must be able to handle the BX_RET opcode correctly in order
 //		 for these binaries to be useful
+// NOTE: For each target you may have to add three symlinks in the folder
+//		 llvm/lib/Target/<target>/MCTargetDesc:
+//			<target>GenInstrInfo.inc -> ../<target>GenInstrInfo.inc
+//			<target>GenRegisterInfo.inc -> ../<target>GenRegisterInfo.inc
+//			<target>GenSubtargetInfo.inc -> ../<target>GenSubtargetInfo.inc
+//		 where <target> = ARM or X86
 //
 // Author: cjw3357
 // Date: July 21, 2014
@@ -31,9 +37,15 @@
 #include "llvm/MC/MCCodeEmitter.h"
 #include "llvm/Support/TargetSelect.h"
 #include "../lib/Target/ARM/InstPrinter/ARMInstPrinter.h"
-#include "../../fracture/lib/Target/ARM/ARMBaseInfo.h"
 #include "../lib/Target/X86/InstPrinter/X86IntelInstPrinter.h"
-#include "../../fracture/lib/Target/X86/X86BaseInfo.h"
+#define GET_REGINFO_ENUM
+#include "../lib/Target/ARM/ARMGenRegisterInfo.inc"
+#define GET_REGINFO_ENUM
+#include "../lib/Target/X86/X86GenRegisterInfo.inc"
+#define GET_INSTRINFO_ENUM
+#include "../lib/Target/ARM/ARMGenInstrInfo.inc"
+#define GET_INSTRINFO_ENUM
+#include "../lib/Target/X86/X86GenInstrInfo.inc"
 
 using namespace llvm;
 
@@ -387,7 +399,18 @@ MCInstBuilder* buildX86MI(const MCInstrInfo *MII,MCContext *MCCtx,unsigned op)
 		for(unsigned i = 0; i < numopers; i++) {
 			opinfo = MOI[i];
 			optype = opinfo.OperandType;
-			if(optype == MCOI::OPERAND_UNKNOWN) {
+			/*if(op == X86::ADC16mi) {
+				if(i==0) { MIB->addReg(X86MCRegisterClasses[
+										opinfo.RegClass].getRegister(0)); }
+				if(i==1) { MIB->addImm(4); }//addExpr(MCConstantExpr::Create(0x8000, *MCCtx)); }
+				if(i==2) { MIB->addReg(X86MCRegisterClasses[
+										opinfo.RegClass].getRegister(0)); }
+				if(i==3) { MIB->addExpr(MCConstantExpr::Create(0x8000, *MCCtx)); }
+				if(i==4) { MIB->addReg(X86::CS); }//addExpr(MCConstantExpr::Create(0x8000, *MCCtx)); }
+				if(i==5) { MIB->addImm(0); }
+			} else if(opinfo.isLookupPtrRegClass()) {
+				MIB->addReg(X86::AX);
+			} else*/ if(optype == MCOI::OPERAND_UNKNOWN) {
 			
 				if(opinfo.RegClass == -1) {
 					MIB->addImm(0);
@@ -402,7 +425,17 @@ MCInstBuilder* buildX86MI(const MCInstrInfo *MII,MCContext *MCCtx,unsigned op)
 				MIB->addReg(X86MCRegisterClasses[
 										opinfo.RegClass].getRegister(0));
 			} else if(optype == MCOI::OPERAND_MEMORY) {
-		 		MIB->addExpr(MCConstantExpr::Create(0x8000, *MCCtx));
+				if(opinfo.isLookupPtrRegClass()) {
+					MIB->addReg(X86::EAX);
+				} else {
+		 			if(op == X86::ADC16mi) {
+		 				if(i == 1) { MIB->addImm(1); }
+		 				else if(i == 4) { MIB->addReg(0); }
+		 			} else {
+		 				MIB->addExpr(MCConstantExpr::Create(0x8000, *MCCtx));
+		 			//MIB->addReg(3);
+		 			}
+		 		}
 			} else if(optype == MCOI::OPERAND_PCREL) {
 				MIB->addImm(0x10);
 			}
