@@ -43,13 +43,18 @@
 
 using namespace llvm;
 
+struct MIBplus {
+	MCInstBuilder *MIB;
+	bool asmPrintable;
+};
+
 raw_fd_ostream *RS, *US, *SS;
 
 void makeBins(std::string TripleName, std::string DirName, bool printAsm);
-MCInstBuilder* buildMI(std:: string triple, const MCInstrInfo *MII,
-											MCContext *MCCtx, unsigned op);
-MCInstBuilder* buildARMMI(const MCInstrInfo *MII,MCContext *MCCtx,unsigned op);
-MCInstBuilder* buildX86MI(const MCInstrInfo *MII,MCContext *MCCtx,unsigned op);
+MIBplus buildMI(std:: string triple, const MCInstrInfo *MII,
+												MCContext *MCCtx, unsigned op);
+MIBplus buildARMMI(const MCInstrInfo *MII,MCContext *MCCtx,unsigned op);
+MIBplus buildX86MI(const MCInstrInfo *MII,MCContext *MCCtx,unsigned op);
 MCInstPrinter* getTargetInstPrinter(std::string triple,
 					const MCAsmInfo *AsmInfo, const MCInstrInfo *MII,
 					const MCRegisterInfo *MRI,  const MCSubtargetInfo *STI);
@@ -189,54 +194,92 @@ void makeBins(std::string TripleName, std::string DirName, bool printAsm)
 																	*MCCtx);
 	MCInstBuilder *RET;
 	unsigned lastInst;
+	bool arm = false, x86 = false;
 	if(TripleName == "arm-unknown-unknown") {
 		lastInst = ARM::INSTRUCTION_LIST_END;
 		RET = new MCInstBuilder(ARM::BX_RET);
 		RET->addImm(14);
 		RET->addReg(0);
+		arm = true;
 	} else if(TripleName == "i386-unknown-unknown") {
 		lastInst = X86::INSTRUCTION_LIST_END;
 		RET = new MCInstBuilder(X86::RETL);
+		x86 = true;
 	} else {
 		lastInst = 0;
 		RET = new MCInstBuilder(0);
 	}
 	
+	std::string *flist = new std::string[lastInst];
+	for(unsigned i = 0; i < lastInst; i++) {
+		flist[i] = "";
+	}
+	
 	//Loop through each instruction and print it to a file
 	const char *opname;
-	std::string cmd;
+	char suffix;
+	std::string cmd, fname, tempname;
 	
 	raw_fd_ostream *FS;
-	MCInstBuilder *MIB;
+	MIBplus MIBP;
 	for(unsigned op = 0; op < lastInst; op++) {
+		
 		//Build the machine instruction
-		MIB = buildMI(TripleName, MII, MCCtx, op);
+		MIBP = buildMI(TripleName, MII, MCCtx, op);
 		
 		//If it's valid, print the machine instruction
-		if(MIB) {
+		if(MIBP.MIB) {
 			opname = MII->getName(op);
-			FS = new raw_fd_ostream(opname, ErrMsg, sys::fs::F_None);
-			MCInst MI = static_cast<MCInst&>(*MIB);
+			
+			fname = (std::string)opname;
+			tempname = fname;
+			for(unsigned i = 0; i < tempname.size(); i++) {
+				tempname[i] = std::tolower(tempname[i]);
+			}
+			suffix = '1';
+			for(int i = 0; i < (int)op; i++) {
+				if(flist[i] == tempname) {
+					if(suffix == '1') {
+						fname += ((std::string)"-" + suffix);
+						tempname += ((std::string)"-" + suffix);
+					} else {
+						fname[fname.size()-1] = suffix;
+						tempname[tempname.size()-1] = suffix;
+					}
+					suffix++;
+					i = -1;
+				}
+			}
+			flist[op] = tempname;
+			FS = new raw_fd_ostream(fname.c_str(), ErrMsg, sys::fs::F_None);
+			
+			MCInst MI = static_cast<MCInst&>(*(MIBP.MIB));
 			cmd = DirName;
-			if(RS) {
+			if(RS && MIBP.asmPrintable) {
 				MIP->printInst(&MI, *RS, annot);
-				*RS << "\n"; }
+				*RS << "\n";
+			}
 			if(printAsm) {
 				*FS << MII->getName(op) << ": ";
-				MIP->printInst(&MI, *FS, annot);
-				*FS << "\n";
+				if(MIBP.asmPrintable) {
+					MIP->printInst(&MI, *FS, annot);
+					*FS << "\n";
+				} else {
+					*FS << "CANNOT PRINT TO ASM!\n";
+				}
 			} else {
 				//*RS << "SUCCESS\n";
 				MCE->EncodeInstruction(MI, *FS, *dummy, *STI);
 				MI = static_cast<MCInst&>(*RET);
 				MCE->EncodeInstruction(MI, *FS, *dummy, *STI);
 			}
-			cmd = "mv " + (std::string)opname + cmd;
+			cmd = "mv " + (std::string)fname + cmd;
 			system(cmd.c_str());
 			delete FS;
-			delete MIB;
+			delete MIBP.MIB;
 		}
 	}
+	delete[] flist;
 	delete RET;
 	delete MCE;
 	delete MIP;
@@ -250,47 +293,59 @@ void makeBins(std::string TripleName, std::string DirName, bool printAsm)
 	//delete TheTarget;
 }
 
-MCInstBuilder* buildMI(std:: string triple, const MCInstrInfo *MII,
-											MCContext *MCCtx, unsigned op)
+MIBplus buildMI(std:: string triple, const MCInstrInfo *MII,
+												MCContext *MCCtx, unsigned op)
 {
 	if(triple == "arm-unknown-unknown") {
 		return buildARMMI(MII, MCCtx, op);
 	} else if(triple == "i386-unknown-unknown") {
 		return buildX86MI(MII, MCCtx, op);
 	} else {
-		return NULL;
+		MIBplus MIBP;
+		MIBP.asmPrintable = false;
+		MIBP.MIB = NULL;
+		return MIBP;
 	}
 }
 
 // * buildMI  - Returns an MCInstBuilder* pointing to a valid representation
 // *			of the ARM instruction corresponding to the op code 'op'
-MCInstBuilder* buildARMMI(const MCInstrInfo *MII,MCContext *MCCtx,unsigned op)
+MIBplus buildARMMI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op)
 {
+	MIBplus MIBP;
+	MIBP.asmPrintable = true;
+	MIBP.MIB = NULL;
+
 	std::string opname = MII->getName(op);
 	const MCInstrDesc MID = MII->get(op);
+	uint64_t flags = MID.TSFlags;
+	unsigned short size = MID.Size;
 	if(RS) { *RS << opname << ":\t"; }
 	//Don't make an MIB if it's a pseudo-instruction
 	if(MID.isPseudo()) {
 		if(RS) { *RS << "IS PSEUDO INSTRUCTION!\n"; }
 		if(US) { *US << opname << "\n"; }
-		return NULL;
+		MIBP.asmPrintable = false;
+		return MIBP;
 	}
 	//Don't make an MIB it it's one of these instructions
-	else if(op == ARM::t2Int_eh_sjlj_setjmp ||
-			op == ARM::t2Int_eh_sjlj_setjmp_nofp ||
-			op == ARM::tInt_eh_sjlj_longjmp ||
-			op == ARM::tInt_eh_sjlj_setjmp ||
-			op == ARM::VLDMQIA || op == ARM::VSTMQIA ||
-			op == ARM::tPICADD ||
-			opname.find("Pseudo") != std::string::npos) {
-		if(RS) { *RS << "ERROR IS UNPRINTABLE!\n"; }
+	else if(size == 0 ||
+	(flags & (0x3f << 7)/*ARMII::FormMask*/) == (0 << 7)/*ARMII::Pseudo*/) {
+		if(RS) { *RS << "IS UNPRINTABLE!\n"; }
 		if(US) { *US << opname << "\n"; }
-		return NULL;
+		MIBP.asmPrintable = false;
+		return MIBP;
 	}
 	//Make an MIB containing valid operands for the instruction
 	else {
+		//FIXME tPICADD seems to be able to print to binary, but not to assembly
+		//		For now just ignoring it, but it should be investigated
+		if(op == ARM::tPICADD) {
+			if(RS) { *RS << "CANNOT PRINT TO ASM!\n"; }
+			MIBP.asmPrintable = false;
+		}
 		if(SS) { *SS << opname << "\n"; }
-		MCInstBuilder *MIB = new MCInstBuilder(op);
+		MIBP.MIB = new MCInstBuilder(op);
 		const MCOperandInfo *MOI = MID.OpInfo;
 		MCOperandInfo opinfo;
 		unsigned optype;
@@ -304,17 +359,17 @@ MCInstBuilder* buildARMMI(const MCInstrInfo *MII,MCContext *MCCtx,unsigned op)
 			
 				if(opinfo.isPredicate()) {
 					if(firstPred) {
-						MIB->addImm(14);
+						MIBP.MIB->addImm(14);
 						firstPred = false;
 					} else {
-						MIB->addReg(0);
+						MIBP.MIB->addReg(0);
 						firstPred = true;
 					}
 				} else if(opinfo.isOptionalDef()) {
-					MIB->addReg(0);
+					MIBP.MIB->addReg(0);
 				} else if((op == ARM::tLDRspi || op == ARM::tSTRspi) &&
 																i == 1) {
-					MIB->addReg(ARM::SP);
+					MIBP.MIB->addReg(ARM::SP);
 				} else if(opinfo.RegClass == -1) {
 				
 					if((op>=ARM::FLDMXDB_UPD && op<=ARM::FSTMXIA_UPD) ||
@@ -327,114 +382,181 @@ MCInstBuilder* buildARMMI(const MCInstrInfo *MII,MCContext *MCCtx,unsigned op)
 						  (op>=ARM::t2STMDB && op<=ARM::t2STMIA_UPD) ||
 						  (op==ARM::tLDMIA || op==ARM::tPOP) ||
 						  (op==ARM::tPUSH || op==ARM::tSTMIA_UPD)) {
-						MIB->addReg(ARM::R0);
+						MIBP.MIB->addReg(ARM::R0);
 					} else if((op >= ARM::t2LDRD_POST &&
 								op <= ARM::t2LDRDi8) ||
 								(op >= ARM::t2STRD_POST &&
 								op <= ARM::t2STRDi8)) {
-						MIB->addImm(0);
+						MIBP.MIB->addImm(0);
 					} else {
-						MIB->addImm(2);
+						MIBP.MIB->addImm(2);
 					}
 					
 				} else if((opname.find("x2") != std::string::npos ||
 							opname.find("VLD2b") != std::string::npos ||
 							opname.find("VST2b") != std::string::npos) &&
 							opinfo.RegClass == ARM::DPairRegClassID) {
-					MIB->addReg(ARM::D0_D2);
+					MIBP.MIB->addReg(ARM::D0_D2);
 				} else {
-					MIB->addReg(ARMMCRegisterClasses[
+					MIBP.MIB->addReg(ARMMCRegisterClasses[
 										opinfo.RegClass].getRegister(0));
 				}
 				
 			} else if(optype == MCOI::OPERAND_IMMEDIATE) {
-				MIB->addImm(0);
+				MIBP.MIB->addImm(0);
 			} else if(optype == MCOI::OPERAND_REGISTER) {
-				MIB->addReg(ARMMCRegisterClasses[opinfo.RegClass].getRegister(0));
+				MIBP.MIB->addReg(ARMMCRegisterClasses[opinfo.RegClass].getRegister(0));
 			} else if(optype == MCOI::OPERAND_MEMORY) {
-		 		MIB->addExpr(MCConstantExpr::Create(0x8000, *MCCtx));
+		 		MIBP.MIB->addExpr(MCConstantExpr::Create(0x8000, *MCCtx));
 			} else if(optype == MCOI::OPERAND_PCREL) {
-				MIB->addImm(0x10);
+				MIBP.MIB->addImm(0x10);
 			}
 		}
-		return MIB;
+		return MIBP;
 	}
 }
 
-MCInstBuilder* buildX86MI(const MCInstrInfo *MII,MCContext *MCCtx,unsigned op)
+MIBplus buildX86MI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op)
 {
-	raw_ostream &OS = outs();
+	//raw_ostream &OS = outs();
+
+	MIBplus MIBP;
+	MIBP.asmPrintable = true;
+	MIBP.MIB = NULL;
 	
 	std::string opname = MII->getName(op);
 	const MCInstrDesc MID = MII->get(op);
+	uint64_t flags = MID.TSFlags;
 	if(RS) { *RS << opname << ":\t"; }
-	OS << opname << "\n";
+	//OS << opname << "\n";
 	//Don't make an MIB if it's a pseudo-instruction
-	if(MID.isPseudo()) {
+	//FIXME EH_RETURN and others?
+	if(MID.isPseudo() || op == X86::EH_RETURN || op == X86::EH_RETURN64 ||
+		op == X86::Int_CVTSD2SSrm || op == X86::Int_VCVTSD2SSrm || opname.find("rik") != std::string::npos) {
 		if(RS) { *RS << "IS PSEUDO INSTRUCTION!\n"; }
 		if(US) { *US << opname << "\n"; }
-		return NULL;
+		MIBP.asmPrintable = false;
+		return MIBP;
 	}
-	else if(opname.find("Fp") != std::string::npos) {
-		if(RS) { *RS << "ERROR IS UNPRINTABLE!\n"; }
+	else if((flags & 127/*X86II::FormMask*/) == 0/*X86II::Pseudo*/) {
+		if(RS) { *RS << "IS UNPRINTABLE!\n"; }
 		if(US) { *US << opname << "\n"; }
-		return NULL;
+		MIBP.asmPrintable = false;
+		return MIBP;
 	}
 	//Make an MIB containing valid operands for the instruction
 	else {
+		//FIXME these insts seem to be able to print to binary, but not to assembly
+		//		For now just ignoring it, but it should be investigated
+		if(op == X86::MOV32ri64 || op == X86::TAILJMPr ||
+			opname.find("mik") != std::string::npos ||
+			opname.find("rik") != std::string::npos) {
+			if(RS) { *RS << "CANNOT PRINT TO ASSEMBLY!\n"; }
+			MIBP.asmPrintable = false;
+		}
 		if(SS) { *SS << opname << "\n"; }
-		MCInstBuilder *MIB = new MCInstBuilder(op);
+		MIBP.MIB = new MCInstBuilder(op);
 		const MCOperandInfo *MOI = MID.OpInfo;
 		MCOperandInfo opinfo;
 		unsigned optype;
 		unsigned numopers = MID.NumOperands;
-		//bool firstPred = true;
 		
 		for(unsigned i = 0; i < numopers; i++) {
 			opinfo = MOI[i];
 			optype = opinfo.OperandType;
-			/*if(op == X86::ADC16mi) {
-				if(i==0) { MIB->addReg(X86MCRegisterClasses[
-										opinfo.RegClass].getRegister(0)); }
-				if(i==1) { MIB->addImm(4); }//addExpr(MCConstantExpr::Create(0x8000, *MCCtx)); }
-				if(i==2) { MIB->addReg(X86MCRegisterClasses[
-										opinfo.RegClass].getRegister(0)); }
-				if(i==3) { MIB->addExpr(MCConstantExpr::Create(0x8000, *MCCtx)); }
-				if(i==4) { MIB->addReg(X86::CS); }//addExpr(MCConstantExpr::Create(0x8000, *MCCtx)); }
-				if(i==5) { MIB->addImm(0); }
-			} else if(opinfo.isLookupPtrRegClass()) {
-				MIB->addReg(X86::AX);
-			} else*/ if(optype == MCOI::OPERAND_UNKNOWN) {
-			
+			if(numopers == 2 && MOI[0].OperandType == MCOI::OPERAND_MEMORY &&
+					!MOI[0].isLookupPtrRegClass() &&
+					MOI[1].OperandType == MCOI::OPERAND_MEMORY &&
+					!MOI[1].isLookupPtrRegClass()) {
+				MIBP.MIB->addExpr(MCConstantExpr::Create(0x0, *MCCtx));
+				MIBP.MIB->addReg(0);
+				i += 1;
+			} else if(op == X86::LEA64_32r || op == X86::LEA64r) {
+				MIBP.MIB->addReg(X86::EAX);
+				MIBP.MIB->addReg(X86::EAX);
+				MIBP.MIB->addImm(1);
+				MIBP.MIB->addReg(X86::EAX);
+				MIBP.MIB->addExpr(MCConstantExpr::Create(0x0, *MCCtx));
+				MIBP.MIB->addReg(0);
+				i += 5;
+			/*} else if(op == X86::VPSLLDZrik) {
+				OS << MID.getNumOperands();
+				//MIBP.MIB->addExpr(MCConstantExpr::Create(0x0, *MCCtx));
+				MIBP.MIB->addReg(X86::ZMM0);
+				//MIBP.MIB->addExpr(MCConstantExpr::Create(0x0, *MCCtx));
+				MIBP.MIB->addReg(X86::K1);
+				//MIBP.MIB->addExpr(MCConstantExpr::Create(0x0, *MCCtx));
+				//MIBP.MIB->addImm(1);
+				MIBP.MIB->addReg(X86::ZMM0);
+				MIBP.MIB->addExpr(MCConstantExpr::Create(0x0, *MCCtx));
+				//MIBP.MIB->addReg(0);
+				MIBP.MIB->addExpr(MCConstantExpr::Create(0x0, *MCCtx));
+				MIBP.MIB->addImm(0);
+				//MIBP.MIB->addExpr(MCConstantExpr::Create(0x0, *MCCtx));
+				//MIB->addImm(0);
+				i += 3;*/
+			} else if(optype == MCOI::OPERAND_UNKNOWN) {
 				if(opinfo.RegClass == -1) {
-					MIB->addImm(0);
+					MIBP.MIB->addImm(0);
 				} else {
-					MIB->addReg(X86MCRegisterClasses[
+					MIBP.MIB->addReg(X86MCRegisterClasses[
 										opinfo.RegClass].getRegister(0));
 				}
-				
 			} else if(optype == MCOI::OPERAND_IMMEDIATE) {
-				MIB->addImm(0);
+				MIBP.MIB->addImm(0);
 			} else if(optype == MCOI::OPERAND_REGISTER) {
-				MIB->addReg(X86MCRegisterClasses[
+				MIBP.MIB->addReg(X86MCRegisterClasses[
 										opinfo.RegClass].getRegister(0));
 			} else if(optype == MCOI::OPERAND_MEMORY) {
+			
 				if(opinfo.isLookupPtrRegClass()) {
-					MIB->addReg(X86::EAX);
+					if((op >= X86::CMPS16 && op <= X86::CMPS8) ||
+							op == X86::MOVSB || op == X86::MOVSL ||
+							op == X86::MOVSQ || op == X86::MOVSW) {
+						MIBP.MIB->addReg(X86::EDI);
+						MIBP.MIB->addReg(X86::ESI);
+						MIBP.MIB->addReg(0);
+						i += 2;
+					} else if((op >= X86::LODSB && op <= X86::LODSW) ||
+								(op >= X86::OUTSB && op <= X86::OUTSW)) {
+						MIBP.MIB->addReg(X86::EAX);
+						MIBP.MIB->addReg(0);
+						i += 1;
+					} else if(opname.find("mik") != std::string::npos) {
+						MIBP.MIB->addImm(1);
+						MIBP.MIB->addReg(X86::EAX);
+						MIBP.MIB->addExpr(MCConstantExpr::Create(0x0, *MCCtx));
+						MIBP.MIB->addReg(0);
+						MIBP.MIB->addExpr(MCConstantExpr::Create(0x0, *MCCtx));
+						i += 4;
+					} else {
+						MIBP.MIB->addReg(X86::EAX);
+						MIBP.MIB->addImm(0);
+						MIBP.MIB->addReg(0);
+						MIBP.MIB->addExpr(MCConstantExpr::Create(0x0, *MCCtx));
+						MIBP.MIB->addReg(0);
+						i += 4;
+					}
+				} else if(op == X86::MOV8mr_NOREX || op == X86::MOV8rm_NOREX ||
+							op == X86::MOVZX32_NOREXrm8) {
+					MIBP.MIB->addReg(X86::EAX);
+					MIBP.MIB->addImm(1);
+					MIBP.MIB->addReg(X86::EAX);
+					MIBP.MIB->addExpr(MCConstantExpr::Create(0x0, *MCCtx));
+					MIBP.MIB->addReg(0);
+					i += 4;
+				} else if(opinfo.RegClass != -1) {
+					MIBP.MIB->addReg(X86MCRegisterClasses[
+										opinfo.RegClass].getRegister(0));
 				} else {
-		 			if(op == X86::ADC16mi) {
-		 				if(i == 1) { MIB->addImm(1); }
-		 				else if(i == 4) { MIB->addReg(0); }
-		 			} else {
-		 				MIB->addExpr(MCConstantExpr::Create(0x8000, *MCCtx));
-		 			//MIB->addReg(3);
-		 			}
+		 			MIBP.MIB->addExpr(MCConstantExpr::Create(0x8000, *MCCtx));
 		 		}
+		 		
 			} else if(optype == MCOI::OPERAND_PCREL) {
-				MIB->addImm(0x10);
+				MIBP.MIB->addImm(0x10);
 			}
 		}
-		return MIB;
+		return MIBP;
 	}
 }
 
