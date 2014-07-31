@@ -581,77 +581,81 @@ MIBplus buildX86MI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op)
 		unsigned optype;
 		unsigned numopers = MID.NumOperands;
 		
-		//This loop goes through and adds the correct operands to the MIB
-		for(unsigned i = 0; i < numopers; i++) {
-			opinfo = MOI[i];
-			optype = opinfo.OperandType;
-			if(numopers == 2 && MOI[0].OperandType == MCOI::OPERAND_MEMORY &&
-					!MOI[0].isLookupPtrRegClass() &&
-					MOI[1].OperandType == MCOI::OPERAND_MEMORY &&
-					!MOI[1].isLookupPtrRegClass()) {
-				MIBP.MIB->addExpr(MCConstantExpr::Create(0x0, *MCCtx));
-				MIBP.MIB->addReg(0);
-				i += 1;
-			} else if(op == X86::LEA64_32r || op == X86::LEA64r) {
-				MIBP.MIB->addReg(X86::EAX);
-				MIBP.MIB->addReg(X86::EAX);
-				MIBP.MIB->addImm(1);
-				MIBP.MIB->addReg(X86::EAX);
-				MIBP.MIB->addExpr(MCConstantExpr::Create(0x0, *MCCtx));
-				MIBP.MIB->addReg(0);
-				i += 5;
-			} else if(optype == MCOI::OPERAND_UNKNOWN) {
-				if(opinfo.RegClass == -1) {
-					MIBP.MIB->addImm(0);
-				} else {
-					MIBP.MIB->addReg(X86MCRegisterClasses[
-										opinfo.RegClass].getRegister(0));
-				}
-			} else if(optype == MCOI::OPERAND_IMMEDIATE) {
-				MIBP.MIB->addImm(0);
-			} else if(optype == MCOI::OPERAND_REGISTER) {
-				MIBP.MIB->addReg(X86MCRegisterClasses[
-										opinfo.RegClass].getRegister(0));
-			} else if(optype == MCOI::OPERAND_MEMORY) {
-			
-				if(opinfo.isLookupPtrRegClass()) {
-					if((op >= X86::CMPS16 && op <= X86::CMPS8) ||
-							op == X86::MOVSB || op == X86::MOVSL ||
-							op == X86::MOVSQ || op == X86::MOVSW) {
-						MIBP.MIB->addReg(X86::EDI);
-						MIBP.MIB->addReg(X86::ESI);
-						MIBP.MIB->addReg(0);
-						i += 2;
-					} else if((op >= X86::LODSB && op <= X86::LODSW) ||
-								(op >= X86::OUTSB && op <= X86::OUTSW)) {
-						MIBP.MIB->addReg(X86::EAX);
-						MIBP.MIB->addReg(0);
-						i += 1;
-					} else {
-						MIBP.MIB->addReg(X86::EAX);
+		//Special cases
+		if(numopers == 2 && MOI[0].OperandType == MCOI::OPERAND_MEMORY &&
+				!MOI[0].isLookupPtrRegClass() &&
+				MOI[1].OperandType == MCOI::OPERAND_MEMORY &&
+				!MOI[1].isLookupPtrRegClass()) {
+			MIBP.MIB->addExpr(MCConstantExpr::Create(0x0, *MCCtx));
+			MIBP.MIB->addReg(0);
+		} else if(op == X86::LEA64_32r || op == X86::LEA64r) {
+			MIBP.MIB->addReg(X86::EAX);
+			MIBP.MIB->addReg(X86::EAX);
+			MIBP.MIB->addImm(1);
+			MIBP.MIB->addReg(X86::EAX);
+			MIBP.MIB->addExpr(MCConstantExpr::Create(0x0, *MCCtx));
+			MIBP.MIB->addReg(0);
+		} else {
+			//This loop goes through and adds the correct operands to the MIB
+			for(unsigned i = 0; i < numopers; i++) {
+				opinfo = MOI[i];
+				optype = opinfo.OperandType;
+				if(optype == MCOI::OPERAND_UNKNOWN) {
+					if(opinfo.RegClass == -1) {
 						MIBP.MIB->addImm(0);
-						MIBP.MIB->addReg(0);
+					} else {
+						MIBP.MIB->addReg(X86MCRegisterClasses[
+											opinfo.RegClass].getRegister(0));
+					}
+				} else if(optype == MCOI::OPERAND_IMMEDIATE) {
+					MIBP.MIB->addImm(0);
+				} else if(optype == MCOI::OPERAND_REGISTER) {
+					MIBP.MIB->addReg(X86MCRegisterClasses[
+											opinfo.RegClass].getRegister(0));
+				} else if(optype == MCOI::OPERAND_MEMORY) {
+				
+					if(opinfo.isLookupPtrRegClass()) {
+						if((op >= X86::CMPS16 && op <= X86::CMPS8) ||
+								op == X86::MOVSB || op == X86::MOVSL ||
+								op == X86::MOVSQ || op == X86::MOVSW) {
+							MIBP.MIB->addReg(X86::EDI);
+							MIBP.MIB->addReg(X86::ESI);
+							MIBP.MIB->addReg(0);
+							i += 2;
+						} else if((op >= X86::LODSB && op <= X86::LODSW) ||
+									(op >= X86::OUTSB && op <= X86::OUTSW)) {
+							MIBP.MIB->addReg(X86::EAX);
+							MIBP.MIB->addReg(0);
+							i += 1;
+						} else {
+							MIBP.MIB->addReg(X86::EAX);
+							MIBP.MIB->addImm(0);
+							MIBP.MIB->addReg(0);
+							MIBP.MIB->addExpr(MCConstantExpr::Create(0x0,
+																	*MCCtx));
+							MIBP.MIB->addReg(0);
+							i += 4;
+						}
+					} else if(op == X86::MOV8mr_NOREX ||
+								op == X86::MOV8rm_NOREX ||
+								op == X86::MOVZX32_NOREXrm8) {
+						MIBP.MIB->addReg(X86::EAX);
+						MIBP.MIB->addImm(1);
+						MIBP.MIB->addReg(X86::EAX);
 						MIBP.MIB->addExpr(MCConstantExpr::Create(0x0, *MCCtx));
 						MIBP.MIB->addReg(0);
 						i += 4;
-					}
-				} else if(op == X86::MOV8mr_NOREX || op == X86::MOV8rm_NOREX ||
-							op == X86::MOVZX32_NOREXrm8) {
-					MIBP.MIB->addReg(X86::EAX);
-					MIBP.MIB->addImm(1);
-					MIBP.MIB->addReg(X86::EAX);
-					MIBP.MIB->addExpr(MCConstantExpr::Create(0x0, *MCCtx));
-					MIBP.MIB->addReg(0);
-					i += 4;
-				} else if(opinfo.RegClass != -1) {
-					MIBP.MIB->addReg(X86MCRegisterClasses[
-										opinfo.RegClass].getRegister(0));
-				} else {
-		 			MIBP.MIB->addExpr(MCConstantExpr::Create(0x8000, *MCCtx));
-		 		}
-		 		
-			} else if(optype == MCOI::OPERAND_PCREL) {
-				MIBP.MIB->addImm(0x10);
+					} else if(opinfo.RegClass != -1) {
+						MIBP.MIB->addReg(X86MCRegisterClasses[
+											opinfo.RegClass].getRegister(0));
+					} else {
+			 			MIBP.MIB->addExpr(MCConstantExpr::Create(0x8000,
+			 														*MCCtx));
+			 		}
+			 		
+				} else if(optype == MCOI::OPERAND_PCREL) {
+					MIBP.MIB->addImm(0x10);
+				}
 			}
 		}
 		return MIBP;
