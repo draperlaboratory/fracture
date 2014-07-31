@@ -1,4 +1,4 @@
-//===--- mkAllARMInsts.cpp --------------------------------------*- C++ -*-===//
+//===--- mkAllInsts.cpp --------------------------------------*- C++ -*-===//
 //
 //              Fracture: The Draper Decompiler Infrastructure
 //
@@ -7,14 +7,30 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// Builds a directory containing binaries for every valid ARM instruction.
-// These binaries can then be run on Fracture for testing purposes.
+// Builds a directory containing binaries for every supported instruction on a
+// given architecture. These binaries can then be run on Fracture for testing
+// purposes.
 //
-// NOTE: Fracture must be able to handle the BX_RET opcode correctly in order
-//		 for these binaries to be useful
+// NOTE: Fracture must be able to handle a valid return opcode correctly in
+// 		 order for these binaries to be useful
+//			-For ARM: 	BX_RET
+//			-For x86: 	RETL
+//			-For PPC:	(TBD)
+//			-For MIPS: 	(TBD)
+//
+// NOTE: PowerPC and MIPS have not been implemented yet, but most of their
+//		 implementations have been put in as comments. To implement one:
+//			-uncomment out the relevant peices of code
+//			-replace instances of *<target> triple* with the correct triple
+//				for that target
+//			-in makeBins, set RET to a valid return instruction for the target
+//				and give it the correct operands
+//			-the "buildMI" function for the target will have to be tweaked
+//				substantially until as many instructions as possible can pass
+//				through it and be printed successfully
 //
 // Author: cjw3357
-// Date: July 21, 2014
+// Date: July 31, 2014
 //
 //===----------------------------------------------------------------------===//
 
@@ -32,47 +48,73 @@
 #include "llvm/Support/TargetSelect.h"
 #include "../lib/Target/ARM/InstPrinter/ARMInstPrinter.h"
 #include "../lib/Target/X86/InstPrinter/X86IntelInstPrinter.h"
+//#include "../lib/Target/PowerPC/InstPrinter/PPCInstPrinter.h"
+//#include "../lib/Target/Mips/InstPrinter/MipsInstPrinter.h"
 #define GET_REGINFO_ENUM
 #include "../lib/Target/ARM/ARMGenRegisterInfo.inc"
 #define GET_REGINFO_ENUM
 #include "../lib/Target/X86/X86GenRegisterInfo.inc"
+/*#define GET_REGINFO_ENUM
+#include "../lib/Target/PowerPC/PPCGenRegisterInfo.inc"
+#define GET_REGINFO_ENUM
+#include "../lib/Target/Mips/MipsGenRegisterInfo.inc"*/
 #define GET_INSTRINFO_ENUM
 #include "../lib/Target/ARM/ARMGenInstrInfo.inc"
 #define GET_INSTRINFO_ENUM
 #include "../lib/Target/X86/X86GenInstrInfo.inc"
+/*#define GET_INSTRINFO_ENUM
+#include "../lib/Target/PowerPC/PPCGenInstrInfo.inc"
+#define GET_INSTRINFO_ENUM
+#include "../lib/Target/Mips/MipsGenInstrInfo.inc"*/
 
 using namespace llvm;
 
+//===----------------------------------------------------------------------===//
+// Global Variables and Struct Definitions
+//===----------------------------------------------------------------------===//
+
+//Simple struct to facilitate printing an instruction
 struct MIBplus {
 	MCInstBuilder *MIB;
 	bool asmPrintable;
 };
 
+//Global output and error stream for sending info to the console
+raw_ostream &OS = outs(), &ES = errs();
+//Global file streams for the Result File, Unsupported File, and Supported file
 raw_fd_ostream *RS, *US, *SS;
+
+//===----------------------------------------------------------------------===//
+// Function Declarations
+//===----------------------------------------------------------------------===//
 
 void makeBins(std::string TripleName, std::string DirName, bool printAsm);
 MIBplus buildMI(std:: string triple, const MCInstrInfo *MII,
 												MCContext *MCCtx, unsigned op);
-MIBplus buildARMMI(const MCInstrInfo *MII,MCContext *MCCtx,unsigned op);
-MIBplus buildX86MI(const MCInstrInfo *MII,MCContext *MCCtx,unsigned op);
+MIBplus buildARMMI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op);
+MIBplus buildX86MI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op);
+//MIBplus buildPPCMI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op);
+//MIBplus buildMIPSMI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op);
 MCInstPrinter* getTargetInstPrinter(std::string triple,
 					const MCAsmInfo *AsmInfo, const MCInstrInfo *MII,
 					const MCRegisterInfo *MRI,  const MCSubtargetInfo *STI);
 
+//===----------------------------------------------------------------------===//
+// Main and Function Definitions
+//===----------------------------------------------------------------------===//
+
 int main(int argc, char* argv[])
 {
 	//Output stream and error stream for sending info to the console
-	raw_ostream &OS = outs();
-	raw_ostream &ES = errs();
+	//Initialize global file streams
 	RS = NULL; US = NULL; SS = NULL;
-	std::string ErrMsg;
 	
 	enum Arch {NONE, ARM, x86, PPC, MIPS};
 	
 	//Handle flags and arguments
 	Arch arch = NONE;
 	bool printAsm = false;
-	std::string arg;
+	std::string arg, ErrMsg;
 	for(int i = 1; i < argc; i++) {
 		arg = argv[i];
 		if(arg == "-help") {
@@ -113,7 +155,7 @@ int main(int argc, char* argv[])
 			if(arg == "-arm") { arch = ARM; }
 			else if(arg == "-x86") { arch = x86; }
 			else if(arg == "-ppc") { arch = PPC; }
-			else if(arg == "mips") { arch = MIPS; }
+			else if(arg == "-mips") { arch = MIPS; }
 			else {
 				ES << "mkAllInsts: unknown argument '" << arg <<
 											"'. Use -help for more info\n"; 
@@ -124,8 +166,9 @@ int main(int argc, char* argv[])
 	
 	//Initialize instruction info
 	InitializeAllTargetInfos();
-	std::string TripleName, DirName;
 	
+	//Initialize the target
+	std::string TripleName, DirName;
 	if(arch == NONE) {
 		ES << "mkAllInsts: Must specify an architecture." <<
 											" Use -help for more info.\n";
@@ -155,13 +198,36 @@ int main(int argc, char* argv[])
 		TripleName = "i386-unknown-unknown";
 		LLVMInitializeX86TargetMC();
 	} else if(arch == PPC) {
-		ES << "mkAllInsts: PPC is not implemented\n";
+		ES << "mkAllInsts: PowerPC is not implemented\n";
 		return 4;
+		/*system("rm -rf PPCbins/");
+		system("rm -rf PPCasms/");
+		if(printAsm) {
+			system("mkdir PPCasms");
+			DirName = " PPCasms/";
+		} else {
+			system("mkdir PPCbins");
+			DirName = " PPCbins/";
+		}
+		TripleName = *PPC triple*;
+		LLVMInitializePowerPCTargetMC();*/
 	} else if(arch == MIPS) {
 		ES << "mkAllInsts: MIPS is not implemented\n";
 		return 4;
+		/*system("rm -rf MIPSbins/");
+		system("rm -rf MIPSasms/");
+		if(printAsm) {
+			system("mkdir MIPSasms");
+			DirName = " MIPSasms/";
+		} else {
+			system("mkdir MIPSbins");
+			DirName = " MIPSbins/";
+		}
+		TripleName = *MIPS triple*;
+		LLVMInitializeMipsTargetMC();*/
 	}
 	
+	//Call function to create the binaries
 	makeBins(TripleName, DirName, printAsm);
 	
 	if(RS) { delete RS; }
@@ -171,8 +237,9 @@ int main(int argc, char* argv[])
 	return 0;
 }
 
-// * makeBins - For each ARM instruction, make a file in a sub-directory
-//				containing a binary that can be run on Fracture
+//===----------------------------------------------------------------------===//
+// * makeBins - For each instruction on a given architecture, make a file in a
+// * 			sub-directory containing a binary that can be run on Fracture
 void makeBins(std::string TripleName, std::string DirName, bool printAsm)
 {	
 	//Create LLVM objects necessary for building a machine instruction
@@ -192,36 +259,41 @@ void makeBins(std::string TripleName, std::string DirName, bool printAsm)
 	MCInstPrinter *MIP = getTargetInstPrinter(TripleName,AsmInfo,MII,MRI,STI);
 	MCCodeEmitter *MCE = TheTarget->createMCCodeEmitter(*MII, *MRI, *STI,
 																	*MCCtx);
+	//Create a valid return instruction for the given architecture
 	MCInstBuilder *RET;
 	unsigned lastInst;
-	bool arm = false, x86 = false;
 	if(TripleName == "arm-unknown-unknown") {
 		lastInst = ARM::INSTRUCTION_LIST_END;
 		RET = new MCInstBuilder(ARM::BX_RET);
 		RET->addImm(14);
 		RET->addReg(0);
-		arm = true;
 	} else if(TripleName == "i386-unknown-unknown") {
 		lastInst = X86::INSTRUCTION_LIST_END;
 		RET = new MCInstBuilder(X86::RETL);
-		x86 = true;
+	/*} else if(TripleName == *PPC triple*) {
+		lastInst = PPC::INSTRUCTION_LIST_END;
+		RET = new MCInstBuilder(*PPC return*);
+	} else if(TripleName == *MIPS triple*) {
+		lastInst = Mips::INSTRUCTION_LIST_END;
+		RET = new MCInstBuilder(*MIPS return*);*/
 	} else {
-		lastInst = 0;
-		RET = new MCInstBuilder(0);
+		ES << "mkAllInsts::makeBins: unknown triple name received\n";
+		abort();
 	}
 	
+	//Create an array to keep track of used file names
 	std::string *flist = new std::string[lastInst];
 	for(unsigned i = 0; i < lastInst; i++) {
 		flist[i] = "";
 	}
 	
-	//Loop through each instruction and print it to a file
+	//Loop variables
 	const char *opname;
 	char suffix;
 	std::string cmd, fname, tempname;
-	
 	raw_fd_ostream *FS;
 	MIBplus MIBP;
+	//Loop through each instruction and print it to a file
 	for(unsigned op = 0; op < lastInst; op++) {
 		
 		//Build the machine instruction
@@ -231,6 +303,9 @@ void makeBins(std::string TripleName, std::string DirName, bool printAsm)
 		if(MIBP.MIB) {
 			opname = MII->getName(op);
 			
+			//Determine if the file name is equivalent to the name of a
+			//previously created file without case sensitivity
+			//If it is, add a suffix to differentiate it
 			fname = (std::string)opname;
 			tempname = fname;
 			for(unsigned i = 0; i < tempname.size(); i++) {
@@ -251,13 +326,22 @@ void makeBins(std::string TripleName, std::string DirName, bool printAsm)
 				}
 			}
 			flist[op] = tempname;
-			FS = new raw_fd_ostream(fname.c_str(), ErrMsg, sys::fs::F_None);
 			
+			//Print the instruction to a file and put the file in place
+			FS = new raw_fd_ostream(fname.c_str(), ErrMsg, sys::fs::F_None);
 			MCInst MI = static_cast<MCInst&>(*(MIBP.MIB));
 			cmd = DirName;
 			if(RS && MIBP.asmPrintable) {
 				MIP->printInst(&MI, *RS, annot);
 				*RS << "\n";
+			}
+			if(SS) {
+				if(MIBP.asmPrintable) {
+					MIP->printInst(&MI, *SS, annot);
+					*SS << "\n";
+				} else {
+					*SS << "\tCANNOT PRINT TO ASM!\n";
+				}
 			}
 			if(printAsm) {
 				*FS << MII->getName(op) << ": ";
@@ -268,7 +352,6 @@ void makeBins(std::string TripleName, std::string DirName, bool printAsm)
 					*FS << "CANNOT PRINT TO ASM!\n";
 				}
 			} else {
-				//*RS << "SUCCESS\n";
 				MCE->EncodeInstruction(MI, *FS, *dummy, *STI);
 				MI = static_cast<MCInst&>(*RET);
 				MCE->EncodeInstruction(MI, *FS, *dummy, *STI);
@@ -290,9 +373,12 @@ void makeBins(std::string TripleName, std::string DirName, bool printAsm)
 	delete AsmInfo;
 	delete MRI;
 	delete MII;
-	//delete TheTarget;
+	//delete TheTarget; <-TODO Segfaults when uncommented. Problematic?
 }
 
+//===----------------------------------------------------------------------===//
+// * buildMI - Calls the appropriate target function for the given triple
+// *
 MIBplus buildMI(std:: string triple, const MCInstrInfo *MII,
 												MCContext *MCCtx, unsigned op)
 {
@@ -300,51 +386,57 @@ MIBplus buildMI(std:: string triple, const MCInstrInfo *MII,
 		return buildARMMI(MII, MCCtx, op);
 	} else if(triple == "i386-unknown-unknown") {
 		return buildX86MI(MII, MCCtx, op);
+	/*} else if(triple == *PPC triple*) {
+		return buildPPCMI(MII, MCCtx, op);
+	} else if(triple == *MIPS triple*) {
+		return buildMIPSMI(MII, MCCtx, op);*/
 	} else {
-		MIBplus MIBP;
-		MIBP.asmPrintable = false;
-		MIBP.MIB = NULL;
-		return MIBP;
+		ES << "mkAllInsts::buildMI: unknown triple name received\n";
+		abort();
 	}
 }
 
-// * buildMI  - Returns an MCInstBuilder* pointing to a valid representation
-// *			of the ARM instruction corresponding to the op code 'op'
+//===----------------------------------------------------------------------===//
+// * buildARMMI - Returns an MIBplus containing a valid representation of the
+// * 			  ARM instruction corresponding to the op code 'op', along with
+// * 			  a boolean representing whether the instruction can be printed
+// * 			  to assembly or not
 MIBplus buildARMMI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op)
 {
+	//Initialize the MIBplus
 	MIBplus MIBP;
 	MIBP.asmPrintable = true;
 	MIBP.MIB = NULL;
 
 	std::string opname = MII->getName(op);
 	const MCInstrDesc MID = MII->get(op);
-	uint64_t flags = MID.TSFlags;
+	uint64_t TSFlags = MID.TSFlags;
 	unsigned short size = MID.Size;
 	if(RS) { *RS << opname << ":\t"; }
 	//Don't make an MIB if it's a pseudo-instruction
 	if(MID.isPseudo()) {
 		if(RS) { *RS << "IS PSEUDO INSTRUCTION!\n"; }
-		if(US) { *US << opname << "\n"; }
+		if(US) { *US << opname << ":\tIS PSEUDO INSTRUCTION\n"; }
 		MIBP.asmPrintable = false;
 		return MIBP;
 	}
-	//Don't make an MIB it it's one of these instructions
+	//Don't make an MIB if ARMMCCodeEmitter won't be able to handle it
+	//Condition was taken from ARMMCCodeEmitter::EncodeInstruction
 	else if(size == 0 ||
-	(flags & (0x3f << 7)/*ARMII::FormMask*/) == (0 << 7)/*ARMII::Pseudo*/) {
+	(TSFlags & (0x3f << 7)/*ARMII::FormMask*/) == (0 << 7)/*ARMII::Pseudo*/) {
 		if(RS) { *RS << "IS UNPRINTABLE!\n"; }
-		if(US) { *US << opname << "\n"; }
+		if(US) { *US << opname << ":\tIS UNPRINTABLE\n"; }
 		MIBP.asmPrintable = false;
 		return MIBP;
 	}
 	//Make an MIB containing valid operands for the instruction
 	else {
-		//FIXME tPICADD seems to be able to print to binary, but not to assembly
-		//		For now just ignoring it, but it should be investigated
+		//tPICADD seems to be able to print to binary, but not to assembly
 		if(op == ARM::tPICADD) {
 			if(RS) { *RS << "CANNOT PRINT TO ASM!\n"; }
 			MIBP.asmPrintable = false;
 		}
-		if(SS) { *SS << opname << "\n"; }
+		if(SS) { *SS << opname << ":"; }
 		MIBP.MIB = new MCInstBuilder(op);
 		const MCOperandInfo *MOI = MID.OpInfo;
 		MCOperandInfo opinfo;
@@ -352,6 +444,7 @@ MIBplus buildARMMI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op)
 		unsigned numopers = MID.NumOperands;
 		bool firstPred = true;
 		
+		//This loop goes through and adds the correct operands to the MIB
 		for(unsigned i = 0; i < numopers; i++) {
 			opinfo = MOI[i];
 			optype = opinfo.OperandType;
@@ -405,7 +498,8 @@ MIBplus buildARMMI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op)
 			} else if(optype == MCOI::OPERAND_IMMEDIATE) {
 				MIBP.MIB->addImm(0);
 			} else if(optype == MCOI::OPERAND_REGISTER) {
-				MIBP.MIB->addReg(ARMMCRegisterClasses[opinfo.RegClass].getRegister(0));
+				MIBP.MIB->addReg(ARMMCRegisterClasses[
+										opinfo.RegClass].getRegister(0));
 			} else if(optype == MCOI::OPERAND_MEMORY) {
 		 		MIBP.MIB->addExpr(MCConstantExpr::Create(0x8000, *MCCtx));
 			} else if(optype == MCOI::OPERAND_PCREL) {
@@ -416,51 +510,78 @@ MIBplus buildARMMI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op)
 	}
 }
 
+//===----------------------------------------------------------------------===//
+// * buildX86MI - Returns an MIBplus containing a valid representation of the
+// * 			  x86 instruction corresponding to the op code 'op', along with
+// * 			  a boolean representing whether the instruction can be printed
+// * 			  to assembly or not
 MIBplus buildX86MI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op)
 {
-	//raw_ostream &OS = outs();
-
+	//Initialize the MIBplus
 	MIBplus MIBP;
 	MIBP.asmPrintable = true;
 	MIBP.MIB = NULL;
 	
 	std::string opname = MII->getName(op);
 	const MCInstrDesc MID = MII->get(op);
-	uint64_t flags = MID.TSFlags;
+	uint64_t TSFlags = MID.TSFlags;
 	if(RS) { *RS << opname << ":\t"; }
-	//OS << opname << "\n";
 	//Don't make an MIB if it's a pseudo-instruction
-	//FIXME EH_RETURN and others?
-	if(MID.isPseudo() || op == X86::EH_RETURN || op == X86::EH_RETURN64 ||
-		op == X86::Int_CVTSD2SSrm || op == X86::Int_VCVTSD2SSrm || opname.find("rik") != std::string::npos) {
+	if(MID.isPseudo()) {
 		if(RS) { *RS << "IS PSEUDO INSTRUCTION!\n"; }
-		if(US) { *US << opname << "\n"; }
+		if(US) { *US << opname << ":\tIS PSEUDO INSTRUCTION!\n"; }
 		MIBP.asmPrintable = false;
 		return MIBP;
 	}
-	else if((flags & 127/*X86II::FormMask*/) == 0/*X86II::Pseudo*/) {
+	//Don't make an MIB if X86MCCodeEmitter won't be able to handle it
+	//Condition was taken from X86MCCodeEmitter::EncodeInstruction
+	else if((TSFlags & 127/*X86II::FormMask*/) == 0/*X86II::Pseudo*/) {
 		if(RS) { *RS << "IS UNPRINTABLE!\n"; }
-		if(US) { *US << opname << "\n"; }
+		if(US) { *US << opname << ":\tIS UNPRINTABLE!\n"; }
+		MIBP.asmPrintable = false;
+		return MIBP;
+	}
+	//TSFlags for EH_RETURN and EH_RETURN64 execute the LLVM unreachable
+	//"Unknown immediate size" at X86BaseInfo.h:562, so skip them
+	else if(op == X86::EH_RETURN || op == X86::EH_RETURN64) {
+		if(RS) { *RS << "ERROR UNKNOWN IMMEDIATE SIZE!\n"; }
+		if(US) { *US << opname << ":\tERROR UNKNOWN IMMEDIATE SIZE!\n"; }
+		MIBP.asmPrintable = false;
+		return MIBP;
+	}
+	//Int_CVTSD2SSrm and Int_VCVTSD2SSrm execute the abort at
+	//X86MCCodeEmitter.cpp:1565, so skip them
+	else if(op == X86::Int_CVTSD2SSrm || op == X86::Int_VCVTSD2SSrm) {
+		if(RS) { *RS << "ERROR CANNOT ENCODE ALL OPERANDS!\n"; }
+		if(US) { *US << opname << ":\tERROR CANNOT ENCODE ALL OPERANDS!\n"; }
+		MIBP.asmPrintable = false;
+		return MIBP;
+	}
+	//MCCodeEmitter appears to be unable to handle these 12 instructions, so
+	//skip them
+	else if(opname.find("mik") != std::string::npos ||
+				opname.find("rik") != std::string::npos) {
+		if(RS) { *RS << "ERROR CANNOT ENCODE CORRECTLY!\n"; }
+		if(US) {*US << opname << ":\tERROR CANNOT ENCODE CORRECTLY!\n"; }
 		MIBP.asmPrintable = false;
 		return MIBP;
 	}
 	//Make an MIB containing valid operands for the instruction
 	else {
-		//FIXME these insts seem to be able to print to binary, but not to assembly
-		//		For now just ignoring it, but it should be investigated
-		if(op == X86::MOV32ri64 || op == X86::TAILJMPr ||
-			opname.find("mik") != std::string::npos ||
-			opname.find("rik") != std::string::npos) {
+		//MOV32ri64 and TAILJMPr seem to be able to print to binary, but not to
+		//	assembly
+		if(op == X86::MOV32ri64 || op == X86::TAILJMPr) {
 			if(RS) { *RS << "CANNOT PRINT TO ASSEMBLY!\n"; }
 			MIBP.asmPrintable = false;
 		}
-		if(SS) { *SS << opname << "\n"; }
+		if(SS) { *SS << opname << ":"; }
 		MIBP.MIB = new MCInstBuilder(op);
 		const MCOperandInfo *MOI = MID.OpInfo;
 		MCOperandInfo opinfo;
 		unsigned optype;
 		unsigned numopers = MID.NumOperands;
 		
+		//This loop goes through and adds the correct operands to the MIB
 		for(unsigned i = 0; i < numopers; i++) {
 			opinfo = MOI[i];
 			optype = opinfo.OperandType;
@@ -479,22 +600,6 @@ MIBplus buildX86MI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op)
 				MIBP.MIB->addExpr(MCConstantExpr::Create(0x0, *MCCtx));
 				MIBP.MIB->addReg(0);
 				i += 5;
-			/*} else if(op == X86::VPSLLDZrik) {
-				OS << MID.getNumOperands();
-				//MIBP.MIB->addExpr(MCConstantExpr::Create(0x0, *MCCtx));
-				MIBP.MIB->addReg(X86::ZMM0);
-				//MIBP.MIB->addExpr(MCConstantExpr::Create(0x0, *MCCtx));
-				MIBP.MIB->addReg(X86::K1);
-				//MIBP.MIB->addExpr(MCConstantExpr::Create(0x0, *MCCtx));
-				//MIBP.MIB->addImm(1);
-				MIBP.MIB->addReg(X86::ZMM0);
-				MIBP.MIB->addExpr(MCConstantExpr::Create(0x0, *MCCtx));
-				//MIBP.MIB->addReg(0);
-				MIBP.MIB->addExpr(MCConstantExpr::Create(0x0, *MCCtx));
-				MIBP.MIB->addImm(0);
-				//MIBP.MIB->addExpr(MCConstantExpr::Create(0x0, *MCCtx));
-				//MIB->addImm(0);
-				i += 3;*/
 			} else if(optype == MCOI::OPERAND_UNKNOWN) {
 				if(opinfo.RegClass == -1) {
 					MIBP.MIB->addImm(0);
@@ -522,13 +627,6 @@ MIBplus buildX86MI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op)
 						MIBP.MIB->addReg(X86::EAX);
 						MIBP.MIB->addReg(0);
 						i += 1;
-					} else if(opname.find("mik") != std::string::npos) {
-						MIBP.MIB->addImm(1);
-						MIBP.MIB->addReg(X86::EAX);
-						MIBP.MIB->addExpr(MCConstantExpr::Create(0x0, *MCCtx));
-						MIBP.MIB->addReg(0);
-						MIBP.MIB->addExpr(MCConstantExpr::Create(0x0, *MCCtx));
-						i += 4;
 					} else {
 						MIBP.MIB->addReg(X86::EAX);
 						MIBP.MIB->addImm(0);
@@ -560,6 +658,127 @@ MIBplus buildX86MI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op)
 	}
 }
 
+/*
+//===----------------------------------------------------------------------===//
+// * buildPPCMI - Returns an MIBplus containing a valid representation of the
+// * 			  PPC instruction corresponding to the op code 'op', along with
+// * 			  a boolean representing whether the instruction can be printed
+// * 			  to assembly or not
+MIBplus buildPPCMI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op)
+{
+	//Initialize the MIBplus
+	MIBplus MIBP;
+	MIBP.asmPrintable = true;
+	MIBP.MIB = NULL;
+
+	std::string opname = MII->getName(op);
+	const MCInstrDesc MID = MII->get(op);
+	uint64_t flags = MID.TSFlags;
+	if(RS) { *RS << opname << ":\t"; }
+	//Don't make an MIB if it's a pseudo-instruction
+	if(MID.isPseudo()) {
+		if(RS) { *RS << "IS PSEUDO INSTRUCTION!\n"; }
+		if(US) { *US << opname << ":\tIS PSEUDO INSTRUCTION\n"; }
+		MIBP.asmPrintable = false;
+		return MIBP;
+	}
+	//Make an MIB containing valid operands for the instruction
+	else {
+		if(SS) { *SS << opname << ":"; }
+		MIBP.MIB = new MCInstBuilder(op);
+		const MCOperandInfo *MOI = MID.OpInfo;
+		MCOperandInfo opinfo;
+		unsigned optype;
+		unsigned numopers = MID.NumOperands;
+		
+		//This loop goes through and adds the correct operands to the MIB
+		for(unsigned i = 0; i < numopers; i++) {
+			opinfo = MOI[i];
+			optype = opinfo.OperandType;
+			if(optype == MCOI::OPERAND_UNKNOWN) {
+				if(opinfo.RegClass == -1) {
+					MIBP.MIB->addImm(0);
+				} else {
+					MIBP.MIB->addReg(PPCMCRegisterClasses[
+										opinfo.RegClass].getRegister(0));
+				}
+			} else if(optype == MCOI::OPERAND_IMMEDIATE) {
+				MIBP.MIB->addImm(0);
+			} else if(optype == MCOI::OPERAND_REGISTER) {
+				MIBP.MIB->addReg(PPCMCRegisterClasses[
+										opinfo.RegClass].getRegister(0));
+			} else if(optype == MCOI::OPERAND_MEMORY) {
+		 		MIBP.MIB->addExpr(MCConstantExpr::Create(0x8000, *MCCtx));
+			} else if(optype == MCOI::OPERAND_PCREL) {
+				MIBP.MIB->addImm(0x10);
+			}
+		}
+		return MIBP;
+	}
+}*/
+
+/*
+//===----------------------------------------------------------------------===//
+// * buildMIPSMI - Returns an MIBplus containing a valid representation of the
+// * 			   MIPS instruction corresponding to the op code 'op', along 
+// * 			   with a boolean representing whether the instruction can be
+// * 			   printed to assembly or not
+MIBplus buildMIPSMI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op)
+{
+	//Initialize the MIBplus
+	MIBplus MIBP;
+	MIBP.asmPrintable = true;
+	MIBP.MIB = NULL;
+
+	std::string opname = MII->getName(op);
+	const MCInstrDesc MID = MII->get(op);
+	uint64_t flags = MID.TSFlags;
+	if(RS) { *RS << opname << ":\t"; }
+	//Don't make an MIB if it's a pseudo-instruction
+	if(MID.isPseudo()) {
+		if(RS) { *RS << "IS PSEUDO INSTRUCTION!\n"; }
+		if(US) { *US << opname << ":\tIS PSEUDO INSTRUCTION\n"; }
+		MIBP.asmPrintable = false;
+		return MIBP;
+	}
+	//Make an MIB containing valid operands for the instruction
+	else {
+		if(SS) { *SS << opname << ":"; }
+		MIBP.MIB = new MCInstBuilder(op);
+		const MCOperandInfo *MOI = MID.OpInfo;
+		MCOperandInfo opinfo;
+		unsigned optype;
+		unsigned numopers = MID.NumOperands;
+		
+		//This loop goes through and adds the correct operands to the MIB
+		for(unsigned i = 0; i < numopers; i++) {
+			opinfo = MOI[i];
+			optype = opinfo.OperandType;
+			if(optype == MCOI::OPERAND_UNKNOWN) {
+				if(opinfo.RegClass == -1) {
+					MIBP.MIB->addImm(0);
+				} else {
+					MIBP.MIB->addReg(MipsMCRegisterClasses[
+										opinfo.RegClass].getRegister(0));
+				}
+			} else if(optype == MCOI::OPERAND_IMMEDIATE) {
+				MIBP.MIB->addImm(0);
+			} else if(optype == MCOI::OPERAND_REGISTER) {
+				MIBP.MIB->addReg(MipsMCRegisterClasses[
+										opinfo.RegClass].getRegister(0));
+			} else if(optype == MCOI::OPERAND_MEMORY) {
+		 		MIBP.MIB->addExpr(MCConstantExpr::Create(0x8000, *MCCtx));
+			} else if(optype == MCOI::OPERAND_PCREL) {
+				MIBP.MIB->addImm(0x10);
+			}
+		}
+		return MIBP;
+	}
+}*/
+
+//===----------------------------------------------------------------------===//
+// * getTargetInstPrinter - returns the correct MCInstPrinter for the given
+// * 						target
 MCInstPrinter* getTargetInstPrinter(std::string triple,
 					const MCAsmInfo *AsmInfo, const MCInstrInfo *MII,
 					const MCRegisterInfo *MRI,  const MCSubtargetInfo *STI)
@@ -571,8 +790,15 @@ MCInstPrinter* getTargetInstPrinter(std::string triple,
 	} else if(triple == "i386-unknown-unknown") {
 		MIP = new X86IntelInstPrinter(*AsmInfo, *MII, *MRI);
 		return MIP;
+	/*} else if(triple == *PPC triple*) {
+		MIP = new PPCInstPrinter(*AsmInfo, *MII, *MRI, false);
+		return MIP;
+	} else if(triple == *MIPS triple*) {
+		MIP = new MipsInstPrinter(*AsmInfo, *MII, *MRI);
+		return MIP;*/
 	} else {
-		return NULL;
+		ES<<"mkAllInsts::getTargetInstPrinter: unknown triple name received\n";
+		abort();
 	}
 }
 
