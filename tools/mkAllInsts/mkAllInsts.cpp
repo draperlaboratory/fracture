@@ -15,22 +15,22 @@
 //       order for these binaries to be useful
 //          -For ARM:   BX_RET
 //          -For x86:   RETL
-//          -For PPC:   (TBD)
+//          -For PPC:   BLR
 //          -For MIPS:  (TBD)
 //
-// NOTE: PowerPC and MIPS have not been implemented yet, but most of their
-//       implementations have been put in as comments. To implement one:
+// NOTE: MIPS has not been implemented yet, but most of its implementation
+//       has been put in as comments. To implement it:
 //          -uncomment out the relevant peices of code
-//          -replace instances of *<target> triple* with the correct triple
-//              for that target
-//          -in makeBins, set RET to a valid return instruction for the target
+//          -replace instances of *MIPS triple* with the correct triple
+//              for MIPS
+//          -in makeBins, set RET to a valid return instruction for the MIPS
 //              and give it the correct operands
-//          -the "buildMI" function for the target will have to be tweaked
+//          -the "buildMI" function for MIPS will have to be tweaked
 //              substantially until as many instructions as possible can pass
 //              through it and be printed successfully
 //
 // Author: cjw3357
-// Date: July 31, 2014
+// Date: Aug 1, 2014
 //
 //===----------------------------------------------------------------------===//
 
@@ -48,23 +48,23 @@
 #include "llvm/Support/TargetSelect.h"
 #include "../lib/Target/ARM/InstPrinter/ARMInstPrinter.h"
 #include "../lib/Target/X86/InstPrinter/X86IntelInstPrinter.h"
-//#include "../lib/Target/PowerPC/InstPrinter/PPCInstPrinter.h"
+#include "../lib/Target/PowerPC/InstPrinter/PPCInstPrinter.h"
 //#include "../lib/Target/Mips/InstPrinter/MipsInstPrinter.h"
 #define GET_REGINFO_ENUM
 #include "../lib/Target/ARM/ARMGenRegisterInfo.inc"
 #define GET_REGINFO_ENUM
 #include "../lib/Target/X86/X86GenRegisterInfo.inc"
-/*#define GET_REGINFO_ENUM
-#include "../lib/Target/PowerPC/PPCGenRegisterInfo.inc"
 #define GET_REGINFO_ENUM
+#include "../lib/Target/PowerPC/PPCGenRegisterInfo.inc"
+/*#define GET_REGINFO_ENUM
 #include "../lib/Target/Mips/MipsGenRegisterInfo.inc"*/
 #define GET_INSTRINFO_ENUM
 #include "../lib/Target/ARM/ARMGenInstrInfo.inc"
 #define GET_INSTRINFO_ENUM
 #include "../lib/Target/X86/X86GenInstrInfo.inc"
-/*#define GET_INSTRINFO_ENUM
-#include "../lib/Target/PowerPC/PPCGenInstrInfo.inc"
 #define GET_INSTRINFO_ENUM
+#include "../lib/Target/PowerPC/PPCGenInstrInfo.inc"
+/*#define GET_INSTRINFO_ENUM
 #include "../lib/Target/Mips/MipsGenInstrInfo.inc"*/
 
 using namespace llvm;
@@ -93,7 +93,7 @@ MIBplus buildMI(std:: string triple, const MCInstrInfo *MII,
                                             MCContext *MCCtx, unsigned op);
 MIBplus buildARMMI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op);
 MIBplus buildX86MI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op);
-//MIBplus buildPPCMI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op);
+MIBplus buildPPCMI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op);
 //MIBplus buildMIPSMI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op);
 MCInstPrinter* getTargetInstPrinter(std::string triple,
                     const MCAsmInfo *AsmInfo, const MCInstrInfo *MII,
@@ -198,9 +198,7 @@ int main(int argc, char* argv[])
         TripleName = "i386-unknown-unknown";
         LLVMInitializeX86TargetMC();
     } else if(arch == PPC) {
-        ES << "mkAllInsts: PowerPC is not implemented\n";
-        return 4;
-        /*system("rm -rf PPCbins/");
+        system("rm -rf PPCbins/");
         system("rm -rf PPCasms/");
         if(printAsm) {
             system("mkdir PPCasms");
@@ -209,8 +207,8 @@ int main(int argc, char* argv[])
             system("mkdir PPCbins");
             DirName = " PPCbins/";
         }
-        TripleName = *PPC triple*;
-        LLVMInitializePowerPCTargetMC();*/
+        TripleName = "powerpc64-unknown-unknown";
+        LLVMInitializePowerPCTargetMC();
     } else if(arch == MIPS) {
         ES << "mkAllInsts: MIPS is not implemented\n";
         return 4;
@@ -270,10 +268,10 @@ void makeBins(std::string TripleName, std::string DirName, bool printAsm)
     } else if(TripleName == "i386-unknown-unknown") {
         lastInst = X86::INSTRUCTION_LIST_END;
         RET = new MCInstBuilder(X86::RETL);
-    /*} else if(TripleName == *PPC triple*) {
+    } else if(TripleName == "powerpc64-unknown-unknown") {
         lastInst = PPC::INSTRUCTION_LIST_END;
-        RET = new MCInstBuilder(*PPC return*);
-    } else if(TripleName == *MIPS triple*) {
+        RET = new MCInstBuilder(PPC::BLR);
+    /*} else if(TripleName == *MIPS triple*) {
         lastInst = Mips::INSTRUCTION_LIST_END;
         RET = new MCInstBuilder(*MIPS return*);*/
     } else {
@@ -386,9 +384,9 @@ MIBplus buildMI(std:: string triple, const MCInstrInfo *MII,
         return buildARMMI(MII, MCCtx, op);
     } else if(triple == "i386-unknown-unknown") {
         return buildX86MI(MII, MCCtx, op);
-    /*} else if(triple == *PPC triple*) {
+    } else if(triple == "powerpc64-unknown-unknown") {
         return buildPPCMI(MII, MCCtx, op);
-    } else if(triple == *MIPS triple*) {
+    /*} else if(triple == *MIPS triple*) {
         return buildMIPSMI(MII, MCCtx, op);*/
     } else {
         ES << "mkAllInsts::buildMI: unknown triple name received\n";
@@ -413,6 +411,7 @@ MIBplus buildARMMI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op)
     uint64_t TSFlags = MID.TSFlags;
     unsigned short size = MID.Size;
     if(RS) { *RS << opname << ":\t"; }
+    
     //Don't make an MIB if it's a pseudo-instruction
     if(MID.isPseudo()) {
         if(RS) { *RS << "IS PSEUDO INSTRUCTION!\n"; }
@@ -424,8 +423,8 @@ MIBplus buildARMMI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op)
     //Condition was taken from ARMMCCodeEmitter::EncodeInstruction
     else if(size == 0 ||
     (TSFlags & (0x3f << 7)/*ARMII::FormMask*/) == (0 << 7)/*ARMII::Pseudo*/) {
-        if(RS) { *RS << "IS UNPRINTABLE!\n"; }
-        if(US) { *US << opname << ":\tIS UNPRINTABLE\n"; }
+        if(RS) { *RS << "IS UNSUPPORTED!\n"; }
+        if(US) { *US << opname << ":\tIS UNSUPPORTED\n"; }
         MIBP.asmPrintable = false;
         return MIBP;
     }
@@ -526,6 +525,7 @@ MIBplus buildX86MI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op)
     const MCInstrDesc MID = MII->get(op);
     uint64_t TSFlags = MID.TSFlags;
     if(RS) { *RS << opname << ":\t"; }
+    
     //Don't make an MIB if it's a pseudo-instruction
     if(MID.isPseudo()) {
         if(RS) { *RS << "IS PSEUDO INSTRUCTION!\n"; }
@@ -536,8 +536,8 @@ MIBplus buildX86MI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op)
     //Don't make an MIB if X86MCCodeEmitter won't be able to handle it
     //Condition was taken from X86MCCodeEmitter::EncodeInstruction
     else if((TSFlags & 127/*X86II::FormMask*/) == 0/*X86II::Pseudo*/) {
-        if(RS) { *RS << "IS UNPRINTABLE!\n"; }
-        if(US) { *US << opname << ":\tIS UNPRINTABLE!\n"; }
+        if(RS) { *RS << "IS UNSUPPORTED!\n"; }
+        if(US) { *US << opname << ":\tIS UNSUPPORTED!\n"; }
         MIBP.asmPrintable = false;
         return MIBP;
     }
@@ -651,7 +651,7 @@ MIBplus buildX86MI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op)
                     } else {
                          MIBP.MIB->addExpr(MCConstantExpr::Create(0x8000,
                                                                      *MCCtx));
-                     }
+                    }
                      
                 } else if(optype == MCOI::OPERAND_PCREL) {
                     MIBP.MIB->addImm(0x10);
@@ -662,7 +662,6 @@ MIBplus buildX86MI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op)
     }
 }
 
-/*
 //===----------------------------------------------------------------------===//
 // * buildPPCMI - Returns an MIBplus containing a valid representation of the
 // *               PPC instruction corresponding to the op code 'op', along with
@@ -677,12 +676,21 @@ MIBplus buildPPCMI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op)
 
     std::string opname = MII->getName(op);
     const MCInstrDesc MID = MII->get(op);
-    uint64_t flags = MID.TSFlags;
+    unsigned short sched = MID.SchedClass;
     if(RS) { *RS << opname << ":\t"; }
+
     //Don't make an MIB if it's a pseudo-instruction
     if(MID.isPseudo()) {
         if(RS) { *RS << "IS PSEUDO INSTRUCTION!\n"; }
-        if(US) { *US << opname << ":\tIS PSEUDO INSTRUCTION\n"; }
+        if(US) { *US << opname << ":\tIS PSEUDO INSTRUCTION!\n"; }
+        MIBP.asmPrintable = false;
+        return MIBP;
+    }
+    //Don't make an MIB if PPCMCCodeEmitter won't be able to handle it
+    //Every instruction that can't be encoded has a scheduling class of 0
+    else if(sched == 0) {
+        if(RS) { *RS << "IS UNSUPPORTED!\n"; }
+        if(US) { *US << opname << ":\tIS UNSUPPORTED!\n"; }
         MIBP.asmPrintable = false;
         return MIBP;
     }
@@ -700,12 +708,21 @@ MIBplus buildPPCMI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op)
             opinfo = MOI[i];
             optype = opinfo.OperandType;
             if(optype == MCOI::OPERAND_UNKNOWN) {
+                
                 if(opinfo.RegClass == -1) {
-                    MIBP.MIB->addImm(0);
+                    if(opname.find("TLS") != std::string::npos) {
+                        MIBP.MIB->addExpr(MCConstantExpr::Create(0x0, *MCCtx));
+                    } else if((op >= PPC::MFOCRF && op <= PPC::MFOCRF8) ||
+                                (op >= PPC::MTOCRF && op <= PPC::MTOCRF8)) {
+                        MIBP.MIB->addReg(PPC::CR0);
+                    } else {
+                        MIBP.MIB->addImm(12);
+                    }
                 } else {
                     MIBP.MIB->addReg(PPCMCRegisterClasses[
                                         opinfo.RegClass].getRegister(0));
                 }
+            
             } else if(optype == MCOI::OPERAND_IMMEDIATE) {
                 MIBP.MIB->addImm(0);
             } else if(optype == MCOI::OPERAND_REGISTER) {
@@ -719,7 +736,7 @@ MIBplus buildPPCMI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op)
         }
         return MIBP;
     }
-}*/
+}
 
 /*
 //===----------------------------------------------------------------------===//
@@ -738,10 +755,11 @@ MIBplus buildMIPSMI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op)
     const MCInstrDesc MID = MII->get(op);
     uint64_t flags = MID.TSFlags;
     if(RS) { *RS << opname << ":\t"; }
+    
     //Don't make an MIB if it's a pseudo-instruction
     if(MID.isPseudo()) {
         if(RS) { *RS << "IS PSEUDO INSTRUCTION!\n"; }
-        if(US) { *US << opname << ":\tIS PSEUDO INSTRUCTION\n"; }
+        if(US) { *US << opname << ":\tIS PSEUDO INSTRUCTION!\n"; }
         MIBP.asmPrintable = false;
         return MIBP;
     }
@@ -794,10 +812,10 @@ MCInstPrinter* getTargetInstPrinter(std::string triple,
     } else if(triple == "i386-unknown-unknown") {
         MIP = new X86IntelInstPrinter(*AsmInfo, *MII, *MRI);
         return MIP;
-    /*} else if(triple == *PPC triple*) {
+    } else if(triple == "powerpc64-unknown-unknown") {
         MIP = new PPCInstPrinter(*AsmInfo, *MII, *MRI, false);
         return MIP;
-    } else if(triple == *MIPS triple*) {
+    /*} else if(triple == *MIPS triple*) {
         MIP = new MipsInstPrinter(*AsmInfo, *MII, *MRI);
         return MIP;*/
     } else {
