@@ -23,7 +23,7 @@
 //          -uncomment out the relevant peices of code
 //          -replace instances of *MIPS triple* with the correct triple
 //              for MIPS
-//          -in makeBins, set RET to a valid return instruction for the MIPS
+//          -in makeBins, set RET to a valid return instruction for MIPS
 //              and give it the correct operands
 //          -the "buildMI" function for MIPS will have to be tweaked
 //              substantially until as many instructions as possible can pass
@@ -39,12 +39,12 @@
 #include "llvm/MC/MCExpr.h"
 #include "llvm/MC/MCObjectFileInfo.h"
 #include "llvm/MC/MCContext.h"
-#include "llvm/Support/raw_ostream.h"
-#include "llvm/Support/TargetRegistry.h"
 #include "llvm/MC/MCInstrInfo.h"
 #include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/MCStreamer.h"
 #include "llvm/MC/MCCodeEmitter.h"
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/TargetSelect.h"
 #include "../lib/Target/ARM/InstPrinter/ARMInstPrinter.h"
 #include "../lib/Target/X86/InstPrinter/X86IntelInstPrinter.h"
@@ -81,7 +81,7 @@ struct MIBplus {
 
 //Global output and error stream for sending info to the console
 raw_ostream &OS = outs(), &ES = errs();
-//Global file streams for the Result File, Unsupported File, and Supported file
+//Global file streams for the Result File, Unsupported File, and Supported File
 raw_fd_ostream *RS, *US, *SS;
 
 //===----------------------------------------------------------------------===//
@@ -119,7 +119,7 @@ int main(int argc, char* argv[])
         arg = argv[i];
         if(arg == "-help") {
             OS << "\nmkAllInsts -- builds a directory containing a binary " <<
-                "for every supported\ninstruction on a given architecture" <<
+                  "for every supported\ninstruction on a given architecture" <<
                   "\n\nUsage:  mkAllInsts [options] <arch>\n\n\toptions:" <<
                   "\n\t\t-help\t- displays program info\n\t\t-asm\t- " <<
                   "creates files with assembly code instead of binary\n\t\t" <<
@@ -237,7 +237,7 @@ int main(int argc, char* argv[])
 
 //===----------------------------------------------------------------------===//
 // * makeBins - For each instruction on a given architecture, make a file in a
-// *             sub-directory containing a binary that can be run on Fracture
+// *            sub-directory containing a binary that can be run on Fracture
 void makeBins(std::string TripleName, std::string DirName, bool printAsm)
 {    
     //Create LLVM objects necessary for building a machine instruction
@@ -371,7 +371,7 @@ void makeBins(std::string TripleName, std::string DirName, bool printAsm)
     delete AsmInfo;
     delete MRI;
     delete MII;
-    //delete TheTarget; <-TODO Segfaults when uncommented. Problematic?
+    //delete TheTarget; <-FIXME Segfaults when uncommented. Problematic?
 }
 
 //===----------------------------------------------------------------------===//
@@ -396,9 +396,9 @@ MIBplus buildMI(std:: string triple, const MCInstrInfo *MII,
 
 //===----------------------------------------------------------------------===//
 // * buildARMMI - Returns an MIBplus containing a valid representation of the
-// *               ARM instruction corresponding to the op code 'op', along with
-// *               a boolean representing whether the instruction can be printed
-// *               to assembly or not
+// *              ARM instruction corresponding to the op code 'op', along with
+// *              a boolean representing whether the instruction can be printed
+// *              to assembly or not
 MIBplus buildARMMI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op)
 {
     //Initialize the MIBplus
@@ -511,9 +511,9 @@ MIBplus buildARMMI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op)
 
 //===----------------------------------------------------------------------===//
 // * buildX86MI - Returns an MIBplus containing a valid representation of the
-// *               x86 instruction corresponding to the op code 'op', along with
-// *               a boolean representing whether the instruction can be printed
-// *               to assembly or not
+// *              x86 instruction corresponding to the op code 'op', along with
+// *              a boolean representing whether the instruction can be printed
+// *              to assembly or not
 MIBplus buildX86MI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op)
 {
     //Initialize the MIBplus
@@ -664,9 +664,9 @@ MIBplus buildX86MI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op)
 
 //===----------------------------------------------------------------------===//
 // * buildPPCMI - Returns an MIBplus containing a valid representation of the
-// *               PPC instruction corresponding to the op code 'op', along with
-// *               a boolean representing whether the instruction can be printed
-// *               to assembly or not
+// *              PPC instruction corresponding to the op code 'op', along with
+// *              a boolean representing whether the instruction can be printed
+// *              to assembly or not
 MIBplus buildPPCMI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op)
 {
     //Initialize the MIBplus
@@ -741,9 +741,9 @@ MIBplus buildPPCMI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op)
 /*
 //===----------------------------------------------------------------------===//
 // * buildMIPSMI - Returns an MIBplus containing a valid representation of the
-// *                MIPS instruction corresponding to the op code 'op', along 
-// *                with a boolean representing whether the instruction can be
-// *                printed to assembly or not
+// *               MIPS instruction corresponding to the op code 'op', along 
+// *               with a boolean representing whether the instruction can be
+// *               printed to assembly or not
 MIBplus buildMIPSMI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op)
 {
     //Initialize the MIBplus
