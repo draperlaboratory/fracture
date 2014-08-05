@@ -114,8 +114,8 @@ int main(int argc, char* argv[])
     //Handle flags and arguments
     std::string arg;
     for(int i = 1; i < argc; i++) {
-    	arg = argv[i];
-    	if(arg == "-help") {
+        arg = argv[i];
+        if(arg == "-help") {
             OS << "\nmkAllInsts -- builds a directory containing a binary " <<
                   "for every supported\ninstruction on a given architecture" <<
                   "\n\nUsage:  mkAllInsts [options] <arch>\n\n\toptions:" <<
