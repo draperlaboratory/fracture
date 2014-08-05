@@ -112,12 +112,10 @@ int main(int argc, char* argv[])
     enum Arch {NONE, ARM, x86, PPC, MIPS};
     
     //Handle flags and arguments
-    Arch arch = NONE;
-    bool printAsm = false;
-    std::string arg, ErrMsg;
+    std::string arg;
     for(int i = 1; i < argc; i++) {
-        arg = argv[i];
-        if(arg == "-help") {
+    	arg = argv[i];
+    	if(arg == "-help") {
             OS << "\nmkAllInsts -- builds a directory containing a binary " <<
                   "for every supported\ninstruction on a given architecture" <<
                   "\n\nUsage:  mkAllInsts [options] <arch>\n\n\toptions:" <<
@@ -132,14 +130,22 @@ int main(int argc, char* argv[])
                   "PowerPC architecture\n\t\t-mips\t- specifies MIPS " <<
                   "architecture\n\n";
             return 0;
-        } else if(arg == "-asm") {
+        }
+    }
+    Arch arch = NONE;
+    bool printAsm = false;
+    bool res = false, sup = false, unsup = false;
+    std::string ErrMsg;
+    for(int i = 1; i < argc; i++) {
+        arg = argv[i];
+        if(arg == "-asm") {
             printAsm = true;
         } else if(arg == "-res") {
-            RS = new raw_fd_ostream("results.txt", ErrMsg, sys::fs::F_None);
+            res = true;
         } else if(arg == "-unsup") {
-            US = new raw_fd_ostream("unsupported.txt",ErrMsg,sys::fs::F_None);
+            unsup = true;
         } else if(arg == "-sup") {
-            SS = new raw_fd_ostream("supported.txt", ErrMsg, sys::fs::F_None);
+            sup = true;
         } else if(arch != NONE) {
             if(arg == "-arm" || arg == "-x86" ||
                     arg == "-ppc" || arg == "-mips") {
@@ -147,8 +153,8 @@ int main(int argc, char* argv[])
                                             " Use -help for more info.\n";
                 return 1;
             } else {
-                ES << "mkAllInsts: Unknown argument '" << arg <<
-                                            "'. Use -help for more info.\n"; 
+                ES << "mkAllInsts: Unknown flag '" << arg <<
+                                            "'. Use -help for more info.\n";
                 return 2;
             }
         } else {
@@ -157,8 +163,8 @@ int main(int argc, char* argv[])
             else if(arg == "-ppc") { arch = PPC; }
             else if(arg == "-mips") { arch = MIPS; }
             else {
-                ES << "mkAllInsts: unknown argument '" << arg <<
-                                            "'. Use -help for more info\n"; 
+                ES << "mkAllInsts: unknown flag '" << arg <<
+                                            "'. Use -help for more info\n";
                 return 2;
             }
         }
@@ -168,12 +174,13 @@ int main(int argc, char* argv[])
     InitializeAllTargetInfos();
     
     //Initialize the target
-    std::string TripleName, DirName;
+    std::string TripleName, DirName, filePre;
     if(arch == NONE) {
         ES << "mkAllInsts: Must specify an architecture." <<
                                             " Use -help for more info.\n";
         return 3;
     } else if(arch == ARM) {
+        filePre = "arm-";
         system("rm -rf ARMbins/");
         system("rm -rf ARMasms/");
         if(printAsm) {
@@ -186,6 +193,7 @@ int main(int argc, char* argv[])
         TripleName = "arm-unknown-unknown";
         LLVMInitializeARMTargetMC();
     } else if(arch == x86) {
+        filePre = "x86-";
         system("rm -rf x86bins/");
         system("rm -rf x86asms/");
         if(printAsm) {
@@ -198,6 +206,7 @@ int main(int argc, char* argv[])
         TripleName = "i386-unknown-unknown";
         LLVMInitializeX86TargetMC();
     } else if(arch == PPC) {
+        filePre = "ppc-";
         system("rm -rf PPCbins/");
         system("rm -rf PPCasms/");
         if(printAsm) {
@@ -212,7 +221,8 @@ int main(int argc, char* argv[])
     } else if(arch == MIPS) {
         ES << "mkAllInsts: MIPS is not implemented\n";
         return 4;
-        /*system("rm -rf MIPSbins/");
+        /*filePre = "mips-";
+        system("rm -rf MIPSbins/");
         system("rm -rf MIPSasms/");
         if(printAsm) {
             system("mkdir MIPSasms");
@@ -223,6 +233,17 @@ int main(int argc, char* argv[])
         }
         TripleName = *MIPS triple*;
         LLVMInitializeMipsTargetMC();*/
+    }
+    
+    if(res) {
+        RS = new raw_fd_ostream((filePre + "results.txt").c_str(),
+                                                    ErrMsg, sys::fs::F_None);
+    } else if(unsup) {
+        US = new raw_fd_ostream((filePre + "unsupported.txt").c_str(),
+                                                    ErrMsg, sys::fs::F_None);
+    } else if(sup) {
+        SS = new raw_fd_ostream((filePre + "supported.txt").c_str(),
+                                                    ErrMsg, sys::fs::F_None);
     }
     
     //Call function to create the binaries
