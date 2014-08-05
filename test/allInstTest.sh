@@ -122,7 +122,7 @@ printf "\nTotal segmentation faults or aborts, ">>results.txt
 grep -oc "SEG FAULT" results.txt >> results.txt
 totalsuc=$(grep -oc "SUCCESS" results.txt)
 printf "Total successful decompiles,$totalsuc">>results.txt
-printf "\nTotal LLVM Errors, ">>results.txt
+printf "\nTotal LLVM  Errors, ">>results.txt
 grep -oc "LLVM Error" results.txt >> results.txt
 printf "Total Disassembler Related Errors,">>results.txt
 grep -oc "Disas Unknown Instruction" results.txt >> results.txt
@@ -136,7 +136,7 @@ printf "\nSegmentation faults or Aborts: "
 grep -oc "SEG FAULT" results.txt
 totalsuc=$(grep -oc "SUCCESS" results.txt)
 printf "Successful Decompiles:  $totalsuc"
-printf "\nLLVM Errors: "
+printf "\nLLVM  Errors: "
 grep -oc "LLVM Error" results.txt
 printf "Disassembler Errors: "
 grep -oc "Disas Unknown Instruction" results.txt
