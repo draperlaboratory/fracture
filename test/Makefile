@@ -10,7 +10,7 @@
 LEVEL = ..
 DIRS  =
 
-all:: check-local
+all:: check-local test-arm test-x86 test-ppc #test-mips
 #all
 
 # Include other test rules
@@ -95,8 +95,36 @@ ULIMIT=ulimit -t 600 ; ulimit -d 512000 ; ulimit -m 512000 ; ulimit -s 8192 ;
 endif # AuroraUX
 endif # SunOS
 
+test-arm::
+	@$(ECHO) "Making ARM binaries..."
+	@$(PROJ_SRC_ROOT)/Debug+Asserts/bin/mkAllInsts -arm -unsup
+	@$(ECHO) "Emitted list of all unsupported instructions called 'arm-unsupported.txt'"
+	@$(ECHO) "Testing Fracture on all ARM instructions..."
+	@$(PROJ_SRC_ROOT)/test/allInstTest.sh -a -d -f ARMbins/ 2> /dev/null
+	@$(ECHO) "Results of test placed in ARM-Instruction-Results directory"
+	@$(ECHO)
 
-	
+test-x86::
+	@$(ECHO) "Making x86 binaries..."
+	@$(PROJ_SRC_ROOT)/Debug+Asserts/bin/mkAllInsts -x86 -unsup
+	@$(ECHO) "Emitted list of all unsupported instructions called 'x86-unsupported.txt'"
+	@$(ECHO) "Removing CALLpcrel32, CALL64pcrel32, and W64ALLOCA because they break Fracture"
+	@$(RM) -f x86bins/CALLpcrel32 x86bins/CALL64pcrel32 x86bins/W64ALLOCA
+	@$(ECHO) "Testing Fracture on all x86 instructions..."
+	@$(PROJ_SRC_ROOT)/test/allInstTest.sh -x -d -f x86bins/ 2> /dev/null
+	@$(ECHO) "Results of test placed in i386-Instruction-Results directory"
+	@$(ECHO)
+
+test-ppc::
+	@$(ECHO) "Making PowerPC binaries..."
+	@$(PROJ_SRC_ROOT)/Debug+Asserts/bin/mkAllInsts -ppc -unsup
+	@$(ECHO) "Emitted list of all unsupported instructions called 'ppc-unsupported.txt'"
+	@$(ECHO) "Testing Fracture on all PowerPC instructions..."
+	@$(PROJ_SRC_ROOT)/test/allInstTest.sh -p -d -f PPCbins/ 2> /dev/null
+	@$(ECHO) "Results of test placed in powerpc64-Instruction-Results directory"
+	@$(ECHO)
+
+#test-mips::
 
 check-local:: lit.site.cfg
 	
