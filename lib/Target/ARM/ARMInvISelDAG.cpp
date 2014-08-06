@@ -183,7 +183,19 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
          return NULL;
        }
 
+    case ARM::RSBrr:
+    case ARM::RSBri:{
 
+    	SDValue Tgt1 = N->getOperand(0);
+    	SDValue Tgt2 = N->getOperand(1);
+    	SDLoc SL(N);
+    	SDVTList AddVTList = CurDAG->getVTList(MVT::i32);
+
+    	SDValue rSub = CurDAG->getNode(ISD::SUB, SL, AddVTList, Tgt2, Tgt1);
+    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N,0),rSub);
+
+    	return NULL;
+    }
 
     case ARM::LDR_POST_IMM: {
 
