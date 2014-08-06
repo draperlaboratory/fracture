@@ -18,7 +18,7 @@ do
 	case "${option}" 
 	in
 	p)	target="powerpc64" triple="powerpc64-unknown-unknown" prefix="p";;
-	a)	target="ARM" n="v6" triple="arm-unknown-unknown" prexix="a";;
+	a)	target="arm" n="v6" triple="arm-unknown-unknown" prexix="a";;
 	x)	target="i386" triple="i386-unknown-unknown" prefix="x";;
 	n)	target="ARM" triple="arm-unknown-unknown" prefix="v";;
 	t)	target="ARM" n="v6" triple="arm-unknown-unknown" prefix="t";;
