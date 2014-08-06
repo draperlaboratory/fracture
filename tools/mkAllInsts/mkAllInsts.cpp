@@ -181,40 +181,40 @@ int main(int argc, char* argv[])
         return 3;
     } else if(arch == ARM) {
         filePre = "arm-";
-        system("rm -rf ARMbins/");
-        system("rm -rf ARMasms/");
+        system("rm -rf armBins/");
+        system("rm -rf armAsms/");
         if(printAsm) {
-            system("mkdir ARMasms");
-            DirName = " ARMasms/";
+            system("mkdir armAsms");
+            DirName = " armAsms/";
         } else {
-            system("mkdir ARMbins");
-            DirName = " ARMbins/";
+            system("mkdir armBins");
+            DirName = " armBins/";
         }
         TripleName = "arm-unknown-unknown";
         LLVMInitializeARMTargetMC();
     } else if(arch == x86) {
-        filePre = "x86-";
-        system("rm -rf x86bins/");
-        system("rm -rf x86asms/");
+        filePre = "i386-";
+        system("rm -rf i386Bins/");
+        system("rm -rf i386Asms/");
         if(printAsm) {
-            system("mkdir x86asms");
-            DirName = " x86asms/";
+            system("mkdir i386Asms");
+            DirName = " i386Asms/";
         } else {
-            system("mkdir x86bins");
-            DirName = " x86bins/";
+            system("mkdir i386Bins");
+            DirName = " i386Bins/";
         }
         TripleName = "i386-unknown-unknown";
         LLVMInitializeX86TargetMC();
     } else if(arch == PPC) {
-        filePre = "ppc-";
-        system("rm -rf PPCbins/");
-        system("rm -rf PPCasms/");
+        filePre = "powerpc64-";
+        system("rm -rf powerpc64Bins/");
+        system("rm -rf powerpc64Asms/");
         if(printAsm) {
-            system("mkdir PPCasms");
-            DirName = " PPCasms/";
+            system("mkdir powerpc64Asms");
+            DirName = " powerpc64Asms/";
         } else {
-            system("mkdir PPCbins");
-            DirName = " PPCbins/";
+            system("mkdir powerpc64Bins");
+            DirName = " powerpc64Bins/";
         }
         TripleName = "powerpc64-unknown-unknown";
         LLVMInitializePowerPCTargetMC();
@@ -222,14 +222,14 @@ int main(int argc, char* argv[])
         ES << "mkAllInsts: MIPS is not implemented\n";
         return 4;
         /*filePre = "mips-";
-        system("rm -rf MIPSbins/");
-        system("rm -rf MIPSasms/");
+        system("rm -rf mipsBins/");
+        system("rm -rf mipsAsms/");
         if(printAsm) {
-            system("mkdir MIPSasms");
-            DirName = " MIPSasms/";
+            system("mkdir mipsAsms");
+            DirName = " mipsAsms/";
         } else {
-            system("mkdir MIPSbins");
-            DirName = " MIPSbins/";
+            system("mkdir mipsBins");
+            DirName = " mipsBins/";
         }
         TripleName = *MIPS triple*;
         LLVMInitializeMipsTargetMC();*/
