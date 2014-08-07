@@ -184,7 +184,10 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
        }
 
     case ARM::RSBrr:
-    case ARM::RSBri:{
+    case ARM::RSBri:
+// These two cases ignore the S flag.
+    case ARM::RSBrsi:
+    case ARM::RSBrsr:{
 
     	SDValue Tgt1 = N->getOperand(0);
     	SDValue Tgt2 = N->getOperand(1);
@@ -197,13 +200,21 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
     	return NULL;
     }
 
-    case ARM::LDR_POST_IMM: {
+//    case ARM::RSCrr:
+//    case ARM::RSCri:
+//    case ARM::RSCrsi:
+//    case ARM::RSCrsr:{
+//
+//    	return NULL;
+//    }
 
+//    case ARM::LDR_POST_IMM: {
+//
 //    SDValue Chain = N->getOperand(0);
 //    SDValue Tgt1 = N->getOperand(1);
 //    SDValue AM2Offset = N->getOperand(3);
 //    SDValue Offset = N->getOperand(4);
-
+//
 //           unsigned AM2var = cast<ConstantSDNode>(AM2Offset)->getZExtValue();
 //	  	     outs() << "offset:" << getAM2Offset(AM2var);
 //	   	     outs() << "opcode:" << getAM2Op(AM2var);
@@ -231,8 +242,8 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
 //          SDValue Load2 = CurDAG->getLoad(Chain, SL, Tgt2, Addr, MMO);
 //          CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Store);
 //
-          return NULL;
-       }
+//          return NULL;
+//       }
 
 //    case ARM::LDRi12: {
 //      //load the Ptr
