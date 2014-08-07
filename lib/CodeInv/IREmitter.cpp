@@ -291,10 +291,12 @@ Value* IREmitter::visitCopyToReg(const SDNode *N) {
     errs() << "Null values on CopyToReg, skipping!\n";
     return NULL;
   }
-  //errs() << "V:\n";
+
+  //errs() << "V:\t" <<"Output Type: " << V->getType()->getScalarSizeInBits() <<"\n";
   //V->dump();
-  //errs() << "RegVal:\n";
+  //errs() << "RegVal:\t" <<"Output Type: " << RegVal->getType()->getScalarSizeInBits() <<"\n";
   //RegVal->dump();
+
   Instruction* Res = IRB->CreateStore(V, RegVal);
   VisitMap[N] = Res;
   Res->setDebugLoc(N->getDebugLoc());
