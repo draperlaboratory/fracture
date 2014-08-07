@@ -10,7 +10,7 @@
 LEVEL = ..
 DIRS  =
 
-all:: check-local test-arm test-x86 test-ppc #test-mips
+all:: check-local test-arm test-i386 test-powerpc64 #test-mips
 #all
 
 # Include other test rules
@@ -104,7 +104,7 @@ test-arm::
 	@$(ECHO) "Results of test placed in arm-Instruction-Results directory"
 	@$(ECHO)
 
-test-x86::
+test-i386::
 	@$(ECHO) "Making i386 binaries..."
 	@$(PROJ_SRC_ROOT)/Debug+Asserts/bin/mkAllInsts -i386 -unsup
 	@$(ECHO) "Emitted list of all unsupported instructions called 'i386-unsupported.txt'"
@@ -115,7 +115,7 @@ test-x86::
 	@$(ECHO) "Results of test placed in i386-Instruction-Results directory"
 	@$(ECHO)
 
-test-ppc::
+test-powerpc64::
 	@$(ECHO) "Making PowerPC64 binaries..."
 	@$(PROJ_SRC_ROOT)/Debug+Asserts/bin/mkAllInsts -powerpc64 -unsup
 	@$(ECHO) "Emitted list of all unsupported instructions called 'powerpc64-unsupported.txt'"
