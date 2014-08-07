@@ -105,21 +105,21 @@ test-arm::
 	@$(ECHO)
 
 test-x86::
-	@$(ECHO) "Making x86 binaries..."
-	@$(PROJ_SRC_ROOT)/Debug+Asserts/bin/mkAllInsts -x86 -unsup
+	@$(ECHO) "Making i386 binaries..."
+	@$(PROJ_SRC_ROOT)/Debug+Asserts/bin/mkAllInsts -i386 -unsup
 	@$(ECHO) "Emitted list of all unsupported instructions called 'i386-unsupported.txt'"
 	@$(ECHO) "Removing CALLpcrel32, CALL64pcrel32, and W64ALLOCA because they break Fracture"
 	@$(RM) -f i386Bins/CALLpcrel32 i386Bins/CALL64pcrel32 i386Bins/W64ALLOCA
-	@$(ECHO) "Testing Fracture on all x86 instructions..."
+	@$(ECHO) "Testing Fracture on all i386 instructions..."
 	@$(PROJ_SRC_ROOT)/test/allInstTest.sh -x -d -f i386Bins/ 2> /dev/null
 	@$(ECHO) "Results of test placed in i386-Instruction-Results directory"
 	@$(ECHO)
 
 test-ppc::
-	@$(ECHO) "Making PowerPC binaries..."
-	@$(PROJ_SRC_ROOT)/Debug+Asserts/bin/mkAllInsts -ppc -unsup
+	@$(ECHO) "Making PowerPC64 binaries..."
+	@$(PROJ_SRC_ROOT)/Debug+Asserts/bin/mkAllInsts -powerpc64 -unsup
 	@$(ECHO) "Emitted list of all unsupported instructions called 'powerpc64-unsupported.txt'"
-	@$(ECHO) "Testing Fracture on all PowerPC instructions..."
+	@$(ECHO) "Testing Fracture on all PowerPC64 instructions..."
 	@$(PROJ_SRC_ROOT)/test/allInstTest.sh -p -d -f powerpc64Bins/ 2> /dev/null
 	@$(ECHO) "Results of test placed in powerpc64-Instruction-Results directory"
 	@$(ECHO)

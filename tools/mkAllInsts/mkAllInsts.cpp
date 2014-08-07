@@ -13,10 +13,10 @@
 //
 // NOTE: Fracture must be able to handle a valid return opcode correctly in
 //       order for these binaries to be useful
-//          -For ARM:   BX_RET
-//          -For x86:   RETL
-//          -For PPC:   BLR
-//          -For MIPS:  (TBD)
+//          -For ARM:        BX_RET
+//          -For i386:       RETL
+//          -For PowerPC64:  BLR
+//          -For MIPS:       (TBD)
 //
 // NOTE: MIPS has not been implemented yet, but most of its implementation
 //       has been put in as comments. To implement it:
@@ -30,7 +30,7 @@
 //              through it and be printed successfully
 //
 // Author: cjw3357
-// Date: Aug 1, 2014
+// Date: Aug 7, 2014
 //
 //===----------------------------------------------------------------------===//
 
@@ -109,7 +109,7 @@ int main(int argc, char* argv[])
     //Initialize global file streams
     RS = NULL; US = NULL; SS = NULL;
     
-    enum Arch {NONE, ARM, x86, PPC, MIPS};
+    enum Arch {NONE, arm, i386, powerpc64, mips};
     
     //Handle flags and arguments
     std::string arg;
@@ -125,10 +125,10 @@ int main(int argc, char* argv[])
                   "instruction\n\t\t-unsup\t- creates a file listing every " <<
                   "unsupported instruction\n\t\t-sup\t- creates a file " <<
                   "listing every supported instruction\n\t" <<
-                  "arch:\n\t\t-arm\t- specifies ARM architecture\n\t\t-x86" <<
-                  "\t- specifies x86 architecture\n\t\t-ppc\t- specifies " <<
-                  "PowerPC architecture\n\t\t-mips\t- specifies MIPS " <<
-                  "architecture\n\n";
+                  "arch:\n\t\t-arm\t- specifies ARM architecture\n\t\t-i386" <<
+                  "\t- specifies x86 32-bit architecture\n\t\t-powerpc64\t-" <<
+                  " specifies PowerPC 64-bit architecture\n\t\t-mips\t- " <<
+                  "specifies MIPS architecture (unimplemented)\n\n";
             return 0;
         }
     }
@@ -147,8 +147,8 @@ int main(int argc, char* argv[])
         } else if(arg == "-sup") {
             sup = true;
         } else if(arch != NONE) {
-            if(arg == "-arm" || arg == "-x86" ||
-                    arg == "-ppc" || arg == "-mips") {
+            if(arg == "-arm" || arg == "-i386" ||
+                    arg == "-powerpc64" || arg == "-mips") {
                 ES << "mkAllInsts: May only specify one architecture." <<
                                             " Use -help for more info.\n";
                 return 1;
@@ -158,10 +158,10 @@ int main(int argc, char* argv[])
                 return 2;
             }
         } else {
-            if(arg == "-arm") { arch = ARM; }
-            else if(arg == "-x86") { arch = x86; }
-            else if(arg == "-ppc") { arch = PPC; }
-            else if(arg == "-mips") { arch = MIPS; }
+            if(arg == "-arm") { arch = arm; }
+            else if(arg == "-i386") { arch = i386; }
+            else if(arg == "-powerpc64") { arch = powerpc64; }
+            else if(arg == "-mips") { arch = mips; }
             else {
                 ES << "mkAllInsts: unknown flag '" << arg <<
                                             "'. Use -help for more info\n";
@@ -179,7 +179,7 @@ int main(int argc, char* argv[])
         ES << "mkAllInsts: Must specify an architecture." <<
                                             " Use -help for more info.\n";
         return 3;
-    } else if(arch == ARM) {
+    } else if(arch == arm) {
         filePre = "arm-";
         system("rm -rf armBins/");
         system("rm -rf armAsms/");
@@ -192,7 +192,7 @@ int main(int argc, char* argv[])
         }
         TripleName = "arm-unknown-unknown";
         LLVMInitializeARMTargetMC();
-    } else if(arch == x86) {
+    } else if(arch == i386) {
         filePre = "i386-";
         system("rm -rf i386Bins/");
         system("rm -rf i386Asms/");
@@ -205,7 +205,7 @@ int main(int argc, char* argv[])
         }
         TripleName = "i386-unknown-unknown";
         LLVMInitializeX86TargetMC();
-    } else if(arch == PPC) {
+    } else if(arch == powerpc64) {
         filePre = "powerpc64-";
         system("rm -rf powerpc64Bins/");
         system("rm -rf powerpc64Asms/");
@@ -218,7 +218,7 @@ int main(int argc, char* argv[])
         }
         TripleName = "powerpc64-unknown-unknown";
         LLVMInitializePowerPCTargetMC();
-    } else if(arch == MIPS) {
+    } else if(arch == mips) {
         ES << "mkAllInsts: MIPS is not implemented\n";
         return 4;
         /*filePre = "mips-";
