@@ -97,30 +97,30 @@ endif # SunOS
 
 test-arm::
 	@$(ECHO) "Making ARM binaries..."
-	@$(LibDir)/../bin/mkAllInsts -arm -unsup
+	@$(ToolDir)/mkAllInsts -arm -unsup
 	@$(ECHO) "Emitted list of all unsupported instructions called 'arm-unsupported.txt'"
 	@$(ECHO) "Testing Fracture on all ARM instructions..."
-	@$(PROJ_SRC_DIR)/allInstTest.sh -a -d -f armBins/ 2> /dev/null
+	@./allInstTest.sh -a -d -f armBins/ 2> /dev/null
 	@$(ECHO) "Results of test placed in arm-Instruction-Results directory"
 	@$(ECHO)
 
 test-i386::
 	@$(ECHO) "Making i386 binaries..."
-	@$(LibDir)/../bin/mkAllInsts -i386 -unsup
+	@$(ToolDir)/mkAllInsts -i386 -unsup
 	@$(ECHO) "Emitted list of all unsupported instructions called 'i386-unsupported.txt'"
 	@$(ECHO) "Removing CALLpcrel32, CALL64pcrel32, and W64ALLOCA because they break Fracture"
 	@$(RM) -f i386Bins/CALLpcrel32 i386Bins/CALL64pcrel32 i386Bins/W64ALLOCA
 	@$(ECHO) "Testing Fracture on all i386 instructions..."
-	@$(PROJ_SRC_DIR)/allInstTest.sh -x -d -f i386Bins/ 2> /dev/null
+	@./allInstTest.sh -x -d -f i386Bins/ 2> /dev/null
 	@$(ECHO) "Results of test placed in i386-Instruction-Results directory"
 	@$(ECHO)
 
 test-powerpc64::
 	@$(ECHO) "Making PowerPC64 binaries..."
-	@$(LibDir)/../bin/mkAllInsts -powerpc64 -unsup
+	@$(ToolDir)/mkAllInsts -powerpc64 -unsup
 	@$(ECHO) "Emitted list of all unsupported instructions called 'powerpc64-unsupported.txt'"
 	@$(ECHO) "Testing Fracture on all PowerPC64 instructions..."
-	@$(PROJ_SRC_DIR)/allInstTest.sh -p -d -f powerpc64Bins/ 2> /dev/null
+	@./allInstTest.sh -p -d -f powerpc64Bins/ 2> /dev/null
 	@$(ECHO) "Results of test placed in powerpc64-Instruction-Results directory"
 	@$(ECHO)
 
