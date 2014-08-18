@@ -60,7 +60,7 @@
 // we are doing console I/O here.
 #include <iostream>
 #include <iomanip>
-
+#include <fstream>
 #include "BinFun.h"
 #include "DummyObjectFile.h"
 #include "CodeInv/Decompiler.h"
@@ -78,6 +78,8 @@
 using namespace llvm;
 using namespace fracture;
 		using std::string;  //new
+
+static uint64_t findStrippedMain();
 //===----------------------------------------------------------------------===//
 // Global Variables and Parameters
 //===----------------------------------------------------------------------===//
@@ -286,27 +288,49 @@ static bool nameLookupAddr(StringRef funcName, uint64_t &Address) {
   const object::ObjectFile* Executable = DAS->getExecutable();
 
   Address = 0;
-
-  if (//const object::COFFObjectFile *coff =
-    dyn_cast<const object::COFFObjectFile>(Executable)) {
-    // dumpCOFFSymbols(coff, Address);
-    errs() << "COFF is Unsupported section type.\n";
-  } else if (const object::ELF32LEObjectFile *elf =
-    dyn_cast<const object::ELF32LEObjectFile>(Executable)) {
-    retVal = lookupELFName(elf, funcName, Address );
-  } else if (const object::ELF32BEObjectFile *elf =
-    dyn_cast<const object::ELF32BEObjectFile>(Executable)) {
-    retVal = lookupELFName(elf, funcName, Address );
-  } else if (const object::ELF64BEObjectFile *elf =
-    dyn_cast<const object::ELF64BEObjectFile>(Executable)) {
-    retVal = lookupELFName(elf, funcName, Address );
-  } else if (const object::ELF64LEObjectFile *elf =
-    dyn_cast<const object::ELF64LEObjectFile>(Executable)) {
-    retVal = lookupELFName(elf, funcName, Address );
-  } else {
-    errs() << "Unsupported section type.\n";
+  char buff[300];
+  std::string result;
+  string f = "file ";
+  string cmd = InputFileName;
+  string check = "not stripped";
+   cmd.insert (0, f);
+  FILE* fp = popen(cmd.c_str(), "r");
+  while ( fgets( buff, 300, fp ) !=NULL) {
+    result +=buff;
   }
-  return retVal;
+  pclose(fp);
+
+  if (result.find(check) != std::string::npos){
+    //Binary is not stripped, return address based on symbol name
+    if (//const object::COFFObjectFile *coff =
+      dyn_cast<const object::COFFObjectFile>(Executable)) {
+      // dumpCOFFSymbols(coff, Address);
+      errs() << "COFF is Unsupported section type.\n";
+    } else if (const object::ELF32LEObjectFile *elf =
+      dyn_cast<const object::ELF32LEObjectFile>(Executable)) {
+      retVal = lookupELFName(elf, funcName, Address );
+    } else if (const object::ELF32BEObjectFile *elf =
+      dyn_cast<const object::ELF32BEObjectFile>(Executable)) {
+      retVal = lookupELFName(elf, funcName, Address );
+    } else if (const object::ELF64BEObjectFile *elf =
+      dyn_cast<const object::ELF64BEObjectFile>(Executable)) {
+      retVal = lookupELFName(elf, funcName, Address );
+    } else if (const object::ELF64LEObjectFile *elf =
+      dyn_cast<const object::ELF64LEObjectFile>(Executable)) {
+      retVal = lookupELFName(elf, funcName, Address );
+    } else {
+      errs() << "Unsupported section type.\n";
+    }
+    return retVal;
+  }
+
+  else {
+    errs() << "Binary is Stripped, attempting to find main\n";
+    //Search for Main by function call
+    Address = findStrippedMain();
+    return Address;
+  }
+
 }
 
 ///===---------------------------------------------------------------------===//
@@ -819,4 +843,81 @@ int main(int argc, char *argv[]) {
   CommandParser.runShell(ProgramName);
 
   return 0;
+}
+//===---------------------------------------------------------------------===//
+/// findStrippedMain - Point the Disassembler to main
+///
+/// @param Executable - The executable under analysis.
+///
+static uint64_t findStrippedMain()  {
+//  uint64_t Address = 0;
+//  outs() << "Binary is Stripped, attempting to find Main.\n";
+//
+//  StringRef SectionNameOrAddress = ".text";
+//  const object::ObjectFile* Executable = DAS->getExecutable();
+//  object::SectionRef Section = *Executable->section_end();
+//	  if (SectionNameOrAddress.getAsInteger(0, Address) && Address != 0) {
+//	    Section = DAS->getSectionByAddress(Address);
+//	  }
+//
+//	  if (Section == *Executable->section_end()) {
+//	    Section = DAS->getSectionByName(SectionNameOrAddress);
+//	  }
+//
+//	  StringRef SectionName;
+//	  error(Section.getName(SectionName));
+//	  outs() << "SYMBOL TABLE FOR SECTION " << SectionName << " at 0x"
+//	         << format("%08x", unsigned(Address)) << "\n";
+
+	freopen( "file.txt", "w", stdout );
+	std::string sym = ".text";
+	std::vector<std::string> CommandLine;
+	CommandLine.push_back (sym);
+	CommandLine.push_back (sym);
+	runSymbolsCommand(CommandLine);
+	std::ifstream in ("file.txt");
+	std::string word, dis, prev;
+	uint64_t address;
+	while(in.good()) {
+		in >> word;
+		if((word[0] == '0') && (word[1] == 'x'))
+			dis = word;
+	}
+
+	//in.close();
+
+
+	//errs() << "this is our address: " << dis << "\n";
+	CommandLine.clear();
+	CommandLine.push_back (dis);
+	CommandLine.push_back (dis);
+	runDisassembleCommand(CommandLine);
+	//in.open();
+	in.clear();
+	while(in.good()) {
+		in >> word;
+		if (word == "%rdi") {
+			//errs() << "found rdi: " << prev << "\n";
+			break;
+		}
+		else {
+			prev = word;
+		}
+
+	}
+	in.close();
+	//errs() << "address is: " << prev << "\n";
+	prev.erase (0,1);
+	prev.erase ((prev.size())-1,1);
+	errs() << "Address of main located: " << prev << "\n";
+	std::stringstream ss;
+	ss << std::hex << prev;
+	ss >> address;
+	//errs() << "Decimal address? :" << address << "\n";
+	freopen( "/dev/tty", "a", stdout );
+	return address;
+	//system("./findMain.sh");
+
+
+
 }

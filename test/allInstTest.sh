@@ -12,6 +12,7 @@ indivInst=no
 decfail=0
 prefix=""
 infile="no"
+allV=0
 
 while getopts paxntdihm:f: option
 do
@@ -68,7 +69,7 @@ quit" | fracture -mattr=$n -triple=$triple $fn&>ircode.tmp
 
 	if grep -q "instruction decode failed" ircode.tmp
 	then	
-		printf "Disas Unknown Instruction,$f\n">>results.txt
+		printf "Disas Unknown Instruction, $f\n">>results.txt
 
 	elif grep -q "LLVM ERROR:" ircode.tmp
 	then	
@@ -82,7 +83,7 @@ quit" | fracture -mattr=$n -triple=$triple $fn&>ircode.tmp
 				then 
 					i=$(($i + 1))
 				      	opc=${ar[$i]}
-					printf "LLVM Error,$f,$opc\n">>results.txt
+					printf "llvm Error, $f,$opc\n">>results.txt
 				fi
 			done
 		done	
@@ -101,7 +102,7 @@ quit" | fracture -mattr=$n -triple=$triple $fn&>ircode.tmp
 	elif grep -q "Program arguments" ircode.tmp
 	then
 		#read -p "Most likely a seg fault" -s
-		printf "SEG FAULT or ABORT,$f\n">>results.txt
+		printf "SEG FAULT or ABORT, $f\n">>results.txt
 		if [[ $debug = yes ]]
 		then
 			cp ircode.tmp $f
@@ -123,7 +124,7 @@ grep -oc "SEG FAULT" results.txt >> results.txt
 totalsuc=$(grep -oc "SUCCESS" results.txt)
 printf "Total successful decompiles,$totalsuc">>results.txt
 printf "\nTotal LLVM  Errors, ">>results.txt
-grep -oc "LLVM Error" results.txt >> results.txt
+grep -oc "llvm Error" results.txt >> results.txt
 printf "Total Disassembler Related Errors,">>results.txt
 grep -oc "Disas Unknown Instruction" results.txt >> results.txt
 if [[ $binaries > 1 ]]
@@ -137,13 +138,32 @@ grep -oc "SEG FAULT" results.txt
 totalsuc=$(grep -oc "SUCCESS" results.txt)
 printf "Successful Decompiles:  $totalsuc"
 printf "\nLLVM  Errors: "
-grep -oc "LLVM Error" results.txt
+grep -oc "llvm Error" results.txt
 printf "Disassembler Errors: "
 grep -oc "Disas Unknown Instruction" results.txt
 if [[ $binaries > 1 ]]
 then
 printf "Percent Success: "
 echo "$totalsuc $binaries" | awk '{printf "%.2f \n", $1/$2}'
+if [[ $target = arm ]]
+then
+	for i in $(<results.txt)
+	do 
+		varcheck=${i:0:1}
+		if [[ $varcheck = V ]]
+		then 		
+			#read -p "Neon Instruction" -s			
+			allV=$((allV+1))
+		elif [[ $varcheck = t ]]
+		then
+			#read -p "Thumb or Thumb2 instruction" -s
+			allV=$((allV+1))
+		fi
+	done
+fi
+printf "Success of ARM v6 instructions: ~"
+totalreal=$((binaries-allV))
+echo "$totalsuc $totalreal" | awk '{printf "%.2f \n", $1/$2}'
 fi
 #clean up and delete temp files
 function finish {
