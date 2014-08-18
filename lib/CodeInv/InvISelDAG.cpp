@@ -86,6 +86,7 @@ CheckSame(const unsigned char *MatcherTable, unsigned &MatcherIndex,
   // Accept if it is exactly the same as a previously recorded node.
   unsigned RecNo = MatcherTable[MatcherIndex++];
   assert(RecNo < RecordedNodes.size() && "Invalid CheckSame");
+  //TODO: What is supposed to happen here?
   if (RecNo >= RecordedNodes.size()) return false;
   return N == RecordedNodes[RecNo].first;
 }
@@ -1358,7 +1359,6 @@ SDNode* InvISelDAG::InvertCodeCommon(SDNode *NodeToMatch,
         unsigned ResSlot = MatcherTable[MatcherIndex++];
         if (ResSlot & 128)
           ResSlot = GetVBR(ResSlot, MatcherTable, MatcherIndex);
-
         assert(ResSlot < RecordedNodes.size() && "Invalid CheckSame");
         SDValue Res = RecordedNodes[ResSlot].first;
  

@@ -389,7 +389,29 @@ Value* ARMIREmitter::visitSRA_FLAG(const SDNode *N) { llvm_unreachable("visitSRA
 Value* ARMIREmitter::visitRRX(const SDNode *N) { llvm_unreachable("visitRRX unimplemented ARM visit..."); return NULL; }
 Value* ARMIREmitter::visitADDC(const SDNode *N) { llvm_unreachable("visitADDC unimplemented ARM visit..."); return NULL; }
 Value* ARMIREmitter::visitADDE(const SDNode *N) { llvm_unreachable("visitADDE unimplemented ARM visit..."); return NULL; }
-Value* ARMIREmitter::visitSUBC(const SDNode *N) { llvm_unreachable("visitSUBC unimplemented ARM visit..."); return NULL; }
+
+Value* ARMIREmitter::visitSUBC(const SDNode *N) {
+
+	{ llvm_unreachable("visitSUBC unimplemented ARM visit...");
+//	  // Operand 0 and 1 are values to sub
+//	  Value *Op0 = visit(N->getOperand(0).getNode());
+//	  Value *Op1 = visit(N->getOperand(1).getNode());
+//	  StringRef BaseName = getInstructionName(N);
+//	  if (BaseName.empty()) {
+//	    BaseName = getBaseValueName(Op0->getName());
+//	  }
+//	  if (BaseName.empty()) {
+//	    BaseName = getBaseValueName(Op1->getName());
+//	  }
+//	  StringRef Name = getIndexedValueName(BaseName);
+//	  //outs() << "IREmitter::visitSUB: " << Name.str() << " op0 op1 " << Op0 << " "<< Op1 << "\n";
+//	  Instruction *Res = dyn_cast<Instruction>(IRB->CreateSub(Op0, Op1, Name));
+//	  Res->setDebugLoc(N->getDebugLoc());
+//	  VisitMap[N] = Res;
+//	  return Res;
+	return NULL;
+}
+
 Value* ARMIREmitter::visitSUBE(const SDNode *N) { llvm_unreachable("visitSUBE unimplemented ARM visit..."); return NULL; }
 Value* ARMIREmitter::visitVMOVRRD(const SDNode *N) { llvm_unreachable("visitVMOVRRD unimplemented ARM visit..."); return NULL; }
 Value* ARMIREmitter::visitVMOVDRR(const SDNode *N) { llvm_unreachable("visitVMOVDRR unimplemented ARM visit..."); return NULL; }

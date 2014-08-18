@@ -200,13 +200,26 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
     	return NULL;
     }
 
-//    case ARM::RSCrr:
-//    case ARM::RSCri:
-//    case ARM::RSCrsi:
-//    case ARM::RSCrsr:{
-//
-//    	return NULL;
-//    }
+    case ARM::RSCrr:
+    case ARM::RSCri:
+    case ARM::RSCrsi:
+    case ARM::RSCrsr:{
+
+    	SDValue Tgt1 = N->getOperand(0);
+    	SDValue Tgt2 = N->getOperand(1);
+    	SDValue CPSR = N->getOperand(5);
+    	SDLoc SL(N);
+    	SDVTList AddVTList = CurDAG->getVTList(MVT::i32, MVT::i32);
+
+    	SDValue rSub = CurDAG->getNode(ISD::SUBC, SL, AddVTList, Tgt2, Tgt1);
+    	rSub.dump();
+    	errs() << "DUMP HERE^^\n";
+    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N,0),rSub);
+    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N,1),CPSR);
+
+
+    	return NULL;
+    }
 
 //    case ARM::LDR_POST_IMM: {
 //
@@ -267,6 +280,21 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
 //
 //          	return NULL;
 //      }
+
+    case ARM::MRS: {
+//
+//    	SDValue Reg1 = N->getOperand(1);
+//
+//    	SDLoc SL(N);
+//    	SDVTList AddVTList = CurDAG->getVTList(MVT::i32);
+//
+//    	SDValue MCR = CurDAG->getNode(ISD::, SL, AddVTList, );
+//    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), );
+//
+    	errs() << "MRS NOT IMPLEMENTED\n";
+    		return NULL;
+    }
+
     case ARM::STRi12: {
       //store the tgt filled with the the stack space indicated by  base + offset
       //str Tgt [base offset]
@@ -363,8 +391,7 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
          return NULL;
          break;
        }
-    case ARM::BL:
-      //missing open bracket {
+    case ARM::BL: {
       SDValue Chain = N->getOperand(0);
       SDValue Offset = N->getOperand(1);
       SDLoc SL(N);
@@ -378,6 +405,7 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
   }
 
+ }
 
   //If Transmogrify fails to find the opcode then we will send it to the
   //tablegen file to search for a match. If this fails, then fracture will
