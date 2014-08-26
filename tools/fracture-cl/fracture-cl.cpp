@@ -59,7 +59,9 @@
 // iostream is frowned upon in LLVM, but
 // we are doing console I/O here.
 #include <iostream>
+#include <ostream>
 #include <iomanip>
+#include <stdio.h>
 #include <fstream>
 #include "BinFun.h"
 #include "DummyObjectFile.h"
@@ -408,7 +410,7 @@ static void runDisassembleCommand(std::vector<std::string> &CommandLine) {
 //    errs() << "runDisassemblerCommand: invalid address or function name.\n";
 //    return;
 //  }
-
+  errs() << "Returned address " << Address << "\n";
   formatted_raw_ostream Out(outs(), false);
   Out << "Address: " << Address << "\nNumInstrs: " << NumInstrs << "\n";
   NumInstrsPrinted = DAS->printInstructions(Out, Address, NumInstrs, false);
@@ -850,25 +852,12 @@ int main(int argc, char *argv[]) {
 /// @param Executable - The executable under analysis.
 ///
 static uint64_t findStrippedMain()  {
-//  uint64_t Address = 0;
-//  outs() << "Binary is Stripped, attempting to find Main.\n";
-//
-//  StringRef SectionNameOrAddress = ".text";
-//  const object::ObjectFile* Executable = DAS->getExecutable();
-//  object::SectionRef Section = *Executable->section_end();
-//	  if (SectionNameOrAddress.getAsInteger(0, Address) && Address != 0) {
-//	    Section = DAS->getSectionByAddress(Address);
-//	  }
-//
-//	  if (Section == *Executable->section_end()) {
-//	    Section = DAS->getSectionByName(SectionNameOrAddress);
-//	  }
-//
-//	  StringRef SectionName;
-//	  error(Section.getName(SectionName));
-//	  outs() << "SYMBOL TABLE FOR SECTION " << SectionName << " at 0x"
-//	         << format("%08x", unsigned(Address)) << "\n";
 
+	int offset = 0x14;
+	int toAdd;
+	char tArr[100];
+	//For all files, this retrieves the start location of .text
+	//Then saves it into a fracture dis command
 	freopen( "file.txt", "w", stdout );
 	std::string sym = ".text";
 	std::vector<std::string> CommandLine;
@@ -876,48 +865,213 @@ static uint64_t findStrippedMain()  {
 	CommandLine.push_back (sym);
 	runSymbolsCommand(CommandLine);
 	std::ifstream in ("file.txt");
-	std::string word, dis, prev;
-	uint64_t address;
+	std::string word, dis, prev, line, tmpAddress, bits, bitA, bitB;
+	uint64_t address = 0;
 	while(in.good()) {
 		in >> word;
 		if((word[0] == '0') && (word[1] == 'x'))
-			dis = word;
-	}
+				dis = word;
+		}
 
 	//in.close();
-
-
 	//errs() << "this is our address: " << dis << "\n";
+
 	CommandLine.clear();
 	CommandLine.push_back (dis);
 	CommandLine.push_back (dis);
-	runDisassembleCommand(CommandLine);
-	//in.open();
-	in.clear();
-	while(in.good()) {
-		in >> word;
-		if (word == "%rdi") {
-			//errs() << "found rdi: " << prev << "\n";
-			break;
+
+	//Divide cases based on triple
+	//Search will default to gcc-s, look for out of place LDR is clang.
+	errs() << "Triple Name " << TripleName << '\n';
+	if(TripleName.find("arm") != std::string::npos){
+
+		//Searching for arm
+		errs() << "Searching for arm\n";
+
+		runDisassembleCommand(CommandLine);
+		in.clear();
+		while(in.good()){
+			std::getline(in, line);
+			errs() << line << '\n';
+			if(line.find("ldr") != std::string::npos){
+				errs() <<"Found ldr\n";
+				break;
+			}
 		}
-		else {
-			prev = word;
+		std::getline(in, line);
+		std::getline(in, line);
+		if(line.find("str") != std::string::npos){
+			errs() << "THIS IS GCC\n";
+	//_______________________________________________________
+			//okay, its the second to last ldr, add 14h to that address.
+			while(in.good()){
+			std::getline(in, line);
+				if((line.find("ldr") != std::string::npos) && (prev.find("ldr") != std::string::npos)){
+					line = prev;
+					break;
+				}
+				prev = line;
+			}
+
+			tmpAddress = line.substr(4,4);
+			errs() << "Temp address " << tmpAddress << '\n';
+			tmpAddress.insert(0,"0x");
+			errs() << "Temp address 2 " << tmpAddress << '\n';
+			std::istringstream buffer(tmpAddress);
+			buffer >> std::hex >> toAdd;
+			errs() << "Now int " << toAdd << '\n';
+			toAdd += offset;
+			errs() << "Added int " << toAdd << '\n';
+			sprintf(tArr, "%X", toAdd);
+			errs() << "Now in hex " << tArr << "\n";
+
+			while(in.good()){
+				std::getline(in, line);errs() << line << '\n';
+				if(line.find(tArr) !=std::string::npos){
+					bitA = line.substr(12,2);
+					bitB = line.substr(15,2);
+					bits = bitB + bitA;
+					std::istringstream buffer2(bits);
+					buffer2 >> std::hex >> address;
+					break;
+				}
+			}
+			errs() << "bitA " << bitA << "\n" << "bitB " << bitB << "\n";
+			errs() << "New  bits address " << bits << "\n";
+			errs() << "New address " << address << "\n";
+			freopen( "/dev/tty", "a", stdout );
+			return address;
 		}
+
+
+
+
+		else if(line.find("ldr") != std::string::npos){
+	//_________________________________________________
+			errs() << "THIS IS CLANG\n";
+			while(in.good()){
+				std::getline(in, line);
+				if((line.find("bl") != std::string::npos) && (line.find("r8") != std::string::npos)){
+					line = prev;
+					break;
+				}
+				prev = line;
+			}
+			tmpAddress = line.substr(4,4);
+			errs() << "Temp address " << tmpAddress << '\n';
+			tmpAddress.insert(0,"0x");
+			errs() << "Temp address 2 " << tmpAddress << '\n';
+			std::istringstream buffer(tmpAddress);
+			buffer >> std::hex >> toAdd;
+			errs() << "Now int " << toAdd << '\n';
+			toAdd += offset;
+			errs() << "Added int " << toAdd << '\n';
+			sprintf(tArr, "%X", toAdd);
+			errs() << "Now in hex " << tArr << "\n";
+			while(in.good()){
+				std::getline(in, line);errs() << line << '\n';
+				if(line.find(tArr) !=std::string::npos){
+					bitA = line.substr(12,2);
+					bitB = line.substr(15,2);
+					bits = bitB + bitA;
+					std::istringstream buffer2(bits);
+					buffer2 >> std::hex >> address;
+					break;
+				}
+			}
+					errs() << "bitA " << bitA << "\n" << "bitB " << bitB << "\n";
+					errs() << "New  bits address " << bits << "\n";
+					errs() << "New address " << address << "\n";
+					freopen( "/dev/tty", "a", stdout );
+					return address;
+
+
+			freopen( "/dev/tty", "a", stdout );
+			return address;
+		//turn first 8 chars into an int and add 14h
+		// grab the two sets of bits, reverse them and combign them. then return
+		}
+		else{
+			errs() << "Unknown ARM strip\n";
+		}
+
+
 
 	}
-	in.close();
-	//errs() << "address is: " << prev << "\n";
-	prev.erase (0,1);
-	prev.erase ((prev.size())-1,1);
-	errs() << "Address of main located: " << prev << "\n";
-	std::stringstream ss;
-	ss << std::hex << prev;
-	ss >> address;
-	//errs() << "Decimal address? :" << address << "\n";
-	freopen( "/dev/tty", "a", stdout );
-	return address;
-	//system("./findMain.sh");
+	else if((TripleName.find("i386") != std::string::npos) ||(TripleName.find("x86_64") !=std::string::npos)) {
+	//Searching for i386
+
+		errs() << "Searching for i386\n";
+		runDisassembleCommand(CommandLine);
+
+			in.clear();
+			while(in.good()){
+				std::getline(in, line);
+				if((line.find("xorl") != std::string::npos) && (line.find("ebp") != std::string::npos)){
+					break;
+				}
+			}
+			std::getline(in, line);
+			if(line.find("popl") != std::string::npos){
+			//THIS IS CLANG
+
+				while(in.good()){
+					std::getline(in, line);
+					if((line.find("calll") != std::string::npos) && (prev.find("pushl") != std::string::npos)){
+						line = prev;
+						break;
+					}
+					prev = line;
+				}
+				//grab address of main
+				errs() << "LINE " << line << "\n";
+				tmpAddress = line.substr(50,7);
+				errs() << "Clang Address " << tmpAddress << "\n";
+				std::stringstream ss;
+				ss << std::hex << tmpAddress;
+				ss >> address;
+				freopen( "/dev/tty", "a", stdout );
+				errs() << "Address return value = " << address << "\n";
+				return address;
+			}
+
+			else if(line.find("movq") != std::string::npos){
+			//THIS IS FOR GCC-s
+
+				while(in.good()) {
+					in >> word;
+					if (word == "%rdi") {
+						//errs() << "found rdi: " << prev << "\n";
+						break;
+					}
+					else {
+						prev = word;
+					}
+				}
+				in.close();
+				prev.erase (0,1);
+				prev.erase ((prev.size())-1,1);
+				errs() << "Address of main located: " << prev << "\n";
+				std::stringstream ss;
+				ss << std::hex << prev;
+				ss >> address;
+				freopen( "/dev/tty", "a", stdout );
+				errs() << "Address return value = " << address << "\n";
+					return address;
+			}
+
+			else{
+			errs() << "Unknown i386 strip\n";
+			return 0;
+			}
+	}
+
+	else {
+		errs() << "Unsupported architecture for stripped searching\n";
+		return 1;
+	}
 
 
+	return 0;
 
 }
