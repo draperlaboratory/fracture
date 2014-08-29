@@ -93,7 +93,7 @@ g++ (4.7 or newer).
 When building fracture it may fail due to a missing file PowerPC.td.
 If this is the case you need to enter that directory and create a symlink like so:
 
-     ln -a PPC.td PowerPC.td
+     ln -s PPC.td PowerPC.td
 
 FreeBSD
 -------
