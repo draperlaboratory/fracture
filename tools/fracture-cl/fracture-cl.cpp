@@ -330,7 +330,10 @@ static bool nameLookupAddr(StringRef funcName, uint64_t &Address) {
     errs() << "Binary is Stripped, attempting to find main\n";
     //Search for Main by function call
     Address = findStrippedMain();
-    return Address;
+    if(Address == 0)
+    	return false;
+    else
+    	return Address;
   }
 
 }
@@ -410,7 +413,7 @@ static void runDisassembleCommand(std::vector<std::string> &CommandLine) {
 //    errs() << "runDisassemblerCommand: invalid address or function name.\n";
 //    return;
 //  }
-  errs() << "Returned address " << Address << "\n";
+
   formatted_raw_ostream Out(outs(), false);
   Out << "Address: " << Address << "\nNumInstrs: " << NumInstrs << "\n";
   NumInstrsPrinted = DAS->printInstructions(Out, Address, NumInstrs, false);
@@ -856,37 +859,33 @@ static uint64_t findStrippedMain()  {
 	int offset = 0x14;
 	int toAdd;
 	char tArr[100];
+	std::string word, dis, prev, line, tmpAddress, bits, bitA, bitB;
 	//For all files, this retrieves the start location of .text
-	//Then saves it into a fracture dis command
+
 	freopen( "file.txt", "w", stdout );
-	std::string sym = ".text";
 	std::vector<std::string> CommandLine;
+	std::string sym = ".text";
 	CommandLine.push_back (sym);
 	CommandLine.push_back (sym);
 	runSymbolsCommand(CommandLine);
 	std::ifstream in ("file.txt");
-	std::string word, dis, prev, line, tmpAddress, bits, bitA, bitB;
+
 	uint64_t address = 0;
 	while(in.good()) {
 		in >> word;
+	//finding the x at the end of the line right past the address
 		if((word[0] == '0') && (word[1] == 'x'))
 				dis = word;
 		}
-
-	//in.close();
-	//errs() << "this is our address: " << dis << "\n";
-
 	CommandLine.clear();
 	CommandLine.push_back (dis);
 	CommandLine.push_back (dis);
 
 	//Divide cases based on triple
 	//Search will default to gcc-s, look for out of place LDR is clang.
-	errs() << "Triple Name " << TripleName << '\n';
 	if(TripleName.find("arm") != std::string::npos){
 
-		//Searching for arm
-		errs() << "Searching for arm\n";
+	//Searching for arm
 
 		runDisassembleCommand(CommandLine);
 		in.clear();
@@ -901,9 +900,11 @@ static uint64_t findStrippedMain()  {
 		std::getline(in, line);
 		std::getline(in, line);
 		if(line.find("str") != std::string::npos){
-			errs() << "THIS IS GCC\n";
-	//_______________________________________________________
-			//okay, its the second to last ldr, add 14h to that address.
+	//We are just searching here by the order of the _start section.
+	//gcc and clang have different patterns
+
+	//__________________ARM-GCC_____________________________________
+
 			while(in.good()){
 			std::getline(in, line);
 				if((line.find("ldr") != std::string::npos) && (prev.find("ldr") != std::string::npos)){
@@ -914,16 +915,13 @@ static uint64_t findStrippedMain()  {
 			}
 
 			tmpAddress = line.substr(4,4);
-			errs() << "Temp address " << tmpAddress << '\n';
+			//errs() << "Temp address " << tmpAddress << '\n';
 			tmpAddress.insert(0,"0x");
-			errs() << "Temp address 2 " << tmpAddress << '\n';
 			std::istringstream buffer(tmpAddress);
 			buffer >> std::hex >> toAdd;
-			errs() << "Now int " << toAdd << '\n';
 			toAdd += offset;
-			errs() << "Added int " << toAdd << '\n';
 			sprintf(tArr, "%X", toAdd);
-			errs() << "Now in hex " << tArr << "\n";
+			//errs() << "Now in hex " << tArr << "\n";
 
 			while(in.good()){
 				std::getline(in, line);errs() << line << '\n';
@@ -933,12 +931,10 @@ static uint64_t findStrippedMain()  {
 					bits = bitB + bitA;
 					std::istringstream buffer2(bits);
 					buffer2 >> std::hex >> address;
+	//Here we take in the binary representation of the offset and flip the bits, this gives us the address.
 					break;
 				}
 			}
-			errs() << "bitA " << bitA << "\n" << "bitB " << bitB << "\n";
-			errs() << "New  bits address " << bits << "\n";
-			errs() << "New address " << address << "\n";
 			freopen( "/dev/tty", "a", stdout );
 			return address;
 		}
@@ -947,8 +943,8 @@ static uint64_t findStrippedMain()  {
 
 
 		else if(line.find("ldr") != std::string::npos){
-	//_________________________________________________
-			errs() << "THIS IS CLANG\n";
+	//_________________ARM-CLANG________________________________
+
 			while(in.good()){
 				std::getline(in, line);
 				if((line.find("bl") != std::string::npos) && (line.find("r8") != std::string::npos)){
@@ -958,16 +954,13 @@ static uint64_t findStrippedMain()  {
 				prev = line;
 			}
 			tmpAddress = line.substr(4,4);
-			errs() << "Temp address " << tmpAddress << '\n';
+			//errs() << "Temp address " << tmpAddress << '\n';
 			tmpAddress.insert(0,"0x");
-			errs() << "Temp address 2 " << tmpAddress << '\n';
 			std::istringstream buffer(tmpAddress);
 			buffer >> std::hex >> toAdd;
-			errs() << "Now int " << toAdd << '\n';
 			toAdd += offset;
-			errs() << "Added int " << toAdd << '\n';
 			sprintf(tArr, "%X", toAdd);
-			errs() << "Now in hex " << tArr << "\n";
+			//errs() << "Now in hex " << tArr << "\n";
 			while(in.good()){
 				std::getline(in, line);errs() << line << '\n';
 				if(line.find(tArr) !=std::string::npos){
@@ -979,20 +972,14 @@ static uint64_t findStrippedMain()  {
 					break;
 				}
 			}
-					errs() << "bitA " << bitA << "\n" << "bitB " << bitB << "\n";
-					errs() << "New  bits address " << bits << "\n";
-					errs() << "New address " << address << "\n";
-					freopen( "/dev/tty", "a", stdout );
-					return address;
-
-
 			freopen( "/dev/tty", "a", stdout );
 			return address;
-		//turn first 8 chars into an int and add 14h
-		// grab the two sets of bits, reverse them and combign them. then return
+	//turn first 8 chars into an int and add 14h
+	//grab the two sets of bits, reverse them and combine them. then return
 		}
 		else{
 			errs() << "Unknown ARM strip\n";
+			return 0;
 		}
 
 
@@ -1001,19 +988,18 @@ static uint64_t findStrippedMain()  {
 	else if((TripleName.find("i386") != std::string::npos) ||(TripleName.find("x86_64") !=std::string::npos)) {
 	//Searching for i386
 
-		errs() << "Searching for i386\n";
 		runDisassembleCommand(CommandLine);
-
-			in.clear();
-			while(in.good()){
-				std::getline(in, line);
-				if((line.find("xorl") != std::string::npos) && (line.find("ebp") != std::string::npos)){
-					break;
-				}
+	//This positions us on the common xorl instruction in order for us to look forward to determine compiler
+		in.clear();
+		while(in.good()){
+			std::getline(in, line);
+			if((line.find("xorl") != std::string::npos) && (line.find("ebp") != std::string::npos)){
+				break;
 			}
+		}
 			std::getline(in, line);
 			if(line.find("popl") != std::string::npos){
-			//THIS IS CLANG
+	//_________________x86-CLANG________________________________
 
 				while(in.good()){
 					std::getline(in, line);
@@ -1024,24 +1010,20 @@ static uint64_t findStrippedMain()  {
 					prev = line;
 				}
 				//grab address of main
-				errs() << "LINE " << line << "\n";
 				tmpAddress = line.substr(50,7);
-				errs() << "Clang Address " << tmpAddress << "\n";
 				std::stringstream ss;
 				ss << std::hex << tmpAddress;
 				ss >> address;
 				freopen( "/dev/tty", "a", stdout );
-				errs() << "Address return value = " << address << "\n";
 				return address;
 			}
 
 			else if(line.find("movq") != std::string::npos){
-			//THIS IS FOR GCC-s
+	//_________________x86-GCC________________________________
 
 				while(in.good()) {
 					in >> word;
 					if (word == "%rdi") {
-						//errs() << "found rdi: " << prev << "\n";
 						break;
 					}
 					else {
@@ -1065,13 +1047,8 @@ static uint64_t findStrippedMain()  {
 			return 0;
 			}
 	}
-
 	else {
 		errs() << "Unsupported architecture for stripped searching\n";
-		return 1;
+		return 0;
 	}
-
-
-	return 0;
-
 }
