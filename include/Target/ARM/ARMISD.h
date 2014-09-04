@@ -94,6 +94,8 @@ namespace fracture {
 
       PRELOAD,      // Preload
 
+      WIN__CHKSTK,  // Windows' __chkstk call to do stack probing.
+
       VCEQ,         // Vector compare equal.
       VCEQZ,        // Vector compare equal to zero.
       VCGE,         // Vector compare greater than or equal.
@@ -110,10 +112,6 @@ namespace fracture {
       VSHL,         // ...left
       VSHRs,        // ...right (signed)
       VSHRu,        // ...right (unsigned)
-      VSHLLs,       // ...left long (signed)
-      VSHLLu,       // ...left long (unsigned)
-      VSHLLi,       // ...left long (with maximum shift count)
-      VSHRN,        // ...right narrow
 
       // Vector rounding shift by immediate:
       VRSHRs,       // ...right (signed)
