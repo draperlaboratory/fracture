@@ -23,8 +23,7 @@ using namespace llvm;
 // You need to update this file to match the llvm install.
 
 namespace fracture {
-
-namespace X86ISD {
+  namespace X86ISD {
     // X86 Specific DAG Nodes
     enum NodeType {
       // Start the numbering where the builtin ops leave off.
@@ -82,6 +81,12 @@ namespace X86ISD {
       /// RDTSC_DAG - This operation implements the lowering for
       /// readcyclecounter
       RDTSC_DAG,
+
+      /// X86 Read Time-Stamp Counter and Processor ID.
+      RDTSCP_DAG,
+
+      /// X86 Read Performance Monitoring Counters.
+      RDPMC_DAG,
 
       /// X86 compare and logical compare instructions.
       CMP, COMI, UCOMI,
@@ -291,7 +296,6 @@ namespace X86ISD {
       ADD, SUB, ADC, SBB, SMUL,
       INC, DEC, OR, XOR, AND,
 
-      BZHI,   // BZHI - Zero high bits
       BEXTR,  // BEXTR - Bit field extract
 
       UMUL, // LOW, HI, FLAGS = umul LHS, RHS
@@ -313,6 +317,8 @@ namespace X86ISD {
       KORTEST,
 
       // Several flavors of instructions with vector shuffle behaviors.
+      PACKSS,
+      PACKUS,
       PALIGNR,
       PSHUFD,
       PSHUFHW,
@@ -345,6 +351,8 @@ namespace X86ISD {
 
       // PMULUDQ - Vector multiply packed unsigned doubleword integers
       PMULUDQ,
+      // PMULUDQ - Vector multiply packed signed doubleword integers
+      PMULDQ,
 
       // FMA nodes
       FMADD,
@@ -396,23 +404,8 @@ namespace X86ISD {
       // XTEST - Test if in transactional execution.
       XTEST,
 
-      // ATOMADD64_DAG, ATOMSUB64_DAG, ATOMOR64_DAG, ATOMAND64_DAG,
-      // ATOMXOR64_DAG, ATOMNAND64_DAG, ATOMSWAP64_DAG -
-      // Atomic 64-bit binary operations.
-      ATOMADD64_DAG = ISD::FIRST_TARGET_MEMORY_OPCODE,
-      ATOMSUB64_DAG,
-      ATOMOR64_DAG,
-      ATOMXOR64_DAG,
-      ATOMAND64_DAG,
-      ATOMNAND64_DAG,
-      ATOMMAX64_DAG,
-      ATOMMIN64_DAG,
-      ATOMUMAX64_DAG,
-      ATOMUMIN64_DAG,
-      ATOMSWAP64_DAG,
-
       // LCMPXCHG_DAG, LCMPXCHG8_DAG, LCMPXCHG16_DAG - Compare and swap.
-      LCMPXCHG_DAG,
+      LCMPXCHG_DAG = ISD::FIRST_TARGET_MEMORY_OPCODE,
       LCMPXCHG8_DAG,
       LCMPXCHG16_DAG,
 
@@ -460,6 +453,7 @@ namespace X86ISD {
       // thought as target memory ops!
     };
   }
+
 } // end fracture namespace
 
 
