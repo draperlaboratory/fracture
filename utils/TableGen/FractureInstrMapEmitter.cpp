@@ -34,6 +34,8 @@
 
 using namespace llvm;
 
+#define DEBUG_TYPE "invdag-patterns"
+
 class FractureInstrMapEmitter {
   const CodeInvDAGPatterns CIP;
   Matcher *TheMatcher, *CurNode;

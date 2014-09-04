@@ -31,6 +31,8 @@
 #include "CodeInvDAGPatterns.h"
 #include "CodeGenInstruction.h"
 
+#define DEBUG_TYPE "invdag-patterns"
+
 namespace llvm {
 
 void InvTreePatternNode::print(raw_ostream &OS) const {
