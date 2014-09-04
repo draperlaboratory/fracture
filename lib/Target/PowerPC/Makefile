@@ -9,10 +9,11 @@
 
 LEVEL = ../../..
 LIBRARYNAME = FracturePowerPCCodeInv
-TARGET = PowerPC
+TARGET = PPC
+TARGETDIR = PowerPC
 
-BUILT_SOURCES = PowerPCGenInvISel.inc PowerPCGenRegisterInfo.inc \
-		PowerPCGenInstrInfo.inc
+BUILT_SOURCES = PPCGenInvISel.inc PPCGenRegisterInfo.inc \
+		PPCGenInstrInfo.inc
 
 # DIRS = InstPrinter AsmParser Disassembler TargetInfo MCTargetDesc
 
