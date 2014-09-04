@@ -121,11 +121,11 @@ libcxx from the LLVM site, then:
 
     cd llvm
     export CXXFLAGS="-std=c++11 -stdlib=libc++ -nostdinc++ -I[libcxxdir]/include"
-    ./configure --enable-debug-symbols --enable-shared --prefix=/sw --build=x86_64-apple-darwin13.0.0 CXX=g++ CC=gcc -enable-libcpp
+    ./configure --enable-debug-symbols --enable-shared --prefix=/sw --build=x86_64-apple-darwin13.0.0 CXX=g++ CC=gcc --enable-libcpp
     ... (make, make install)
     cd fracture
     ./autoconf/AutoRegen.sh
-    ./configure --enable-debug-symbols --build=x86_64-apple-darwing13.0.0 --with-llvmsrc=llvm --with-llvmobj=llvm
+    ./configure --enable-debug-symbols --build=x86_64-apple-darwin13.0.0 --with-llvmsrc=llvm --with-llvmobj=llvm
     make -j16
 
 Other Systems
