@@ -17,7 +17,7 @@
 #ifndef DISASSEMBLER_H
 #define DISASSEMBLER_H
 
-#include "llvm/DebugInfo.h"
+#include "llvm/IR/DebugInfo.h"
 #include "llvm/CodeGen/GCMetadata.h"
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
