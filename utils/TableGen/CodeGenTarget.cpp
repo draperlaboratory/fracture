@@ -298,28 +298,12 @@ struct SortInstByName {
 /// target, ordered by their enum value.
 void CodeGenTarget::ComputeInstrsByEnum() const {
   // The ordering here must match the ordering in TargetOpcodes.h.
-  const char *const FixedInstrs[] = {
-    "PHI",
-    "INLINEASM",
-    "PROLOG_LABEL",
-    "EH_LABEL",
-    "GC_LABEL",
-    "KILL",
-    "EXTRACT_SUBREG",
-    "INSERT_SUBREG",
-    "IMPLICIT_DEF",
-    "SUBREG_TO_REG",
-    "COPY_TO_REGCLASS",
-    "DBG_VALUE",
-    "REG_SEQUENCE",
-    "COPY",
-    "BUNDLE",
-    "LIFETIME_START",
-    "LIFETIME_END",
-    "STACKMAP",
-    "PATCHPOINT",
-    0
-  };
+  static const char *const FixedInstrs[] = {
+      "PHI",          "INLINEASM",     "CFI_INSTRUCTION",  "EH_LABEL",
+      "GC_LABEL",     "KILL",          "EXTRACT_SUBREG",   "INSERT_SUBREG",
+      "IMPLICIT_DEF", "SUBREG_TO_REG", "COPY_TO_REGCLASS", "DBG_VALUE",
+      "REG_SEQUENCE", "COPY",          "BUNDLE",           "LIFETIME_START",
+      "LIFETIME_END", "STACKMAP",      "PATCHPOINT",       nullptr};
   const DenseMap<const Record*, CodeGenInstruction*> &Insts = getInstructions();
   for (const char *const *p = FixedInstrs; *p; ++p) {
     const CodeGenInstruction *Instr = GetInstByName(*p, Insts, Records);
@@ -425,6 +409,7 @@ CodeGenIntrinsic::CodeGenIntrinsic(Record *R) {
   isCommutative = false;
   canThrow = false;
   isNoReturn = false;
+  isNoDuplicate = false;
 
   if (DefName.size() <= 4 ||
       std::string(DefName.begin(), DefName.begin() + 4) != "int_")
@@ -434,6 +419,8 @@ CodeGenIntrinsic::CodeGenIntrinsic(Record *R) {
 
   if (R->getValue("GCCBuiltinName"))  // Ignore a missing GCCBuiltinName field.
     GCCBuiltinName = R->getValueAsString("GCCBuiltinName");
+  if (R->getValue("MSBuiltinName"))   // Ignore a missing MSBuiltinName field.
+    MSBuiltinName = R->getValueAsString("MSBuiltinName");
 
   TargetPrefix = R->getValueAsString("TargetPrefix");
   Name = R->getValueAsString("LLVMName");
@@ -483,7 +470,7 @@ CodeGenIntrinsic::CodeGenIntrinsic(Record *R) {
     } else {
       VT = getValueType(TyEl->getValueAsDef("VT"));
     }
-    if (EVT(VT).isOverloaded()) {
+    if (MVT(VT).isOverloaded()) {
       OverloadedVTs.push_back(VT);
       isOverloaded = true;
     }
@@ -517,7 +504,7 @@ CodeGenIntrinsic::CodeGenIntrinsic(Record *R) {
     } else
       VT = getValueType(TyEl->getValueAsDef("VT"));
 
-    if (EVT(VT).isOverloaded()) {
+    if (MVT(VT).isOverloaded()) {
       OverloadedVTs.push_back(VT);
       isOverloaded = true;
     }
@@ -549,6 +536,8 @@ CodeGenIntrinsic::CodeGenIntrinsic(Record *R) {
       isCommutative = true;
     else if (Property->getName() == "Throws")
       canThrow = true;
+    else if (Property->getName() == "IntrNoDuplicate")
+      isNoDuplicate = true;
     else if (Property->getName() == "IntrNoReturn")
       isNoReturn = true;
     else if (Property->isSubClassOf("NoCapture")) {
