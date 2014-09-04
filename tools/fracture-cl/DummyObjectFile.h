@@ -30,9 +30,10 @@ namespace object {
     ~DummyObjectFile();
     */
 
-    DummyObjectFile(MemoryBuffer *Object, error_code &ec);
+    DummyObjectFile(std::unique_ptr<MemoryBuffer> &Object, std::error_code &ec);
 
-    static ObjectFile *createDummyObjectFile(MemoryBuffer *Object);
+    static ObjectFile *createDummyObjectFile(std::unique_ptr<MemoryBuffer>
+      &Object);
 
     virtual symbol_iterator begin_symbols() const;
     virtual symbol_iterator end_symbols() const;
@@ -80,61 +81,61 @@ namespace object {
 
   protected:
     // Symbol Functions
-    virtual error_code getSymbolNext(DataRefImpl Symb, SymbolRef &Res) const;
-    virtual error_code getSymbolName(DataRefImpl Symb, StringRef &Res) const;
-    virtual error_code getSymbolAddress(DataRefImpl Symb, uint64_t &Res) const;
-    virtual error_code getSymbolFileOffset(DataRefImpl Symb,
+    virtual std::error_code getSymbolNext(DataRefImpl Symb, SymbolRef &Res) const;
+    virtual std::error_code getSymbolName(DataRefImpl Symb, StringRef &Res) const;
+    virtual std::error_code getSymbolAddress(DataRefImpl Symb, uint64_t &Res) const;
+    virtual std::error_code getSymbolFileOffset(DataRefImpl Symb,
                                            uint64_t &Res) const;
-    virtual error_code getSymbolSize(DataRefImpl Symb, uint64_t &Res) const;
-    virtual error_code getSymbolType(DataRefImpl Symb,
+    virtual std::error_code getSymbolSize(DataRefImpl Symb, uint64_t &Res) const;
+    virtual std::error_code getSymbolType(DataRefImpl Symb,
                                      SymbolRef::Type &Res) const;
-    virtual error_code getSymbolNMTypeChar(DataRefImpl Symb, char &Res) const;
+    virtual std::error_code getSymbolNMTypeChar(DataRefImpl Symb, char &Res) const;
     virtual uint32_t getSymbolFlags(DataRefImpl Symb) const;
-    virtual error_code getSymbolSection(DataRefImpl Symb,
+    virtual std::error_code getSymbolSection(DataRefImpl Symb,
                                         section_iterator &Res) const;
-    virtual error_code getSymbolValue(DataRefImpl Symb, uint64_t &Val) const;
+    virtual std::error_code getSymbolValue(DataRefImpl Symb, uint64_t &Val) const;
 
     // Section Functions
-    virtual error_code getSectionNext(DataRefImpl Sec, SectionRef &Res) const;
-    virtual error_code getSectionName(DataRefImpl Sec, StringRef &Res) const;
-    virtual error_code getSectionAddress(DataRefImpl Sec, uint64_t &Res) const;
-    virtual error_code getSectionSize(DataRefImpl Sec, uint64_t &Res) const;
-    virtual error_code getSectionContents(DataRefImpl Sec, StringRef &Res)const;
-    virtual error_code getSectionAlignment(DataRefImpl Sec, uint64_t &Res)const;
-    virtual error_code isSectionText(DataRefImpl Sec, bool &Res) const;
-    virtual error_code isSectionData(DataRefImpl Sec, bool &Res) const;
-    virtual error_code isSectionBSS(DataRefImpl Sec, bool &Res) const;
-    virtual error_code isSectionRequiredForExecution(DataRefImpl Sec,
+    virtual std::error_code getSectionNext(DataRefImpl Sec, SectionRef &Res) const;
+    virtual std::error_code getSectionName(DataRefImpl Sec, StringRef &Res) const;
+    virtual std::error_code getSectionAddress(DataRefImpl Sec, uint64_t &Res) const;
+    virtual std::error_code getSectionSize(DataRefImpl Sec, uint64_t &Res) const;
+    virtual std::error_code getSectionContents(DataRefImpl Sec, StringRef &Res)const;
+    virtual std::error_code getSectionAlignment(DataRefImpl Sec, uint64_t &Res)const;
+    virtual std::error_code isSectionText(DataRefImpl Sec, bool &Res) const;
+    virtual std::error_code isSectionData(DataRefImpl Sec, bool &Res) const;
+    virtual std::error_code isSectionBSS(DataRefImpl Sec, bool &Res) const;
+    virtual std::error_code isSectionRequiredForExecution(DataRefImpl Sec,
                                                      bool &Res) const;
     // A section is 'virtual' if its contents aren't present in the object img.
-    virtual error_code isSectionVirtual(DataRefImpl Sec, bool &Res) const;
-    virtual error_code isSectionZeroInit(DataRefImpl Sec, bool &Res) const;
-    virtual error_code isSectionReadOnlyData(DataRefImpl Sec, bool &Res) const;
-    virtual error_code sectionContainsSymbol(DataRefImpl Sec, DataRefImpl Symb,
+    virtual std::error_code isSectionVirtual(DataRefImpl Sec, bool &Res) const;
+    virtual std::error_code isSectionZeroInit(DataRefImpl Sec, bool &Res) const;
+    virtual std::error_code isSectionReadOnlyData(DataRefImpl Sec, bool &Res) const;
+    virtual std::error_code sectionContainsSymbol(DataRefImpl Sec, DataRefImpl Symb,
                                              bool &Result) const;
     virtual relocation_iterator getSectionRelBegin(DataRefImpl Sec) const;
     virtual relocation_iterator getSectionRelEnd(DataRefImpl Sec) const;
 
     // Relocations
-    virtual error_code getRelocationNext(DataRefImpl Rel,
+    virtual std::error_code getRelocationNext(DataRefImpl Rel,
                                           RelocationRef &Res) const;
-    virtual error_code getRelocationAddress(DataRefImpl Rel,
+    virtual std::error_code getRelocationAddress(DataRefImpl Rel,
                                        uint64_t &Res) const;
-    virtual error_code getRelocationOffset(DataRefImpl Rel,
+    virtual std::error_code getRelocationOffset(DataRefImpl Rel,
                                       uint64_t &Res) const;
     virtual symbol_iterator getRelocationSymbol(DataRefImpl Rel) const;
-    virtual error_code getRelocationType(DataRefImpl Rel,
+    virtual std::error_code getRelocationType(DataRefImpl Rel,
                                     uint64_t &Res) const;
-    virtual error_code getRelocationTypeName(DataRefImpl Rel,
+    virtual std::error_code getRelocationTypeName(DataRefImpl Rel,
                                     SmallVectorImpl<char> &Result) const;
-    virtual error_code getRelocationAdditionalInfo(DataRefImpl Rel,
+    virtual std::error_code getRelocationAdditionalInfo(DataRefImpl Rel,
                                               int64_t &Res) const;
-    virtual error_code getRelocationValueString(DataRefImpl Rel,
+    virtual std::error_code getRelocationValueString(DataRefImpl Rel,
                                     SmallVectorImpl<char> &Result) const;
 
     //Libraries
-    virtual error_code getLibraryNext(DataRefImpl Lib, LibraryRef &Res) const;
-    virtual error_code getLibraryPath(DataRefImpl Lib, StringRef &Res) const;
+    virtual std::error_code getLibraryNext(DataRefImpl Lib, LibraryRef &Res) const;
+    virtual std::error_code getLibraryPath(DataRefImpl Lib, StringRef &Res) const;
 
 
     // Added in latest llvm-trunk update

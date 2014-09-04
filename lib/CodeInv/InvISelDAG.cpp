@@ -22,6 +22,8 @@
 
 //#include "StringRef.h"
 
+#define DEBUG_TYPE "inviseldag"
+
 namespace fracture {
 
 // NOTE: This needs to be generalized to select InvISelDAG's based on
@@ -508,7 +510,7 @@ HandleMergeInputChains(SmallVectorImpl<SDNode*> &ChainNodesMatched,
   if (InputChains.size() == 1)
     return InputChains[0];
   return CurDAG->getNode(ISD::TokenFactor, SDLoc(ChainNodesMatched[0]),
-                         MVT::Other, &InputChains[0], InputChains.size());
+                         MVT::Other, InputChains);
 }
 
 /// Moves Op[0] to Op[Op.size()-1]. This is done for certain load/store operands
@@ -520,13 +522,13 @@ void InvISelDAG::FixChainOp(SDNode *N) {
   assert(NumOps > 1 && "Not enough operands to swap the Chain on Load/Store!");
   assert(Chain.getValueType() == MVT::Other && "Not a chain value!");
 
-  SDValue *Ops = new SDValue[NumOps];
+  SmallVector<SDValue, 3> Ops;
   for (unsigned i = 1; i != NumOps; ++i) {
-    Ops[i-1] = N->getOperand(i);
+    Ops.push_back(N->getOperand(i));
   }
-  Ops[NumOps-1] = Chain;
+  Ops.push_back(Chain);
 
-  N = CurDAG->UpdateNodeOperands(N, Ops, NumOps);
+  N = CurDAG->UpdateNodeOperands(N, Ops);
 }
 
 
@@ -553,7 +555,11 @@ MorphNode(SDNode *Node, unsigned TargetOpc, SDVTList VTList,
 
   // Call the underlying SelectionDAG routine to do the transmogrification. Note
   // that this deletes operands of the old node that become dead.
-  SDNode *Res = CurDAG->MorphNodeTo(Node, TargetOpc, VTList, Ops, NumOps);
+  SmallVector<SDValue, 3> OpsArray;
+  for (unsigned i = 0, e = NumOps; i != e; ++i) {
+    OpsArray.push_back(Ops[i]);
+  }
+  SDNode *Res = CurDAG->MorphNodeTo(Node, TargetOpc, VTList, OpsArray);
 
   // MorphNodeTo can operate in two ways: if an existing node with the
   // specified operands exists, it can just return it.  Otherwise, it
@@ -1149,7 +1155,7 @@ SDNode* InvISelDAG::InvertCodeCommon(SDNode *NodeToMatch,
       else if (VTs.size() == 2)
         VTList = CurDAG->getVTList(VTs[0], VTs[1]);
       else
-        VTList = CurDAG->getVTList(VTs.data(), VTs.size());
+        VTList = CurDAG->getVTList(VTs);
 
       // Get the operand list.
       unsigned NumOps = MatcherTable[MatcherIndex++];
@@ -1230,7 +1236,7 @@ SDNode* InvISelDAG::InvertCodeCommon(SDNode *NodeToMatch,
         // If this is a normal EmitNode command, just create the new node and
         // add the results to the RecordedNodes list.
         Res = (CurDAG->getNode(TargetOpc, SDLoc(NodeToMatch),
-            VTList, Ops.data(), Ops.size())).getNode();
+            VTList, Ops)).getNode();
 
         // Add all the non-glue/non-chain results to the RecordedNodes list.
         // Note: The following line was necessary to make replacealluses work
@@ -1509,7 +1515,7 @@ bool InvISelDAG::CheckOrMask(SDValue LHS, ConstantSDNode *RHS,
   APInt NeededMask = DesiredMask & ~ActualMask;
 
   APInt KnownZero, KnownOne;
-  CurDAG->ComputeMaskedBits(LHS, KnownZero, KnownOne);
+  CurDAG->computeKnownBits(LHS, KnownZero, KnownOne);
 
   // If all the missing bits in the or are already known to be set, match!
   if ((NeededMask & KnownOne) == NeededMask)

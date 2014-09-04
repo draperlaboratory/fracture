@@ -237,13 +237,13 @@ int main(int argc, char* argv[])
     
     if(res) {
         RS = new raw_fd_ostream((filePre + "results.txt").c_str(),
-                                                    ErrMsg, sys::fs::F_None);
+                                                    ErrMsg, sys::fs::None);
     } else if(unsup) {
         US = new raw_fd_ostream((filePre + "unsupported.txt").c_str(),
-                                                    ErrMsg, sys::fs::F_None);
+                                                    ErrMsg, sys::fs::None);
     } else if(sup) {
         SS = new raw_fd_ostream((filePre + "supported.txt").c_str(),
-                                                    ErrMsg, sys::fs::F_None);
+                                                    ErrMsg, sys::fs::None);
     }
     
     //Call function to create the binaries

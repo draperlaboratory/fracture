@@ -19,6 +19,8 @@
 
 using namespace llvm;
 
+#define DEBUG_TYPE "fracture-decompiler"
+
 namespace fracture {
 
 Decompiler::Decompiler(Disassembler *NewDis, Module *NewMod, raw_ostream &InfoOut, raw_ostream &ErrOut) :

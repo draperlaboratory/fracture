@@ -112,7 +112,7 @@ static cl::opt<bool> ViewMachineDAGs("view-machine-dags", cl::Hidden,
 static cl::opt<bool> ViewIRDAGs("view-ir-dags", cl::Hidden,
     cl::desc("Pop up a window to show dags after Inverse DAG Select."));
 
-static bool error(error_code ec) {
+static bool error(std::error_code ec) {
   if (!ec)
     return false;
 
@@ -127,27 +127,28 @@ static bool error(error_code ec) {
 ///
 /// @param FileName - The name of the file to open.
 ///
-static error_code loadBinary(StringRef FileName) {
+static std::error_code loadBinary(StringRef FileName) {
   // File should be stdin or it should exist.
   if (FileName != "-" && !sys::fs::exists(FileName)) {
     errs() << ProgramName << ": No such file or directory: '" << FileName.data()
         << "'.\n";
-    return make_error_code(errc::no_such_file_or_directory);
+    return make_error_code(std::errc::no_such_file_or_directory);
   }
 
   ErrorOr<object::Binary*> Binary = object::createBinary(FileName);
-  if (error_code err = Binary.getError()) {
+  if (std::error_code err = Binary.getError()) {
     errs() << ProgramName << ": Unknown file format: '" << FileName.data()
         << "'.\n Error Msg: " << err.message() << "\n";
 
-    OwningPtr<MemoryBuffer> MemBuf;
-    if (error_code err = MemoryBuffer::getFile(FileName, MemBuf)) {
-      errs() << ProgramName << ": BLAH!: '" << FileName.data() << "'.\n";
+    ErrorOr<std::unique_ptr<MemoryBuffer>> MemBuf =
+      MemoryBuffer::getFile(FileName);
+    if (std::error_code err = MemBuf.getError()) {
+      errs() << ProgramName << ": Bad Memory!: '" << FileName.data() << "'.\n";
       return err;
     }
 
     OwningPtr<object::ObjectFile> ret(
-        object::DummyObjectFile::createDummyObjectFile(MemBuf.take()));
+      object::DummyObjectFile::createDummyObjectFile(MemBuf.get()));
     TempExecutable.swap(ret);
   } else {
     if (Binary.get()->isObject()) {
@@ -192,10 +193,10 @@ static error_code loadBinary(StringRef FileName) {
 
   if (!MCD->isValid()) {
     errs() << "Warning: Unable to initialized LLVM MC API!\n";
-    return make_error_code(errc::not_supported);
+    return make_error_code(std::errc::not_supported);
   }
 
-  return error_code::success();
+  return std::error_code();
 }
 
 ///===---------------------------------------------------------------------===//
@@ -225,7 +226,7 @@ static void runLoadCommand(std::vector<std::string> &CommandLine) {
   StringRef FileName;
   if (CommandLine.size() >= 2)
     FileName = CommandLine[1];
-  if (error_code Err = loadBinary(FileName)) {
+  if (std::error_code Err = loadBinary(FileName)) {
     errs() << ProgramName << ": Could not open the file '" << FileName.data()
         << "'. " << Err.message() << ".\n";
   }
@@ -240,11 +241,11 @@ template <class ELFT>
 static bool lookupELFName(const object::ELFObjectFile<ELFT>* elf,
   StringRef funcName, uint64_t &Address ) {
   bool retVal = false;
-  error_code ec;
+  std::error_code ec;
   std::vector<object::SymbolRef> Syms;
   Address = 0;
-  for (object::symbol_iterator si = elf->begin_symbols(), se =
-         elf->end_symbols(); si != se; ++si) {
+  for (object::symbol_iterator si = elf->symbols().begin(), se =
+         elf->symbols().end(); si != se; ++si) {
     Syms.push_back(*si);
   }
   // for (object::symbol_iterator si = elf->begin_dynamic_symbols(), se =
@@ -426,7 +427,7 @@ static void runDisassembleCommand(std::vector<std::string> &CommandLine) {
 static void runSectionsCommand(std::vector<std::string> &CommandLine) {
   outs() << "Sections:\n"
          << "Idx Name          Size      Address          Type\n";
-  error_code ec;
+  std::error_code ec;
   unsigned i = 1;
   for (object::section_iterator si = DAS->getExecutable()->section_begin(),
          se = DAS->getExecutable()->section_end(); si != se; ++si) {
@@ -460,10 +461,10 @@ static void runSectionsCommand(std::vector<std::string> &CommandLine) {
 template <class ELFT>
 static void dumpELFSymbols(const object::ELFObjectFile<ELFT>* elf,
   unsigned Address) {
-  error_code ec;
+  std::error_code ec;
   std::vector<object::SymbolRef> Syms;
-  for (object::symbol_iterator si = elf->begin_symbols(), se =
-         elf->end_symbols(); si != se; ++si) {
+  for (object::symbol_iterator si = elf->symbols().begin(), se =
+         elf->symbols().end(); si != se; ++si) {
     Syms.push_back(*si);
   }
   for (std::vector<object::SymbolRef>::iterator si = Syms.begin(),
@@ -477,13 +478,13 @@ static void dumpELFSymbols(const object::ELFObjectFile<ELFT>* elf,
     uint64_t Size;
     uint32_t Flags = 0;
     uint64_t SectAddr;
-    uint64_t Value;
+    uint32_t Value;
     object::section_iterator Section = elf->section_end();
     if (error(si->getName(Name)))
       continue;
     if (error(si->getAddress(Address)))
       continue;
-    if (error(si->getValue(Value)))
+    if (error(si->getAlignment(Value))) // NOTE: This used to be getValue...
       continue;
     if (error(si->getSection(Section)))
       continue;
@@ -562,7 +563,7 @@ static void dumpCOFFSymbols(const object::COFFObjectFile *coff,
   // Find the section index (referenced by symbol)
   int SectionIndex = -1;
   int Index = 1;
-  error_code ec;
+  std::error_code ec;
   for (object::section_iterator si = coff->section_begin(), se =
          coff->section_end(); si != se; ++si, ++Index) {
     uint64_t SectionAddr;
@@ -638,7 +639,7 @@ static void runSymbolsCommand(std::vector<std::string> &CommandLine) {
   StringRef SectionNameOrAddress = CommandLine[1];
   const object::ObjectFile* Executable = DAS->getExecutable();
 
-  error_code ec;
+  std::error_code ec;
   uint64_t Address;
   object::SectionRef Section = *Executable->section_end();
   if (SectionNameOrAddress.getAsInteger(0, Address) && Address != 0) {
@@ -693,7 +694,8 @@ static void runSaveCommand(std::vector<std::string> &CommandLine) {
   }
 
   std::string ErrorInfo;
-  raw_fd_ostream FOut(CommandLine[1].c_str(), ErrorInfo);
+  raw_fd_ostream FOut(CommandLine[1].c_str(), ErrorInfo,
+    sys::fs::OpenFlags::F_RW);
 
   FOut << *(DEC->getModule());
 
@@ -840,7 +842,7 @@ int main(int argc, char *argv[]) {
 
   initializeCommands();
 
-  if (error_code Err = loadBinary(InputFileName.getValue())) {
+  if (std::error_code Err = loadBinary(InputFileName.getValue())) {
     errs() << ProgramName << ": Could not open the file '"
         << InputFileName.getValue() << "'. " << Err.message() << ".\n";
   }

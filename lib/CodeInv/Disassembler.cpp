@@ -227,7 +227,7 @@ unsigned Disassembler::decodeInstruction(unsigned Address,
 
   	//Copy & paste set getImm to zero
   	MachineMemOperand* MMO = new MachineMemOperand(
-  			MachinePointerInfo(0, 0), flags, 4, 0);	//MCO.getImm()
+  			MachinePointerInfo(), flags, 4, 0);	//MCO.getImm()
 		 	 MIB.addMemOperand(MMO);
 		 	 //outs() << "Name: " << MII->getName(Inst->getOpcode()) << " Flags: " << flags << "\n";
 	 }
@@ -412,9 +412,9 @@ void Disassembler::setExecutable(object::ObjectFile* NewExecutable) {
 
 std::string Disassembler::getSymbolName(unsigned Address) {
   uint64_t SymAddr;
-  error_code ec;
-  for (object::symbol_iterator I = Executable->begin_symbols(),
-         E = Executable->end_symbols(); I != E; ++I) {
+  std::error_code ec;
+  for (object::symbol_iterator I = Executable->symbols().begin(),
+         E = Executable->symbols().end(); I != E; ++I) {
     if ((ec = I->getAddress(SymAddr))) {
       errs() << ec.message() << "\n";
       continue;
@@ -433,11 +433,11 @@ std::string Disassembler::getSymbolName(unsigned Address) {
 
 const StringRef Disassembler::getFunctionName(unsigned Address) const {
   uint64_t SymAddr;
-  error_code ec;
+  std::error_code ec;
   StringRef NameRef;
   // Check in the regular symbol table first
-  for (object::symbol_iterator I = Executable->begin_symbols(),
-         E = Executable->end_symbols(); I != E; ++I) {
+  for (object::symbol_iterator I = Executable->symbols().begin(),
+         E = Executable->symbols().end(); I != E; ++I) {
     object::SymbolRef::Type SymbolTy;
     if ((ec = I->getType(SymbolTy))) {
       errs() << ec.message() << "\n";
@@ -500,7 +500,7 @@ void Disassembler::setSection(std::string SectionName) {
 void Disassembler::setSection(const object::SectionRef Section) {
   StringRef Bytes;
   uint64_t SectAddr, SectSize;
-  error_code ec = Section.getContents(Bytes);
+  std::error_code ec = Section.getContents(Bytes);
   if (ec) {
     printError(ec.message());
     return;
@@ -556,7 +556,7 @@ std::string Disassembler::rawBytesToString(StringRef Bytes) {
 
 const object::SectionRef Disassembler::getSectionByName(StringRef SectionName)
   const {
-  error_code ec;
+  std::error_code ec;
   for (object::section_iterator si = Executable->section_begin(), se =
          Executable->section_end(); si != se; ++si) {
 
@@ -588,7 +588,7 @@ const object::SectionRef Disassembler::getSectionByName(StringRef SectionName)
 
 const object::SectionRef Disassembler::getSectionByAddress(unsigned Address)
   const {
-  error_code ec;
+  std::error_code ec;
   for (object::section_iterator si = Executable->section_begin(), se =
          Executable->section_end(); si != se; ++si) {
 

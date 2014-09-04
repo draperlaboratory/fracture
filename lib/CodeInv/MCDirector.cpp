@@ -64,7 +64,7 @@ MCDirector::MCDirector(std::string TripleName,
   }
 
   // MCDisassembler
-  DisAsm = TheTarget->createMCDisassembler(*STI);
+  DisAsm = TheTarget->createMCDisassembler(*STI, *MCCtx);
   if (DisAsm == NULL) {
     printError("Unable to create MCDisassembler.");
   }
