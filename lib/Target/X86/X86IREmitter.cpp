@@ -19,6 +19,8 @@
 
 using namespace llvm;
 
+#define DEBUG_TYPE "x86iremitter"
+
 namespace fracture {
 
 X86IREmitter::X86IREmitter(Decompiler *TheDec, raw_ostream &InfoOut,
@@ -145,7 +147,7 @@ Value* X86IREmitter::visit(const SDNode *N) {
     case X86ISD::OR:              return visitOR(N);
     case X86ISD::XOR:             return visitXOR(N);
     case X86ISD::AND:             return visitAND(N);
-    case X86ISD::BZHI:            return visitBZHI(N);
+      //case X86ISD::BZHI:            return visitBZHI(N);
     case X86ISD::BEXTR:           return visitBEXTR(N);
     case X86ISD::UMUL:            return visitUMUL(N);
     case X86ISD::MUL_IMM:         return visitMUL_IMM(N);
@@ -203,17 +205,17 @@ Value* X86IREmitter::visit(const SDNode *N) {
     case X86ISD::PCMPISTRI:       return visitPCMPISTRI(N);
     case X86ISD::PCMPESTRI:       return visitPCMPESTRI(N);
     case X86ISD::XTEST:           return visitXTEST(N);
-    case X86ISD::ATOMADD64_DAG:   return visitATOMADD64_DAG(N);
-    case X86ISD::ATOMSUB64_DAG:   return visitATOMSUB64_DAG(N);
-    case X86ISD::ATOMOR64_DAG:    return visitATOMOR64_DAG(N);
-    case X86ISD::ATOMXOR64_DAG:   return visitATOMXOR64_DAG(N);
-    case X86ISD::ATOMAND64_DAG:   return visitATOMAND64_DAG(N);
-    case X86ISD::ATOMNAND64_DAG:  return visitATOMNAND64_DAG(N);
-    case X86ISD::ATOMMAX64_DAG:   return visitATOMMAX64_DAG(N);
-    case X86ISD::ATOMMIN64_DAG:   return visitATOMMIN64_DAG(N);
-    case X86ISD::ATOMUMAX64_DAG:  return visitATOMUMAX64_DAG(N);
-    case X86ISD::ATOMUMIN64_DAG:  return visitATOMUMIN64_DAG(N);
-    case X86ISD::ATOMSWAP64_DAG:  return visitATOMSWAP64_DAG(N);
+    // case X86ISD::ATOMADD64_DAG:   return visitATOMADD64_DAG(N);
+    // case X86ISD::ATOMSUB64_DAG:   return visitATOMSUB64_DAG(N);
+    // case X86ISD::ATOMOR64_DAG:    return visitATOMOR64_DAG(N);
+    // case X86ISD::ATOMXOR64_DAG:   return visitATOMXOR64_DAG(N);
+    // case X86ISD::ATOMAND64_DAG:   return visitATOMAND64_DAG(N);
+    // case X86ISD::ATOMNAND64_DAG:  return visitATOMNAND64_DAG(N);
+    // case X86ISD::ATOMMAX64_DAG:   return visitATOMMAX64_DAG(N);
+    // case X86ISD::ATOMMIN64_DAG:   return visitATOMMIN64_DAG(N);
+    // case X86ISD::ATOMUMAX64_DAG:  return visitATOMUMAX64_DAG(N);
+    // case X86ISD::ATOMUMIN64_DAG:  return visitATOMUMIN64_DAG(N);
+    // case X86ISD::ATOMSWAP64_DAG:  return visitATOMSWAP64_DAG(N);
     case X86ISD::LCMPXCHG_DAG:    return visitLCMPXCHG_DAG(N);
     case X86ISD::LCMPXCHG8_DAG:   return visitLCMPXCHG8_DAG(N);
     case X86ISD::LCMPXCHG16_DAG:  return visitLCMPXCHG16_DAG(N);
