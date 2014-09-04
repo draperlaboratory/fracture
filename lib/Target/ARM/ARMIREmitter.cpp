@@ -19,6 +19,8 @@
 
 using namespace llvm;
 
+#define DEBUG_TYPE "armiremitter"
+
 namespace fracture {
 
 ARMIREmitter::ARMIREmitter(Decompiler *TheDec, raw_ostream &InfoOut,
