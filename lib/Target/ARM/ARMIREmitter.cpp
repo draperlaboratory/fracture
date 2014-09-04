@@ -107,13 +107,13 @@ Value* ARMIREmitter::visit(const SDNode *N) {
     case ARMISD::VSHL:					return visitVSHL(N);
     case ARMISD::VSHRs:					return visitVSHRs(N);
     case ARMISD::VSHRu:					return visitVSHRu(N);
-    case ARMISD::VSHLLs:				return visitVSHLLs(N);
-    case ARMISD::VSHLLu:				return visitVSHLLu(N);
-    case ARMISD::VSHLLi:				return visitVSHLLi(N);
-    case ARMISD::VSHRN:					return visitVSHRN(N);
+      //case ARMISD::VSHLLs:				return visitVSHLLs(N);
+      //case ARMISD::VSHLLu:				return visitVSHLLu(N);
+      //case ARMISD::VSHLLi:				return visitVSHLLi(N);
+      //case ARMISD::VSHRN:					return visitVSHRN(N);
     case ARMISD::VRSHRs:				return visitVRSHRs(N);
     case ARMISD::VRSHRu:				return visitVRSHRu(N);
-    case ARMISD::VRSHRN:				return visitVRSHRN(N);
+      //case ARMISD::VRSHRN:				return visitVRSHRN(N);
     case ARMISD::VQSHLs:				return visitVQSHLs(N);
     case ARMISD::VQSHLu:				return visitVQSHLu(N);
     case ARMISD::VQSHLsu:				return visitVQSHLsu(N);

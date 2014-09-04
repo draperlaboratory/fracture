@@ -1483,8 +1483,9 @@ void ARMInvISelDAG::InvLoadOrStoreMultiple(SDNode *N, bool Ld, bool Inc, bool B,
     // FIXME: the 4 and 0 here are really specific -- double check these
     // are always good.
     ImmSum += 4;
+    Value *NullPtr = 0;
     MachineMemOperand* MMO =
-      new MachineMemOperand(MachinePointerInfo(0, ImmSum),
+      new MachineMemOperand(MachinePointerInfo(NullPtr, ImmSum),
         MachineMemOperand::MOStore, 4, 0);
 
     // Before or after behavior
