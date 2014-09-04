@@ -46,6 +46,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/TargetSelect.h"
+#include "llvm/Support/FileSystem.h"
 #include "../lib/Target/ARM/InstPrinter/ARMInstPrinter.h"
 #include "../lib/Target/X86/InstPrinter/X86IntelInstPrinter.h"
 #include "../lib/Target/PowerPC/InstPrinter/PPCInstPrinter.h"
@@ -237,13 +238,13 @@ int main(int argc, char* argv[])
     
     if(res) {
         RS = new raw_fd_ostream((filePre + "results.txt").c_str(),
-                                                    ErrMsg, sys::fs::None);
+          ErrMsg, sys::fs::OpenFlags::F_RW);
     } else if(unsup) {
         US = new raw_fd_ostream((filePre + "unsupported.txt").c_str(),
-                                                    ErrMsg, sys::fs::None);
+          ErrMsg, sys::fs::OpenFlags::F_RW);
     } else if(sup) {
         SS = new raw_fd_ostream((filePre + "supported.txt").c_str(),
-                                                    ErrMsg, sys::fs::None);
+          ErrMsg, sys::fs::OpenFlags::F_RW);
     }
     
     //Call function to create the binaries
@@ -636,14 +637,15 @@ MIBplus buildX86MI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op)
                 } else if(optype == MCOI::OPERAND_MEMORY) {
                 
                     if(opinfo.isLookupPtrRegClass()) {
-                        if((op >= X86::CMPS16 && op <= X86::CMPS8) ||
-                                op == X86::MOVSB || op == X86::MOVSL ||
-                                op == X86::MOVSQ || op == X86::MOVSW) {
-                            MIBP.MIB->addReg(X86::EDI);
-                            MIBP.MIB->addReg(X86::ESI);
-                            MIBP.MIB->addReg(0);
-                            i += 2;
-                        } else if((op >= X86::LODSB && op <= X86::LODSW) ||
+                        // if((op >= X86::CMPS16 && op <= X86::CMPS8) ||
+                        //         op == X86::MOVSB || op == X86::MOVSL ||
+                        //         op == X86::MOVSQ || op == X86::MOVSW) {
+                        //     MIBP.MIB->addReg(X86::EDI);
+                        //     MIBP.MIB->addReg(X86::ESI);
+                        //     MIBP.MIB->addReg(0);
+                        //     i += 2;
+                        //} else 
+                        if((op >= X86::LODSB && op <= X86::LODSW) ||
                                     (op >= X86::OUTSB && op <= X86::OUTSW)) {
                             MIBP.MIB->addReg(X86::EAX);
                             MIBP.MIB->addReg(0);
