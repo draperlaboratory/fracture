@@ -21,8 +21,8 @@
 #include "llvm/Support/ErrorHandling.h"
 #define GET_REGINFO_ENUM
 #define GET_INSTRINFO_ENUM
-#include "PowerPCGenRegisterInfo.inc"
-#include "PowerPCGenInstrInfo.inc"
+#include "PPCGenRegisterInfo.inc"
+#include "PPCGenInstrInfo.inc"
 
 namespace llvm {
 // Enums corresponding to PowerPC condition codes

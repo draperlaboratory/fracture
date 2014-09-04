@@ -20,7 +20,7 @@ using namespace llvm;
 
 namespace fracture {
 
-#include "PowerPCGenInvISel.inc"
+#include "PPCGenInvISel.inc"
 
 /*! \brief Transmogrify converts Arch specific OpCodes to LLVM IR.
  *
