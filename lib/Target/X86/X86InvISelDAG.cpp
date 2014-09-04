@@ -208,7 +208,9 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       //}
 
       unsigned ImmSumLoad = 0;
-      MachineMemOperand *MMOLoad = new MachineMemOperand(MachinePointerInfo(0, ImmSumLoad),
+      Value *NullPtr = 0;
+      MachineMemOperand *MMOLoad =
+        new MachineMemOperand(MachinePointerInfo(NullPtr, ImmSumLoad),
           MachineMemOperand::MOLoad, 4, 0);
 
       SDLoc SL(N);
@@ -948,8 +950,9 @@ Scope
 
 bool X86InvISelDAG::OpOnLoad(SDNode *N, unsigned Opcode, SDValue Chain, SDValue EBP, SDValue BaseOffset, SDValue MathOp){
   unsigned ImmSum = 0;
-  MachineMemOperand *MMOLoad = new MachineMemOperand(MachinePointerInfo(0, ImmSum),
-      MachineMemOperand::MOLoad, 4, 0);
+  Value *NullPtr = 0;
+  MachineMemOperand *MMOLoad = new MachineMemOperand(MachinePointerInfo(NullPtr,
+      ImmSum), MachineMemOperand::MOLoad, 4, 0);
 
   SDLoc SL(N);
 
@@ -957,8 +960,8 @@ bool X86InvISelDAG::OpOnLoad(SDNode *N, unsigned Opcode, SDValue Chain, SDValue 
   SDValue ValEBP = CurDAG->getLoad(EBP.getValueType(), SL, Chain, AddrEBP, MMOLoad);  //Load from EBP
 
   SDValue AddNode = CurDAG->getNode(Opcode, SL, EBP.getValueType(), ValEBP, MathOp);
-
-  MachineMemOperand *MMOStore = new MachineMemOperand(MachinePointerInfo(0, ImmSum),
+  MachineMemOperand *MMOStore =
+    new MachineMemOperand(MachinePointerInfo(NullPtr, ImmSum),
       MachineMemOperand::MOStore, 4, 0);
 
   SDValue StoreEBP = CurDAG->getStore(SDValue(ValEBP.getNode(),1), SL, AddNode, AddrEBP, MMOStore);
