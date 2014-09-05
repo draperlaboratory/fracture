@@ -100,13 +100,13 @@ newer libraries):
     cd /usr/ports/devel/libc++
     sudo make install clean
     ...
-    cd llvm
+    cd ~/llvm
     ./configure --enable-debug-symbols --prefix=/usr/local --build=amd64-undermydesk-freebsd --enable-libcpp
     ... (gmake, gmake install, etc)
-    cd fracture
+    cd ~/fracture
     export CXXFLAGS=CXXFLAGS='-std=c++11 -stdlib=libc++ -nostdinc++ -I/usr/local/include/c++/v1'
     ./autoconf/AutoRegen.sh
-    ./configure --enable-debug-symbols --with-llvmsrc=/llvmdir --with-llvmobj=/llvm
+    ./configure --enable-debug-symbols --with-llvmsrc=$HOME/llvmdir --with-llvmobj=$HOME/llvm
     gmake -j16
 
 Mac OSX
@@ -115,11 +115,11 @@ Mac OSX
 Tested on Version 10.9.2 with XCode and fink (for unix packages). First, install
 libcxx from the LLVM site, then:
 
-    cd llvm
+    cd ~/llvm
     export CXXFLAGS="-std=c++11 -stdlib=libc++ -nostdinc++ -I[libcxxdir]/include"
     ./configure --enable-debug-symbols --enable-shared --prefix=/sw --build=x86_64-apple-darwin13.0.0 CXX=g++ CC=gcc --enable-libcpp
     ... (make, make install)
-    cd fracture
+    cd ~/fracture
     ./autoconf/AutoRegen.sh
     ./configure --enable-debug-symbols --build=x86_64-apple-darwin13.0.0 --with-llvmsrc=llvm --with-llvmobj=llvm
     make -j16
@@ -290,289 +290,6 @@ NumInstrs: 0
 000084B8:   10 48 BD E8                         pop     {r4, r11, lr}
 000084BC:   1E FF 2F E1                         bx      lr
 Debug+Asserts/bin/fracture-cl> dec 0x83d4
-Null values on CopyToReg, skipping!
-Null values on CopyToReg, skipping!
-Null values on CopyToReg, skipping!
-Null values on CopyToReg, skipping!
-Null values on CopyToReg, skipping!
-Null values on CopyToReg, skipping!
-Null values on CopyToReg, skipping!
-Null values on CopyToReg, skipping!
-Null values on CopyToReg, skipping!
->  %CPSR = alloca i32
-=>  %CPSR5 = load i32* %CPSR, !dbg !116
-==>  store i32 %CPSR5, i32* @CPSR, !dbg !116
-=>  %CPSR4 = load i32* %CPSR, !dbg !106
-=>  %CPSR3 = load i32* %CPSR, !dbg !72
-=>  %CPSR2 = load i32* %CPSR, !dbg !38
-=>  store i32 %CPSR1, i32* %CPSR
->  %R2 = alloca i32
-=>  %R2_2 = load i32* %R2, !dbg !116
-==>  store i32 %R2_2, i32* @R2, !dbg !116
-=>  store i32 %R3_15, i32* %R2, !dbg !92
-=>  store i32 %R3_9, i32* %R2, !dbg !58
-=>  store i32 %R3_3, i32* %R2, !dbg !24
-=>  store i32 %R2_1, i32* %R2
->  %R1 = alloca i32
-=>  %R1_2 = load i32* %R1, !dbg !116
-==>  store i32 %R1_2, i32* @R1, !dbg !116
-=>  store i32 %R11_58, i32* %R1, !dbg !90
-=>  store i32 %R11_36, i32* %R1, !dbg !56
-=>  store i32 %R11_14, i32* %R1, !dbg !22
-=>  store i32 %R1_1, i32* %R1
->  %R0 = alloca i32
-=>  %R0_5 = load i32* %R0, !dbg !116
-==>  store i32 %R0_5, i32* @R0, !dbg !116
-=>  store i32 %R3_20, i32* %R0, !dbg !110
-=>  store i32 %R4_5, i32* %R0, !dbg !88
-=>  %R0_4 = load i32* %R0, !dbg !86
-==>  store i32 %R0_4, i32* %R3, !dbg !86
-=>  store i32 %R11_54, i32* %R0, !dbg !82
-=>  store i32 %R4_4, i32* %R0, !dbg !54
-=>  %R0_3 = load i32* %R0, !dbg !52
-==>  store i32 %R0_3, i32* %R3, !dbg !52
-=>  store i32 %R11_32, i32* %R0, !dbg !48
-=>  store i32 %R4_3, i32* %R0, !dbg !20
-=>  %R0_2 = load i32* %R0, !dbg !18
-==>  store i32 %R0_2, i32* %R3, !dbg !18
-=>  store i32 %R11_10, i32* %R0, !dbg !14
-=>  store i32 %R0_1, i32* %R0
->  %PC = alloca i32
-=>  %PC14 = load i32* %PC, !dbg !116
-==>  store i32 %PC14, i32* @PC, !dbg !116
-=>  %PC10 = load i32* %PC, !dbg !80
-==>  %PC11 = add i32 %PC10, 76, !dbg !80
-===>  %PC12 = inttoptr i32 %PC11 to i32*, !dbg !80
-====>  %PC13 = load i32* %PC12, !dbg !80
-=====>  store i32 %PC13, i32* %R4, !dbg !80
-=>  %PC6 = load i32* %PC, !dbg !46
-==>  %PC7 = add i32 %PC6, 140, !dbg !46
-===>  %PC8 = inttoptr i32 %PC7 to i32*, !dbg !46
-====>  %PC9 = load i32* %PC8, !dbg !46
-=====>  store i32 %PC9, i32* %R4, !dbg !46
-=>  %PC2 = load i32* %PC, !dbg !12
-==>  %PC3 = add i32 %PC2, 204, !dbg !12
-===>  %PC4 = inttoptr i32 %PC3 to i32*, !dbg !12
-====>  %PC5 = load i32* %PC4, !dbg !12
-=====>  store i32 %PC5, i32* %R4, !dbg !12
-=>  store i32 %PC1, i32* %PC
->  %R3 = alloca i32
-=>  %R3_21 = load i32* %R3, !dbg !116
-==>  store i32 %R3_21, i32* @R3, !dbg !116
-=>  %R3_20 = load i32* %R3, !dbg !110
-==>  store i32 %R3_20, i32* %R0, !dbg !110
-=>  store i32 0, i32* %R3, !dbg !108
-=>  %R3_19 = load i32* %R3, !dbg !104
-==>  %2 = icmp ule i32 %R3_19, 34, !dbg !106
-===>  br i1 %2, label %"main+160", label %"main+216", !dbg !106
-=>  store i32 %R11_69, i32* %R3, !dbg !102
-=>  %R3_18 = load i32* %R3, !dbg !100
-==>  store i32 %R3_18, i32* %R11_65, !dbg !100
-=>  store i32 %R3_17, i32* %R3, !dbg !98
-=>  %R3_16 = load i32* %R3, !dbg !98
-==>  %R3_17 = add i32 %R3_16, 1, !dbg !98
-===>  store i32 %R3_17, i32* %R3, !dbg !98
-=>  store i32 %R11_62, i32* %R3, !dbg !96
-=>  %R3_15 = load i32* %R3, !dbg !92
-==>  store i32 %R3_15, i32* %R2, !dbg !92
-=>  store i32 %R0_4, i32* %R3, !dbg !86
-=>  %R3_14 = load i32* %R3, !dbg !76
-==>  store i32 %R3_14, i32* %R11_50, !dbg !76
-=>  store i32 0, i32* %R3, !dbg !74
-=>  %R3_13 = load i32* %R3, !dbg !70
-==>  %1 = icmp ule i32 %R3_13, 34, !dbg !72
-===>  br i1 %1, label %"main+92", label %"main+148", !dbg !72
-=>  store i32 %R11_47, i32* %R3, !dbg !68
-=>  %R3_12 = load i32* %R3, !dbg !66
-==>  store i32 %R3_12, i32* %R11_43, !dbg !66
-=>  store i32 %R3_11, i32* %R3, !dbg !64
-=>  %R3_10 = load i32* %R3, !dbg !64
-==>  %R3_11 = add i32 %R3_10, 1, !dbg !64
-===>  store i32 %R3_11, i32* %R3, !dbg !64
-=>  store i32 %R11_40, i32* %R3, !dbg !62
-=>  %R3_9 = load i32* %R3, !dbg !58
-==>  store i32 %R3_9, i32* %R2, !dbg !58
-=>  store i32 %R0_3, i32* %R3, !dbg !52
-=>  %R3_8 = load i32* %R3, !dbg !42
-==>  store i32 %R3_8, i32* %R11_28, !dbg !42
-=>  store i32 0, i32* %R3, !dbg !40
-=>  %R3_7 = load i32* %R3, !dbg !36
-==>  %0 = icmp ule i32 %R3_7, 34, !dbg !38
-===>  br i1 %0, label %"main+24", label %"main+80", !dbg !38
-=>  store i32 %R11_25, i32* %R3, !dbg !34
-=>  %R3_6 = load i32* %R3, !dbg !32
-==>  store i32 %R3_6, i32* %R11_21, !dbg !32
-=>  store i32 %R3_5, i32* %R3, !dbg !30
-=>  %R3_4 = load i32* %R3, !dbg !30
-==>  %R3_5 = add i32 %R3_4, 1, !dbg !30
-===>  store i32 %R3_5, i32* %R3, !dbg !30
-=>  store i32 %R11_18, i32* %R3, !dbg !28
-=>  %R3_3 = load i32* %R3, !dbg !24
-==>  store i32 %R3_3, i32* %R2, !dbg !24
-=>  store i32 %R0_2, i32* %R3, !dbg !18
-=>  %R3_2 = load i32* %R3, !dbg !8
-==>  store i32 %R3_2, i32* %R11_6, !dbg !8
-=>  store i32 0, i32* %R3, !dbg !6
-=>  store i32 %R3_1, i32* %R3
->  %LR = alloca i32
-=>  %LR3 = load i32* %LR, !dbg !116
-==>  store i32 %LR3, i32* @LR, !dbg !116
-=>  store i32 %SP22, i32* %LR, !dbg !114
-=>  %LR2 = load i32* %LR, !dbg !0
-==>  store i32 %LR2, i32* %SP7, !dbg !0
-=>  store i32 %LR1, i32* %LR
->  %R11 = alloca i32
-=>  %R11_71 = load i32* %R11, !dbg !116
-==>  store i32 %R11_71, i32* @R11, !dbg !116
-=>  store i32 %SP19, i32* %R11, !dbg !114
-=>  %R11_70 = load i32* %R11, !dbg !112
-==>  %SP12 = sub i32 %R11_70, 8, !dbg !112
-===>  store i32 %SP12, i32* %SP, !dbg !112
-=>  %R11_66 = load i32* %R11, !dbg !102
-==>  %R11_67 = add i32 %R11_66, -16, !dbg !102
-===>  %R11_68 = inttoptr i32 %R11_67 to i32*, !dbg !102
-====>  %R11_69 = load i32* %R11_68, !dbg !102
-=====>  store i32 %R11_69, i32* %R3, !dbg !102
-=>  %R11_63 = load i32* %R11, !dbg !100
-==>  %R11_64 = add i32 %R11_63, -16, !dbg !100
-===>  %R11_65 = inttoptr i32 %R11_64 to i32*, !dbg !100
-====>  store i32 %R3_18, i32* %R11_65, !dbg !100
-=>  %R11_59 = load i32* %R11, !dbg !96
-==>  %R11_60 = add i32 %R11_59, -16, !dbg !96
-===>  %R11_61 = inttoptr i32 %R11_60 to i32*, !dbg !96
-====>  %R11_62 = load i32* %R11_61, !dbg !96
-=====>  store i32 %R11_62, i32* %R3, !dbg !96
-=>  %R11_55 = load i32* %R11, !dbg !90
-==>  %R11_56 = add i32 %R11_55, -16, !dbg !90
-===>  %R11_57 = inttoptr i32 %R11_56 to i32*, !dbg !90
-====>  %R11_58 = load i32* %R11_57, !dbg !90
-=====>  store i32 %R11_58, i32* %R1, !dbg !90
-=>  %R11_51 = load i32* %R11, !dbg !82
-==>  %R11_52 = add i32 %R11_51, -16, !dbg !82
-===>  %R11_53 = inttoptr i32 %R11_52 to i32*, !dbg !82
-====>  %R11_54 = load i32* %R11_53, !dbg !82
-=====>  store i32 %R11_54, i32* %R0, !dbg !82
-=>  %R11_48 = load i32* %R11, !dbg !76
-==>  %R11_49 = add i32 %R11_48, -16, !dbg !76
-===>  %R11_50 = inttoptr i32 %R11_49 to i32*, !dbg !76
-====>  store i32 %R3_14, i32* %R11_50, !dbg !76
-=>  %R11_44 = load i32* %R11, !dbg !68
-==>  %R11_45 = add i32 %R11_44, -16, !dbg !68
-===>  %R11_46 = inttoptr i32 %R11_45 to i32*, !dbg !68
-====>  %R11_47 = load i32* %R11_46, !dbg !68
-=====>  store i32 %R11_47, i32* %R3, !dbg !68
-=>  %R11_41 = load i32* %R11, !dbg !66
-==>  %R11_42 = add i32 %R11_41, -16, !dbg !66
-===>  %R11_43 = inttoptr i32 %R11_42 to i32*, !dbg !66
-====>  store i32 %R3_12, i32* %R11_43, !dbg !66
-=>  %R11_37 = load i32* %R11, !dbg !62
-==>  %R11_38 = add i32 %R11_37, -16, !dbg !62
-===>  %R11_39 = inttoptr i32 %R11_38 to i32*, !dbg !62
-====>  %R11_40 = load i32* %R11_39, !dbg !62
-=====>  store i32 %R11_40, i32* %R3, !dbg !62
-=>  %R11_33 = load i32* %R11, !dbg !56
-==>  %R11_34 = add i32 %R11_33, -16, !dbg !56
-===>  %R11_35 = inttoptr i32 %R11_34 to i32*, !dbg !56
-====>  %R11_36 = load i32* %R11_35, !dbg !56
-=====>  store i32 %R11_36, i32* %R1, !dbg !56
-=>  %R11_29 = load i32* %R11, !dbg !48
-==>  %R11_30 = add i32 %R11_29, -16, !dbg !48
-===>  %R11_31 = inttoptr i32 %R11_30 to i32*, !dbg !48
-====>  %R11_32 = load i32* %R11_31, !dbg !48
-=====>  store i32 %R11_32, i32* %R0, !dbg !48
-=>  %R11_26 = load i32* %R11, !dbg !42
-==>  %R11_27 = add i32 %R11_26, -16, !dbg !42
-===>  %R11_28 = inttoptr i32 %R11_27 to i32*, !dbg !42
-====>  store i32 %R3_8, i32* %R11_28, !dbg !42
-=>  %R11_22 = load i32* %R11, !dbg !34
-==>  %R11_23 = add i32 %R11_22, -16, !dbg !34
-===>  %R11_24 = inttoptr i32 %R11_23 to i32*, !dbg !34
-====>  %R11_25 = load i32* %R11_24, !dbg !34
-=====>  store i32 %R11_25, i32* %R3, !dbg !34
-=>  %R11_19 = load i32* %R11, !dbg !32
-==>  %R11_20 = add i32 %R11_19, -16, !dbg !32
-===>  %R11_21 = inttoptr i32 %R11_20 to i32*, !dbg !32
-====>  store i32 %R3_6, i32* %R11_21, !dbg !32
-=>  %R11_15 = load i32* %R11, !dbg !28
-==>  %R11_16 = add i32 %R11_15, -16, !dbg !28
-===>  %R11_17 = inttoptr i32 %R11_16 to i32*, !dbg !28
-====>  %R11_18 = load i32* %R11_17, !dbg !28
-=====>  store i32 %R11_18, i32* %R3, !dbg !28
-=>  %R11_11 = load i32* %R11, !dbg !22
-==>  %R11_12 = add i32 %R11_11, -16, !dbg !22
-===>  %R11_13 = inttoptr i32 %R11_12 to i32*, !dbg !22
-====>  %R11_14 = load i32* %R11_13, !dbg !22
-=====>  store i32 %R11_14, i32* %R1, !dbg !22
-=>  %R11_7 = load i32* %R11, !dbg !14
-==>  %R11_8 = add i32 %R11_7, -16, !dbg !14
-===>  %R11_9 = inttoptr i32 %R11_8 to i32*, !dbg !14
-====>  %R11_10 = load i32* %R11_9, !dbg !14
-=====>  store i32 %R11_10, i32* %R0, !dbg !14
-=>  %R11_4 = load i32* %R11, !dbg !8
-==>  %R11_5 = add i32 %R11_4, -16, !dbg !8
-===>  %R11_6 = inttoptr i32 %R11_5 to i32*, !dbg !8
-====>  store i32 %R3_2, i32* %R11_6, !dbg !8
-=>  store i32 %R11_3, i32* %R11, !dbg !2
-=>  %R11_2 = load i32* %R11, !dbg !0
-==>  store i32 %R11_2, i32* %SP5, !dbg !0
-=>  store i32 %R11_1, i32* %R11
->  %R4 = alloca i32
-=>  %R4_6 = load i32* %R4, !dbg !116
-==>  store i32 %R4_6, i32* @R4, !dbg !116
-=>  store i32 %SP16, i32* %R4, !dbg !114
-=>  %R4_5 = load i32* %R4, !dbg !88
-==>  store i32 %R4_5, i32* %R0, !dbg !88
-=>  store i32 %PC13, i32* %R4, !dbg !80
-=>  %R4_4 = load i32* %R4, !dbg !54
-==>  store i32 %R4_4, i32* %R0, !dbg !54
-=>  store i32 %PC9, i32* %R4, !dbg !46
-=>  %R4_3 = load i32* %R4, !dbg !20
-==>  store i32 %R4_3, i32* %R0, !dbg !20
-=>  store i32 %PC5, i32* %R4, !dbg !12
-=>  %R4_2 = load i32* %R4, !dbg !0
-==>  store i32 %R4_2, i32* %SP3, !dbg !0
-=>  store i32 %R4_1, i32* %R4
->  %SP = alloca i32
-=>  %SP23 = load i32* %SP, !dbg !116
-==>  store i32 %SP23, i32* @SP, !dbg !116
-=>  store i32 %SP20, i32* %SP, !dbg !114
-=>  %SP13 = load i32* %SP, !dbg !114
-==>  %SP14 = add i32 %SP13, 4, !dbg !114
-===>  %SP17 = add i32 %SP14, 4, !dbg !114
-====>  %SP20 = add i32 %SP17, 4, !dbg !114
-=====>  store i32 %SP20, i32* %SP, !dbg !114
-=====>  %SP21 = inttoptr i32 %SP20 to i32*, !dbg !114
-======>  %SP22 = load i32* %SP21, !dbg !114
-=======>  store i32 %SP22, i32* %LR, !dbg !114
-====>  %SP18 = inttoptr i32 %SP17 to i32*, !dbg !114
-=====>  %SP19 = load i32* %SP18, !dbg !114
-======>  store i32 %SP19, i32* %R11, !dbg !114
-===>  %SP15 = inttoptr i32 %SP14 to i32*, !dbg !114
-====>  %SP16 = load i32* %SP15, !dbg !114
-=====>  store i32 %SP16, i32* %R4, !dbg !114
-=>  store i32 %SP12, i32* %SP, !dbg !112
-=>  store i32 %SP11, i32* %SP, !dbg !4
-=>  %SP10 = load i32* %SP, !dbg !4
-==>  %SP11 = sub i32 %SP10, 12, !dbg !4
-===>  store i32 %SP11, i32* %SP, !dbg !4
-=>  %SP9 = load i32* %SP, !dbg !2
-==>  %R11_3 = add i32 %SP9, 8, !dbg !2
-===>  store i32 %R11_3, i32* %R11, !dbg !2
-=>  store i32 %SP8, i32* %SP, !dbg !0
-=>  %SP2 = load i32* %SP, !dbg !0
-==>  %SP4 = sub i32 %SP2, 4, !dbg !0
-===>  %SP6 = sub i32 %SP4, 4, !dbg !0
-====>  %SP8 = sub i32 %SP6, 4, !dbg !0
-=====>  store i32 %SP8, i32* %SP, !dbg !0
-====>  %SP7 = inttoptr i32 %SP6 to i32*, !dbg !0
-=====>  store i32 %LR2, i32* %SP7, !dbg !0
-===>  %SP5 = inttoptr i32 %SP4 to i32*, !dbg !0
-====>  store i32 %R11_2, i32* %SP5, !dbg !0
-==>  %SP3 = inttoptr i32 %SP2 to i32*, !dbg !0
-===>  store i32 %R4_2, i32* %SP3, !dbg !0
-=>  store i32 %SP1, i32* %SP
-Num Loads and Stores: 27
-
 define void @main() {
 entry:
   %CPSR = alloca i32
