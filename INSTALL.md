@@ -15,10 +15,8 @@ Step 1: Installing LLVM
 =======================
 
 Fracture relies on specific LLVM internals, and so it is best to use
-it with a specific revision of the LLVM development tree. Currently
-that revision is:
-
-     202033
+it with a specific revision of the LLVM development tree. Currently,
+Fracture works with LLVM 3.5.
 
 You will also need clang to compile the Fracture library. To aid you,
 we have forked these repositories at the appropriate revisions:
