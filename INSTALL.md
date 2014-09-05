@@ -91,11 +91,6 @@ The most common problem is out of date c++ std libraries. LLVM needs a
 relatively new version of these libs, and the solution is to install a new
 g++ (4.7 or newer).
 
-When building fracture it may fail due to a missing file PowerPC.td.
-If this is the case you need to enter that directory and create a symlink like so:
-
-     ln -s PPC.td PowerPC.td
-
 FreeBSD
 -------
 
