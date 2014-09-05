@@ -121,7 +121,7 @@ libcxx from the LLVM site, then:
     ... (make, make install)
     cd ~/fracture
     ./autoconf/AutoRegen.sh
-    ./configure --enable-debug-symbols --build=x86_64-apple-darwin13.0.0 --with-llvmsrc=llvm --with-llvmobj=llvm
+    ./configure --enable-debug-symbols --build=x86_64-apple-darwin13.0.0 --with-llvmsrc=$HOME/llvm --with-llvmobj=$HOME/llvm
     make -j16
 
 Other Systems
