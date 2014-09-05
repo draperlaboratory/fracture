@@ -28,6 +28,7 @@ As Fracture is a prototype library, we only use it with debugging
 enabled. You must compile LLVM and Clang with the same settings. A
 sample of commands to do that is as follows:
 
+    cd ~
     git clone https://github.com/draperlaboratory/llvm
     cd llvm/tools
     git clone https://github.com/draperlaboratory/clang
@@ -66,14 +67,16 @@ Step 2: Compiling Fracture
 
 Sample commands to download and compile fracture are:
 
+    cd ~
     git clone https://github.com/draperlaboratory/fracture.git fracture
     cd fracture
     ./autoconf/AutoRegen.sh
-    ./configure --enable-debug-symbols --with-llvmsrc=/opt/llvm --with-llvmobj=/opt/llvm
+    ./configure --enable-debug-symbols --with-llvmsrc=$HOME/llvm --with-llvmobj=$HOME/llvm
     make -j16
 
-The directory `/opt/llvm` is the directory you compiled llvm in step
-1. We assume you were in `/opt` when you compiled.
+The directory `$HOME/llvm` is the directory you compiled llvm in step
+1. We assume you were in your home directory (`/home/yourusername/` in linux) when you
+compiled.
 
 NOTE: On Ubuntu, Mageia, and other systems we have had to add the following flag:
     --disable-optimized
