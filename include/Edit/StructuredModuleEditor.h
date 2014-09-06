@@ -18,7 +18,7 @@
 #ifndef StructuredModuleEditor_H_
 #define StructuredModuleEditor_H_
 
-#include "llvm/Linker.h"
+#include "llvm/Linker/Linker.h"
 #include "llvm-c/Linker.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/ADT/StringExtras.h"

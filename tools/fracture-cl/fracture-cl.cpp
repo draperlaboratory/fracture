@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "llvm/ADT/APInt.h"
-#include "llvm/ADT/OwningPtr.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/StringExtras.h"
@@ -91,7 +90,7 @@ static Commands CommandParser;
 MCDirector *MCD = 0;
 Disassembler *DAS = 0;
 Decompiler *DEC = 0;
-OwningPtr<object::ObjectFile> TempExecutable;
+std::unique_ptr<object::ObjectFile> TempExecutable;
 
 //Command Line Options
 cl::opt<std::string> TripleName("triple",
@@ -147,12 +146,12 @@ static std::error_code loadBinary(StringRef FileName) {
       return err;
     }
 
-    OwningPtr<object::ObjectFile> ret(
+    std::unique_ptr<object::ObjectFile> ret(
       object::DummyObjectFile::createDummyObjectFile(MemBuf.get()));
     TempExecutable.swap(ret);
   } else {
     if (Binary.get()->isObject()) {
-      OwningPtr<object::ObjectFile> ret(
+      std::unique_ptr<object::ObjectFile> ret(
         dyn_cast<object::ObjectFile>(Binary.get()));
       TempExecutable.swap(ret);
     }
