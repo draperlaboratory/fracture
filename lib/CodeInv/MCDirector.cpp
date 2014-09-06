@@ -78,18 +78,18 @@ MCDirector::MCDirector(std::string TripleName,
   // MCObjectFileInfo
   MCOFI = new MCObjectFileInfo();
 
+  // MCAsmInfo
+  AsmInfo = TheTarget->createMCAsmInfo(*MRI, TripleName);
+  if (AsmInfo == NULL) {
+    printError("No Assembly info for Target available.");
+  }
+
   // MCContext
   MCCtx = new MCContext(AsmInfo, MRI, MCOFI);
 
   // NOTE: Circular dependency is why the init AFTER MCContext
   // for MCObjectFileInfo
   MCOFI->InitMCObjectFileInfo(TripleName, RM, CM, *MCCtx);
-
-  // MCAsmInfo
-  AsmInfo = TheTarget->createMCAsmInfo(*MRI, TripleName);
-  if (AsmInfo == NULL) {
-    printError("No Assembly info for Target available.");
-  }
 
   // MCInstrInfo
   MII = TheTarget->createMCInstrInfo();
