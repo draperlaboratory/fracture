@@ -11,7 +11,6 @@
 #define TBLGEN_DAGISELMATCHER_H
 
 #include "CodeInvDAGPatterns.h"
-#include "llvm/ADT/OwningPtr.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/CodeGen/ValueTypes.h"
@@ -41,7 +40,7 @@ void EmitMatcherTable(const Matcher *Matcher, const CodeInvDAGPatterns &CIP,
 class Matcher {
   // The next matcher node that is executed after this one.  Null if this is the
   // last stage of a match.
-  OwningPtr<Matcher> Next;
+  std::unique_ptr<Matcher> Next;
   virtual void anchor();
 public:
   enum KindTy {
@@ -96,9 +95,9 @@ public:
   Matcher *getNext() { return Next.get(); }
   const Matcher *getNext() const { return Next.get(); }
   void setNext(Matcher *C) { Next.reset(C); }
-  Matcher *takeNext() { return Next.take(); }
+  Matcher *takeNext() { return Next.release(); }
 
-  OwningPtr<Matcher> &getNextPtr() { return Next; }
+  std::unique_ptr<Matcher> &getNextPtr() { return Next; }
 
   bool isEqual(const Matcher *M) const {
     if (getKind() != M->getKind()) return false;
