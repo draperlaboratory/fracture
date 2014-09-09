@@ -146,6 +146,7 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
 
       return NULL;
     }
+    case ARM::STRH_POST:
     case ARM::STRD_POST: {
       // Store register , decrement, post index
       // mem[Rn+Rm/#imm] = Rd (32 bit copy)
