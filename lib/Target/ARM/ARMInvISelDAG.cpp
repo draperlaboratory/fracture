@@ -63,7 +63,7 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
 
   switch(TargetOpc) {
     default:
-        outs() << "To tablegen Opc: " << TargetOpc << "\n";
+        // outs() << "To tablegen Opc: " << TargetOpc << "\n";
     	break;
     case ARM::CMPrr:
     case ARM::CMPri: {
