@@ -413,7 +413,22 @@ Value* IREmitter::visitAND(const SDNode *N) {
   VisitMap[N] = Res;
   return Res;
 }
-Value* IREmitter::visitOR(const SDNode *N) { llvm_unreachable("visitOR Unimplemented visit..."); return NULL; }
+Value* IREmitter::visitOR(const SDNode *N) {
+  Value *Op0 = visit(N->getOperand(0).getNode());
+  Value *Op1 = visit(N->getOperand(1).getNode());
+  StringRef BaseName = getInstructionName(N);
+  if (BaseName.empty()) {
+    BaseName = getBaseValueName(Op0->getName());
+  }
+  if (BaseName.empty()) {
+    BaseName = getBaseValueName(Op1->getName());
+  }
+  StringRef Name = getIndexedValueName(BaseName);
+  Instruction *Res = dyn_cast<Instruction>(IRB->CreateOr(Op0, Op1, Name));
+  Res->setDebugLoc(N->getDebugLoc());
+  VisitMap[N] = Res;
+  return Res;
+}
 Value* IREmitter::visitXOR(const SDNode *N) {
   // Operand 0 and 1 are values to sub
   Value *Op0 = visit(N->getOperand(0).getNode());
