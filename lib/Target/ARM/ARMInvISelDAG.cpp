@@ -116,6 +116,17 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
     }
       break;
+    case ARM::RSBrr: {
+      // Pattern: (RSBrr GPR:$Rn, imm:op2, pred:$p)
+      // Emits: (sub op2, $Rn)
+      SDValue Op1 = N->getOperand(0);
+      SDValue Op2 = N->getOperand(1);
+      SDLoc SL(N);
+      SDValue Sub = CurDAG->getNode(ISD::SUB, SL, MVT::i32, Op2, Op1);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Sub);
+      return NULL;
+    }
+      break;
     case ARM::STR_PRE_IMM: {
       // Pattern: (STR_PRE_IMM GPR:$Rt, GPR:$Rb, imm:offset, pred:$p)
       // Emits: (store $Rt, (add $Rb, imm:offset)).
@@ -185,7 +196,7 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
        }
 
 
-
+    case ARM::LDRD_POST_IMM:
     case ARM::LDR_POST_IMM: {
 
 //    SDValue Chain = N->getOperand(0);
