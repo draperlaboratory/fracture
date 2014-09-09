@@ -196,7 +196,7 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
        }
 
 
-    case ARM::LDRD_POST_IMM:
+    case ARM::LDRD_POST:
     case ARM::LDR_POST_IMM: {
 
 //    SDValue Chain = N->getOperand(0);
