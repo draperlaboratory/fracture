@@ -341,6 +341,7 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
          break;
        }
     case ARM::BL:
+    case ARM::BLX:
       //missing open bracket {
       SDValue Chain = N->getOperand(0);
       SDValue Offset = N->getOperand(1);
