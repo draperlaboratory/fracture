@@ -1510,25 +1510,38 @@ void ARMInvISelDAG::InvLoadOrStoreMultiple(SDNode *N, bool Ld, bool Inc, bool B,
       if (Val->hasNUsesOfValue(1, 0)) {
         Chain = Val->getOperand(0);
       }
-      ResNode = CurDAG->getLoad(LdType, SL, Chain, UsePtr,
-        MachinePointerInfo::getConstantPool(), false, false, true, 0);
+
+      // Check if we are loading into PC, if we are, emit a return.
       RegisterSDNode *RegNode =
         dyn_cast<RegisterSDNode>(Val->getOperand(1));
-      SDValue C2R = CurDAG->getCopyToReg(ResNode.getValue(1), SL,
-        RegNode->getReg(), ResNode);
-      Chain = C2R;
-      // If CopyFromReg has only 1 use, replace it
-      if (Val->hasNUsesOfValue(1, 0)) {
-        CurDAG->ReplaceAllUsesOfValueWith(Val, ResNode);
-        CurDAG->ReplaceAllUsesOfValueWith(Val.getValue(1),
-          ResNode.getValue(1));
-        CurDAG->DeleteNode(Val.getNode());
+      const MCRegisterInfo *RI =
+        Dec->getDisassembler()->getMCDirector()->getMCRegisterInfo();
+      if (RI->isSubRegisterEq(RI->getProgramCounter(), RegNode->getReg())) {
+        ResNode = CurDAG->getNode(ARMISD::RET_FLAG, SL, MVT::Other,
+          Chain);
+        CurDAG->ReplaceAllUsesOfValueWith(CurDAG->getRoot().getOperand(0),
+          ResNode);
+      } else {
+        ResNode = CurDAG->getLoad(LdType, SL, Chain, UsePtr,
+          MachinePointerInfo::getConstantPool(), false, false, true, 0);
+        SDValue C2R = CurDAG->getCopyToReg(ResNode.getValue(1), SL,
+          RegNode->getReg(), ResNode);
+        Chain = C2R;
+        // If CopyFromReg has only 1 use, replace it
+        if (Val->hasNUsesOfValue(1, 0)) {
+          CurDAG->ReplaceAllUsesOfValueWith(Val, ResNode);
+          CurDAG->ReplaceAllUsesOfValueWith(Val.getValue(1),
+            ResNode.getValue(1));
+          CurDAG->DeleteNode(Val.getNode());
+        }
       }
     } else {
       ResNode = CurDAG->getStore(Chain, SL, Val, UsePtr, MMO);
       Chain = ResNode;
     }
-    FixChainOp(ResNode.getNode());
+    if (ResNode.getNumOperands() > 1) {
+      FixChainOp(ResNode.getNode());
+    }
     PrevPtr = Ptr;
   }
 
