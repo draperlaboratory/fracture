@@ -196,44 +196,44 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
        }
 
 
-    case ARM::LDRD_POST:
-    case ARM::LDR_POST_IMM: {
+    // case ARM::LDRD_POST: {
+    //   // Load, increment, post index
+    //   // RD = mem[Rn+Rm/#imm]
+   	//   //
+    //   SDValue Chain = N->getOperand(0);
+    //   SDValue Op1 = N->getOperand(1);
+    //   SDValue Op2 = N->getOperand(2);
+    //   SDValue Base = N->getOperand(3);
+    //   SDValue Offset = N->getOperand(4);
 
-//    SDValue Chain = N->getOperand(0);
-//    SDValue Tgt1 = N->getOperand(1);
-//    SDValue AM2Offset = N->getOperand(3);
-//    SDValue Offset = N->getOperand(4);
+    //   SDLoc SL(N);
+    //   SDVTList AddVTList = CurDAG->getVTList(MVT::i32);
 
-//           unsigned AM2var = cast<ConstantSDNode>(AM2Offset)->getZExtValue();
-//	  	     outs() << "offset:" << getAM2Offset(AM2var);
-//	   	     outs() << "opcode:" << getAM2Op(AM2var);
-//           outs() << "Shiftop:" << getAM2ShiftOpc(AM2var);
-//	    	 outs() << "index:" << getAM2IdxMode(AM2var);
-//           SDLoc SL(N);
-//           SDVTList AddVTList = CurDAG->getVTList(MVT::i32);
-//
-//          SDValue Addr = CurDAG->getNode(ISD::ADD, SL, AddVTList, Base, Offset);
-//          CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Addr);
-//
-//          // memops might be null here, but not sure if we need to check.
-//          const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
-//          MachineMemOperand *MMO = NULL;
-//          if (MN->memoperands_empty()) {
-//            errs() << "NO MACHINE OPS for STR_PRE_IMM!\n";
-//          } else {
-//            MMO = *(MN->memoperands_begin());
-//          }
-//          SDValue Load1 = CurDAG->getLoad();
-//          // getLoad is supposed to be filled with
-//          // llvm::EVT, llvm::SDLoc, llvm::SDValue, llvm::SDValue, llvm::MachinePointerInfo,
-//          // bool, bool, bool, unsigned int, const llvm::MDNode *, const llvm::MDNode *
-//
-//          SDValue Load2 = CurDAG->getLoad(Chain, SL, Tgt2, Addr, MMO);
-//          CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Store);
-//
-          return NULL;
-       }
+    //   SDValue Addr1 = CurDAG->getNode(ISD::SUB, SL, AddVTList, Base, Offset);
 
+    //   // memops might be null here, but not sure if we need to check.
+    //   const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
+    //   MachineMemOperand *MMO = NULL;
+    //   if (MN->memoperands_empty()) {
+    // 	  errs() << "NO MACHINE OPS for STRD_POST!\n";
+    //      }
+    //   else {
+    //        MMO = *(MN->memoperands_begin());
+    //      }
+    //   SDValue Four = CurDAG->getConstant(4, MVT::i32, false, false);
+    //   SDValue Store = CurDAG->getStore(Chain, SL, Tgt1, Addr1, MMO);
+    //   SDValue Addr2 = CurDAG->getNode(ISD::ADD, SL, AddVTList, Addr1, Four);
+    //   SDValue Store2 = CurDAG->getStore(Store, SL, Tgt2, Addr2, MMO);
+    //   SDValue Addr3 = CurDAG->getNode(ISD::ADD, SL, AddVTList, Addr2, Four);
+    //   CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Addr3);
+    //   CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Store2);
+    //   FixChainOp(Store.getNode());
+    //   FixChainOp(Store2.getNode());
+
+    //      return NULL;
+    //    }
+    // }
+ 
 //    case ARM::LDRi12: {
 //      //load the Ptr
 //      //ldr chain [ptr offset]
