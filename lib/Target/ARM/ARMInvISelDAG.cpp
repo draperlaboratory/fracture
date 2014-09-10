@@ -1519,8 +1519,10 @@ void ARMInvISelDAG::InvLoadOrStoreMultiple(SDNode *N, bool Ld, bool Inc, bool B,
       if (RI->isSubRegisterEq(RI->getProgramCounter(), RegNode->getReg())) {
         ResNode = CurDAG->getNode(ARMISD::RET_FLAG, SL, MVT::Other,
           Chain);
-        CurDAG->ReplaceAllUsesOfValueWith(CurDAG->getRoot().getOperand(0),
-          ResNode);
+        CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), ResNode);
+        CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Ptr);
+        CurDAG->setRoot(ResNode);
+        return;
       } else {
         ResNode = CurDAG->getLoad(LdType, SL, Chain, UsePtr,
           MachinePointerInfo::getConstantPool(), false, false, true, 0);
