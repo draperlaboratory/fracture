@@ -1,5 +1,4 @@
-INSTALLATION INSTRUCTIONS
-=========================
+# INSTALLATION INSTRUCTIONS
 
 This version of the Fracture library works with LLVM r202033. You will have to
 compile this version of LLVM before you try to use Fracture. This
@@ -11,8 +10,47 @@ The library is known to compile on various linux versions (Redhat,
 Mageia, Ubuntu, Debian). It should work on Mac OSX and FreeBSD. It
 does not compile on Windows.
 
-Step 1: Installing LLVM
-=======================
+## Prerequisites
+
+### Linux
+
+#### *libeditline*
+
+Fracture needs an editline or readline library in addition to the
+libraries required by LLVM. You will need the "dev" version, in
+Mageia, the install line looks like:
+
+```Shell
+sudo urpmi lib64edit-devel
+```
+
+You can also install from source. Either is known to work.
+
+### Mac OSX
+
+#### *XCode*
+
+You need to have XCode and its command-line-tools installed:
+
+```Shell
+xcode-select --install
+```
+
+Also accept the License Agreement which is presented when opening XCode.
+
+#### *Homebrew*
+
+Homebrew is a package manager like `apt-get` for OSX and is needed to install additional packages. Instructions on how to install Homebrew see [brew.sh](http://brew.sh).
+
+#### *autoconf* and *automake*
+
+Both are needed to automatically configure the source-code of LLVM, Clang and fracture and can be installed via `Homebrew`. 
+
+```Shell
+brew install autoconf automake
+```
+
+## Step 1: Installing LLVM
 
 Fracture relies on specific LLVM internals, and so it is best to use
 it with a specific revision of the LLVM development tree. Currently,
@@ -28,125 +66,117 @@ As Fracture is a prototype library, we only use it with debugging
 enabled. You must compile LLVM and Clang with the same settings. A
 sample of commands to do that is as follows:
 
-    cd ~
-    git clone https://github.com/draperlaboratory/llvm
-    cd llvm/tools
-    git clone https://github.com/draperlaboratory/clang
-    cd ..
-    ./configure --enable-debug-symbols --prefix=/usr/local --build=<your info>
-    make -j16
-    sudo make install
+```Shell
+cd $HOME
+git clone https://github.com/draperlaboratory/llvm
+cd llvm/tools
+git clone https://github.com/draperlaboratory/clang
+cd ..
+./configure --enable-debug-symbols --prefix=/usr/local --build=<your info>
+make -j16
+sudo make install
+```
 
-Note: The --build option is important, it should match your `gcc -v`
+Note: The `--build` option is important, it should match your `gcc -v`
 output:
 
-    $ gcc -v
-    Using built-in specs.
-    COLLECT_GCC=gcc
-    COLLECT_LTO_WRAPPER=/usr/lib/gcc/x86_64-mageia-linux-gnu/4.8.2/lto-wrapper
-    Target: x86_64-mageia-linux-gnu
-    Configured with: ../configure --prefix=/usr --libexecdir=/usr/lib --with-slibdir=/lib
+```Shell
+$ gcc -v
+Using built-in specs.
+COLLECT_GCC=gcc
+COLLECT_LTO_WRAPPER=/usr/lib/gcc/x86_64-mageia-linux-gnu/4.8.2/lto-wrapper
+Target: x86_64-mageia-linux-gnu
+Configured with: ../configure --prefix=/usr --libexecdir=/usr/lib --with-slibdir=/lib
+```
 
 In this example, the `--build` variable is:
 
-    ./configure --enable-debug-symbols --prefix=/usr/local --build=x86_64-mageia-linux-gnu
+```Shell
+./configure --enable-debug-symbols --prefix=/usr/local --build=x86_64-mageia-linux-gnu
+```
 
-Install libeditline
--------------------
+## Step 2: Compiling Fracture
 
-Fracture needs an editline or readline library in addition to the
-libraries required by LLVM. You will need the "dev" version, in
-Mageia, the install line looks like:
-
-    sudo urpmi lib64edit-devel
-
-You can also install from source. Either is known to work.
-
-Step 2: Compiling Fracture
-==========================
-
-Sample commands to download and compile fracture are:
-
-    cd ~
-    git clone https://github.com/draperlaboratory/fracture.git fracture
-    cd fracture
-    ./autoconf/AutoRegen.sh
-    ./configure --enable-debug-symbols --with-llvmsrc=$HOME/llvm --with-llvmobj=$HOME/llvm
-    make -j16
-
-The directory `$HOME/llvm` is the directory you compiled llvm in step
-1. We assume you were in your home directory (`/home/yourusername/` in linux) when you
-compiled.
-
-NOTE: On Ubuntu, Mageia, and other systems we have had to add the following flag:
-    --disable-optimized
+The directory `$HOME/llvm` is the directory you compiled **LLVM** in step 1. We assume you were in your home directory (`/home/yourusername/` in Linux) when you compiled.
 
 Note that the compile generates a large amount of debug output from the
-fracture-tblgen tool. There may also be warnings in the output.
+`fracture-tblgen` tool. There may also be warnings in the output.
 
-Linux
------
+### Linux
 
-The most common problem is out of date c++ std libraries. LLVM needs a
+The most common problem is out of date c++ std libraries. **LLVM** needs a
 relatively new version of these libs, and the solution is to install a new
-g++ (4.7 or newer).
+g++ (4.7 or newer). After that the compilation of fracture is straight forward:
 
-FreeBSD
--------
+```Shell
+cd $HOME
+git clone https://github.com/draperlaboratory/fracture.git fracture
+cd fracture
+./autoconf/AutoRegen.sh
+./configure --enable-debug-symbols --with-llvmsrc=$HOME/llvm --with-llvmobj=$HOME/llvm
+make -j16
+```
+
+**Note** On Ubuntu, Mageia, and other systems we have had to add the following flag:
+
+    --disable-optimized
+
+### FreeBSD
 
 Tested on RELEASE-9.2 with the latest ports (the first FreeBSD to support the
 newer libraries):
 
-    cd /usr/ports/devel/libc++
-    sudo make install clean
-    ...
-    cd ~/llvm
-    ./configure --enable-debug-symbols --prefix=/usr/local --build=amd64-undermydesk-freebsd --enable-libcpp
-    ... (gmake, gmake install, etc)
-    cd ~/fracture
-    export CXXFLAGS=CXXFLAGS='-std=c++11 -stdlib=libc++ -nostdinc++ -I/usr/local/include/c++/v1'
-    ./autoconf/AutoRegen.sh
-    ./configure --enable-debug-symbols --with-llvmsrc=$HOME/llvmdir --with-llvmobj=$HOME/llvm
-    gmake -j16
+```Shell
+cd /usr/ports/devel/libc++
+sudo make install clean
+...
+cd $HOME/llvm
+./configure --enable-debug-symbols --prefix=/usr/local --build=amd64-undermydesk-freebsd --enable-libcpp
+... (gmake, gmake install, etc)
+cd $HOME/fracture
+export CXXFLAGS=CXXFLAGS='-std=c++11 -stdlib=libc++ -nostdinc++ -I/usr/local/include/c++/v1'
+./autoconf/AutoRegen.sh
+./configure --enable-debug-symbols --with-llvmsrc=$HOME/llvmdir --with-llvmobj=$HOME/llvm
+gmake -j16
+```
 
-Mac OSX
--------
+### Mac OSX
 
-Tested on Version 10.9.2 with XCode and fink (for unix packages). First, install
-libcxx from the LLVM site, then:
+Tested on OSX 10.9.4 with XCode and Homebrew:
 
-    cd ~/llvm
-    export CXXFLAGS="-std=c++11 -stdlib=libc++ -nostdinc++ -I[libcxxdir]/include"
-    ./configure --enable-debug-symbols --enable-shared --prefix=/sw --build=x86_64-apple-darwin13.0.0 CXX=g++ CC=gcc --enable-libcpp
-    ... (make, make install)
-    cd ~/fracture
-    ./autoconf/AutoRegen.sh
-    ./configure --enable-debug-symbols --build=x86_64-apple-darwin13.0.0 --with-llvmsrc=$HOME/llvm --with-llvmobj=$HOME/llvm
-    make -j16
+```Shell
+cd $HOME/fracture
+export CXXFLAGS="-std=c++11 -stdlib=libc++ -I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/c++/v1"
+./autoconf/AutoRegen.sh
+./configure --enable-debug-symbols --with-llvmsrc=$HOME/llvm/ --with-llvmobj=$HOME/llvm/
+make -j16
+```
 
-Other Systems
--------------
+### Other Systems
 
-We expect fracture to compile on other systems that compile LLVM and clang, but
-we have not tested it. If you try it and encounter problems, please let us know
-(fracture@draper.com). If you succeed in compiling it, also let us know so we
-can post the details in this install document.
+We expect fracture to compile on other systems that compile **LLVM** and **Clang**, but we have not tested it. If you try it and encounter problems, please let us know (fracture@draper.com). If you succeed in compiling it, also let us know so we can post the details in this install document.
 
-Step 3: Usage Examples
-======================
+## Step 3: Usage Examples
 
 If fracture compiles, you should be able to run it with the following commands.
-Note that the only working architecture right now is ARM, and you have to
+Note that the only working architecture right now is **ARM**, and you have to
 specify machine attribute flags to make the system detect the instructions in
 the sample below.
 
-```
+### Call `fracture-cl` with given ARM-binary
+
+```Shell
 $ ./Debug+Asserts/bin/fracture-cl -mattr=v6 ./samples/arm/fib_arm
 MCDirector: Using Triple: arm-unknown-unknown
 MCDirector: Using CPU: generic
 MCDirector: Using Features: +v6
 Disassembler: Setting Section .text
-Debug+Asserts/bin/fracture-cl> sect
+```
+
+### Show Sections
+
+    Debug+Asserts/bin/fracture-cl> sect
+```
 Sections:
 Idx Name          Size      Address          Type
   1               00000000 0000000000000000
@@ -180,7 +210,13 @@ Idx Name          Size      Address          Type
  29 .shstrtab     0000010a 0000000000000000
  30 .symtab       00000650 0000000000000000
  31 .strtab       0000024e 0000000000000000
-Debug+Asserts/bin/fracture-cl> sym .text
+```
+
+
+### Show Symbols
+
+    Debug+Asserts/bin/fracture-cl> sym .text
+```
 SYMBOL TABLE FOR SECTION .text at 0x0000831c
 00000000                00000000 00000000
 00008358                00000000 00008358 $a
@@ -226,7 +262,12 @@ SYMBOL TABLE FOR SECTION .text at 0x0000831c
 000108ec                00000000 000108ec _edata
 000087bc                00000000 000087bc __exidx_start
 000083d4 l     F        000000f8 000083d4 main
-Debug+Asserts/bin/fracture-cl> dis 0x83d4
+```
+
+### Show Disassembly
+
+    Debug+Asserts/bin/fracture-cl> dis 0x83d4
+```Assembly
 Address: 33748
 NumInstrs: 0
 <main>:
@@ -289,7 +330,12 @@ NumInstrs: 0
 000084B4:   08 D0 4B E2                         sub     sp, r11, #0x8
 000084B8:   10 48 BD E8                         pop     {r4, r11, lr}
 000084BC:   1E FF 2F E1                         bx      lr
-Debug+Asserts/bin/fracture-cl> dec 0x83d4
+```
+
+### Decompile to LLVM-IR
+
+    Debug+Asserts/bin/fracture-cl> dec 0x83d4
+```LLVM
 define void @main() {
 entry:
   %CPSR = alloca i32
@@ -564,5 +610,8 @@ entry:
   store i32 %R11_71, i32* @R11, !dbg !116
   ret void, !dbg !116
 }
-Debug+Asserts/bin/fracture-cl> quit
 ```
+
+### Quit `fracture-cl`
+
+    Debug+Asserts/bin/fracture-cl> quit
