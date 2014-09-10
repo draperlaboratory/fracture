@@ -1518,8 +1518,8 @@ void ARMInvISelDAG::InvLoadOrStoreMultiple(SDNode *N, bool Ld, bool Inc, bool B,
         Dec->getDisassembler()->getMCDirector()->getMCRegisterInfo();
       if (RI->isSubRegisterEq(RI->getProgramCounter(), RegNode->getReg())) {
         ResNode = CurDAG->getNode(ARMISD::RET_FLAG, SL, MVT::Other,
-          Chain);
-        CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), ResNode);
+          CurDAG->getRoot());
+        CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Chain);
         CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Ptr);
         CurDAG->setRoot(ResNode);
         return;
