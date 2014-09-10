@@ -136,9 +136,8 @@ Function* Decompiler::decompileFunction(unsigned Address) {
   }
 
   BI = MF->begin();
-  outs() << "-----BI------\n";
-  BI->dump();
   while (BI != BE) {
+    BI->dump();
     if (decompileBasicBlock(BI, F) == NULL) {
       printError("Unable to decompile basic block!");
     }
