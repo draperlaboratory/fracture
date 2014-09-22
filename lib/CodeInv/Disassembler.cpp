@@ -79,7 +79,7 @@ MachineFunction* Disassembler::disassemble(unsigned Address) {
   MachineFunction *MF = getOrCreateFunction(Address);
 
   if (MF->size() == 0) {
-    // Create basic blocks until end of function
+    // Decode basic blocks until end of function
     unsigned Size = 0;
     MachineBasicBlock *MBB;
     do {
@@ -165,6 +165,18 @@ unsigned Disassembler::decodeInstruction(unsigned Address,
   const MCInstrInfo *MII = MC->getMCInstrInfo();
   MCInstrDesc *MCID = new MCInstrDesc(MII->get(Inst->getOpcode()));
   MCID->Size = InstSize;
+
+  // Check if the instruction can load to program counter and mark it as a Ret
+  // FIXME: Better analysis would be to see if the PC value references memory
+  // sent as a parameter or set locally in the function, but that would need to
+  // happen after decompilation. In either case, this is definitely a BB
+  // terminator or branch!
+  if (MCID->mayLoad()
+    && MCID->mayAffectControlFlow(*Inst, *MC->getMCRegisterInfo())) {
+    MCID->Flags |= (1 << MCID::Return);
+    MCID->Flags |= (1 << MCID::Terminator);
+  }
+
 
   // Recover MachineInstr representation
   DebugLoc *Location = setDebugLoc(Address);
