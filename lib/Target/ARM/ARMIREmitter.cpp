@@ -45,8 +45,8 @@ Value* ARMIREmitter::visit(const SDNode *N) {
   DEBUG(Infos << "Visiting ARM specific Opcode.\n");
   switch (N->getOpcode()) {
 	default: {
-		errs() << "OpCode: " << N->getOpcode() << "\n";
-		N->dump();
+		errs() << "OpCode: " << N->getOperationName(DAG) << "\n";
+		// dyn_cast<MachineSDNode>(N);
 		llvm_unreachable("ARMIREmitter::visit - Every ARM visit should be implemented...");
 		return NULL;
 	}
