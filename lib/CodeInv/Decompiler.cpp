@@ -357,8 +357,8 @@ BasicBlock* Decompiler::decompileBasicBlock(MachineBasicBlock *MBB,
   }
   DAG->setRoot(Dummy.getValue());
 
+  printDAG(DAG);
   if (ViewIRDAGs) {
-    printDAG(DAG);
     DAG->viewGraph(MBB->getName());
   }
 
