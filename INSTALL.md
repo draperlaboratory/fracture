@@ -77,7 +77,7 @@ make -j16
 sudo make install
 ```
 
-Note: The `--build` option is important, it should match your `gcc -v`
+**Note** The `--build` option is important, it should match your `gcc -v`
 output:
 
 ```Shell
@@ -94,6 +94,8 @@ In this example, the `--build` variable is:
 ```Shell
 ./configure --enable-debug-symbols --prefix=/usr/local --build=x86_64-mageia-linux-gnu
 ```
+
+**Note** Building LLVM with the `make -j16` command uses ~10GB of memory. On less robust machines it is recommended to just use `make` instead. 
 
 ## Step 2: Compiling Fracture
 
