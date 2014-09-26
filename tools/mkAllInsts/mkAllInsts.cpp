@@ -637,15 +637,17 @@ MIBplus buildX86MI(const MCInstrInfo *MII, MCContext *MCCtx, unsigned op)
                 } else if(optype == MCOI::OPERAND_MEMORY) {
                 
                     if(opinfo.isLookupPtrRegClass()) {
-                        // if((op >= X86::CMPS16 && op <= X86::CMPS8) ||
-                        //         op == X86::MOVSB || op == X86::MOVSL ||
-                        //         op == X86::MOVSQ || op == X86::MOVSW) {
-                        //     MIBP.MIB->addReg(X86::EDI);
-                        //     MIBP.MIB->addReg(X86::ESI);
-                        //     MIBP.MIB->addReg(0);
-                        //     i += 2;
-                        //} else 
-                        if((op >= X86::LODSB && op <= X86::LODSW) ||
+                         if(op == X86::CMPSB || op == X86::CMPSL ||
+                                 op == X86::CMPSQ || op == X86::CMPSW ||
+                                 op == X86::MOVSB || op == X86::MOVSL ||
+                                 op == X86::MOVSQ || op == X86::MOVSW) {
+                             MIBP.MIB->addReg(X86::EDI);
+                             MIBP.MIB->addReg(X86::ESI);
+                             MIBP.MIB->addReg(0);
+                             i += 2;
+                        } else 
+                        if(
+                                    (op >= X86::LODSB && op <= X86::LODSW) ||
                                     (op >= X86::OUTSB && op <= X86::OUTSW)) {
                             MIBP.MIB->addReg(X86::EAX);
                             MIBP.MIB->addReg(0);
