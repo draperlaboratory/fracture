@@ -77,7 +77,7 @@ protected:
   // FIXME: The following need to be reset when we hit a Return instruction.
   //        We should change the design to avoid this kind of state tracking.
   // RegMap saves register ID's to a variable that can be loaded/stored
-  IndexedMap<AllocaInst*> RegMap;
+  IndexedMap<Value*> RegMap;
   DenseMap<const SDNode*, Value*> VisitMap;
   StringMap<StringRef> BaseNames;
 

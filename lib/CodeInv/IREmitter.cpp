@@ -52,35 +52,7 @@ void IREmitter::EmitIR(BasicBlock *BB, SDNode *CurNode,
 
   Value *IRVal = visit(CurNode);
 
-  // When we hit the return instruction we save all the local registers to their
-  // global equivalents and reset our memory structure.
   if (IRVal != NULL && ReturnInst::classof(IRVal)) {
-    BasicBlock *IB = IRB->GetInsertBlock();
-    BasicBlock::iterator IP = --IB->end(); // before Ret Instr
-    IRBuilder<> TmpB(IB, IP);
-
-    unsigned NumRegs =
-     Dec->getDisassembler()->getMCDirector()->getMCRegisterInfo()->getNumRegs();
-    for (unsigned int i = 1, e = NumRegs; i != e; ++i) {
-      AllocaInst *RegAlloca = RegMap[i];
-      if (RegAlloca == NULL) {
-        continue;
-      }
-      StringRef RegName = RegAlloca->getName();
-
-      Value *RegGbl = Dec->getModule()->getGlobalVariable(RegName);
-      if (RegGbl == NULL) {
-        errs() << "EmitIR return: Global register not declared but alloca'd!\n";
-        continue;
-      }
-
-      Instruction *RegLoad = TmpB.CreateLoad(RegAlloca,
-        getIndexedValueName(RegName));
-      RegLoad->setDebugLoc(CurNode->getDebugLoc());
-      Instruction *RegStore = TmpB.CreateStore(RegLoad, RegGbl);
-      RegStore->setDebugLoc(CurNode->getDebugLoc());
-    }
-
     // Reset Data Structures
     RegMap.clear();
     VisitMap.clear();
@@ -575,8 +547,8 @@ Value* IREmitter::visitRegister(const SDNode *N) {
     return NULL;
   }
 
-  AllocaInst *RegAlloca = RegMap[R->getReg()];
-  if (RegAlloca == NULL) {
+  Value *Reg = RegMap[R->getReg()];
+  if (Reg == NULL) {
     // Regname is %regname when printed this way.
     std::string RegName;
     raw_string_ostream RP(RegName);
@@ -585,34 +557,19 @@ Value* IREmitter::visitRegister(const SDNode *N) {
 
     Type* Ty = R->getValueType(0).getTypeForEVT(getGlobalContext());
 
-    Value *RegGbl = Dec->getModule()->getGlobalVariable(RegName);
-    if (RegGbl == NULL) {
+    Reg = Dec->getModule()->getGlobalVariable(RegName);
+    if (Reg == NULL) {
       Constant *Initializer = Constant::getNullValue(Ty);
-      RegGbl = new GlobalVariable(*Dec->getModule(), // Module
-                                   Ty,                // Type
-                                   false,             // isConstant
-                                   GlobalValue::ExternalLinkage,
-                                   Initializer,
-                                   RegName);
+      Reg = new GlobalVariable(*Dec->getModule(), // Module
+                               Ty,                // Type
+                               false,             // isConstant
+                               GlobalValue::ExternalLinkage,
+                               Initializer,
+                               RegName);
     }
-    // Alloca's need to be entered in at the beginning of a function.
-    Function *TheFunction = IRB->GetInsertBlock()->getParent();
-    IRBuilder<> TmpB(&TheFunction->getEntryBlock(),
-      TheFunction->getEntryBlock().begin());
-    RegAlloca = TmpB.CreateAlloca(Ty, 0, RegName);
-    RegAlloca->setDebugLoc(N->getDebugLoc());
-
-    // Load from the Global and put it in the local. When we visit the ret
-    // for the function, we should load from the local and store in global.
-    Instruction *RegLoad = TmpB.CreateLoad(RegGbl,
-      getIndexedValueName(RegName));
-    RegLoad->setDebugLoc(N->getDebugLoc());
-    Instruction *RegStore = TmpB.CreateStore(RegLoad, RegAlloca);
-    RegStore->setDebugLoc(N->getDebugLoc());
-
-    RegMap[R->getReg()] = RegAlloca;
+    RegMap[R->getReg()] = Reg;
   }
-  return RegAlloca;
+  return Reg;
 }
 
 Value* IREmitter::visitCALL(const SDNode *N) {
