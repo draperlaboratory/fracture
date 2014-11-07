@@ -59,8 +59,8 @@ Fracture works with LLVM 3.5.
 You will also need clang to compile the Fracture library. To aid you,
 we have forked these repositories at the appropriate revisions:
 
-* https://github.com/draperlaboratory/clang
-* https://github.com/draperlaboratory/llvm
+* https://github.com/llvm-mirror/clang
+* https://github.com/llvm-mirror/llvm
 
 As Fracture is a prototype library, we only use it with debugging
 enabled. You must compile LLVM and Clang with the same settings. A
@@ -68,10 +68,14 @@ sample of commands to do that is as follows:
 
 ```Shell
 cd $HOME
-git clone https://github.com/draperlaboratory/llvm
-cd llvm/tools
-git clone https://github.com/draperlaboratory/clang
-cd ..
+git clone https://github.com/llvm-mirror/llvm
+cd llvm
+git checkout release_35
+cd tools
+git clone https://github.com/llvm-mirror/clang
+cd clang
+git checkout release_35
+cd $HOME/llvm
 ./configure --enable-debug-symbols --prefix=/usr/local --build=<your info>
 make -j16
 sudo make install
