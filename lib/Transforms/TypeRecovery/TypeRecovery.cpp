@@ -115,6 +115,11 @@ bool TypeRecovery::runOnFunction(Function &F) {
           SrcReg = Cur;
           SrcRegs.push_back(Cur);
         }
+        if (OffsetVal == NULL) {
+          IntOffsets.push_back(IntOffset);
+        } else {
+          NonIntOffsets.push_back(OffsetVal);
+        }
       }
     }
   }
