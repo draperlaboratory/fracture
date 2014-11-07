@@ -60,17 +60,33 @@ bool TypeRecovery::runOnFunction(Function &F) {
     return false;
   }
 
-  uint64_t NumStores = 0;
+  // Map Src Registers to Memory lists
+  std::map<Value*, MemList*> MemLists;
+  std::vector<Value*> SrcRegs;
+
   for (Function::iterator BB = F.begin(), BBE = F.end(); BB != BBE; ++BB) {
     for (BasicBlock::iterator I = BB->begin(), E = BB->end(); I != E; ++I) {
-      if (isa<LoadInst>(I) || isa<BinaryOperator>(I)) {
-        NumStores++;
+      // When we see an I2P instruction, we (potentially) create a new MemList,
+      // then we will calculate the offset of the source register.
+      if (isa<IntToPtrInst>(I)) {
+        Value *SrcReg, *OffsetVal;
+        Value *Cur = I;
+        while(Cur != NULL && !isa<GlobalVariable>(Cur)
+          && isa<Instruction>(Cur)) {
+          Cur = dyn_cast<Instruction>(Cur)->getOperand(0);
+        }
+        if (Cur != NULL && isa<GlobalVariable>(Cur)) {
+          SrcReg = Cur;
+          SrcRegs.push_back(Cur);
+        }
       }
     }
   }
 
-  outs() << "Num Loads and Stores: " << NumStores << "\n";
-
+  outs() << "SRC REGS: \n";
+  for (int i = 0, e = SrcRegs.size(); i != e; ++i) {
+    outs() << *SrcRegs[i] << "\n";
+  }
 
   return false;
 }
