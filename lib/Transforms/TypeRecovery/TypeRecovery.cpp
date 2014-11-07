@@ -71,7 +71,7 @@ struct I2PInfo {
   // e.g., usually when loading from the stack or allocating space the stack
   // pointer gets modified with a binop (and reversed at the end).
   void AnalyzeIntToPtr(IntToPtrInst *IP) {
-    // Build up the use chain 
+    // Build up the use chain
     return;
   }
 
@@ -113,7 +113,7 @@ bool TypeRecovery::runOnFunction(Function &F) {
        I != E; ++I) {
     if (isa<AllocaInst>(I)) {
       // WorkList.push_back(I);
-      AnalyzeVar(I);
+      //AnalyzeVar(I);
     }
   }
 
@@ -158,4 +158,12 @@ bool TypeRecovery::runOnFunction(Function &F) {
 
 
   return false;
+}
+
+//===----------------------------------------------------------------------===//
+// BEGIN MEMLIST IMPL
+//===----------------------------------------------------------------------===//
+
+MemList::MemList(const Value* SrcRegister) : Register(SrcRegister) {
+  // Do nothing
 }
