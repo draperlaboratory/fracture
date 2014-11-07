@@ -90,7 +90,7 @@ bool TypeRecovery::runOnFunction(Function &F) {
           // Note: assuming 2nd op is always the constant and 1st is always
           // leading to the register.
           if (!isa<ConstantInt>(CurInst->getOperand(1))) {
-            outs() << "Non-Constant Value!!: " << *CurInst << "\n";
+            errs() << "Non-Constant Value!!: " << *CurInst << "\n";
             OffsetVal = CurInst->getOperand(1);
             continue;
           }
@@ -98,18 +98,15 @@ bool TypeRecovery::runOnFunction(Function &F) {
             CurInst->getOperand(1))->getSExtValue();
           switch (CurInst->getOpcode()) {
             case Instruction::Add:
-              outs() << "Add!\n";
               break;
             case Instruction::Sub:
-              outs() << "Sub!\n";
               Tmp *= -1;
               break;
             default:
-              outs() << "Unknown opcode type! " << *CurInst << "\n";
+              errs() << "Unknown opcode type! " << *CurInst << "\n";
               break;
           }
           IntOffset += Tmp;
-          outs() << "IntOffset=" << IntOffset << "\n";
         }
         if (Cur != NULL && isa<GlobalVariable>(Cur)) {
           SrcReg = Cur;
