@@ -370,8 +370,13 @@ Value* ARMIREmitter::visitINTRET_FLAG(const SDNode *N) { llvm_unreachable("visit
 Value* ARMIREmitter::visitPIC_ADD(const SDNode *N) { llvm_unreachable("visitPIC_ADD unimplemented ARM visit..."); return NULL; }
 
 Value* ARMIREmitter::visitCMP(const SDNode *N) {
-	errs() << "visitCMP unimplemented ARM visit...\n";
-	return NULL;
+	//errs() << "visitCMP unimplemented ARM visit...\n";
+	//return NULL;
+  
+    //Presuming the ARM version will work something like X86...
+    //cmp     r0, #0x0
+    //beq     #-0x14
+    return IREmitter::visitSUB(N);
 }
 
 Value* ARMIREmitter::visitCMN(const SDNode *N) { llvm_unreachable("visitCMN unimplemented ARM visit..."); return NULL; }
