@@ -152,7 +152,7 @@ Tested on OSX 10.9.4 with XCode and Homebrew:
 
 ```Shell
 cd $HOME/fracture
-export CXXFLAGS="-std=c++11 -stdlib=libc++ -I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/c++/v1"
+export CXXFLAGS="-std=c++11 -stdlib=libc++ -I/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include/c++/v1"
 ./autoconf/AutoRegen.sh
 ./configure --enable-debug-symbols --with-llvmsrc=$HOME/llvm/ --with-llvmobj=$HOME/llvm/
 make -j16
