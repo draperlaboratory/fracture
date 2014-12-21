@@ -11,6 +11,7 @@
 *.lai
 *.la
 *.a
+*~
 
 # LLVM and Makefile cruft
 Makefile.common

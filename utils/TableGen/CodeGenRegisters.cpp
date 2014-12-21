@@ -1000,9 +1000,19 @@ CodeGenRegBank::CodeGenRegBank(RecordKeeper &Records) {
 
   // Compute register name map.
   for (unsigned i = 0, e = Registers.size(); i != e; ++i)
-    RegistersByName.GetOrCreateValue(
+    /* RegistersByName.GetOrCreateValue(
                        Registers[i]->TheDef->getValueAsString("AsmName"),
                        Registers[i]);
+    */
+    // GetOrCreateValue(Key).getValue() was summarily displaced by the insert( std::make_pair( .. )) 
+    // method
+    // LLVM source commit:
+    // Also removes the GetOrCreateValue functions so there's less surface area
+    // to StringMap to fix/improve/change/accommodate move semantics, etc.
+    //
+    //  git-svn-id: https://llvm.org/svn/llvm-project/llvm/trunk@222319 91177308-0d34-0410-b5e6-96231b3b80d8
+    RegistersByName.insert( std::make_pair( Registers[i]->TheDef->getValueAsString("AsmName"),
+					    Registers[i]) );
 
   // Precompute all sub-register maps.
   // This will create Composite entries for all inferred sub-register indices.

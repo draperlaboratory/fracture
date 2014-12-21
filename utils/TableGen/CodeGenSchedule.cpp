@@ -182,7 +182,9 @@ void CodeGenSchedModels::addProcModel(Record *ProcDef) {
 // Recursively find all reachable SchedReadWrite records.
 static void scanSchedRW(Record *RWDef, RecVec &RWDefs,
                         SmallPtrSet<Record*, 16> &RWSet) {
-  if (!RWSet.insert(RWDef))
+  // insertion method the SmallPtrSet (actually the super class SmallPtrSetImpl)
+  // now returns std::pair<iterator,bool> and so needs to convert to bool
+  if ( !(RWSet.insert(RWDef).second) )
     return;
   RWDefs.push_back(RWDef);
   // Reads don't current have sequence records, but it can be added later.
@@ -762,7 +764,7 @@ void CodeGenSchedModels::createInstRWClass(Record *InstRWDef) {
     for (ArrayRef<Record*>::const_iterator
            II = InstDefs.begin(), IE = InstDefs.end(); II != IE; ++II) {
       unsigned OldSCIdx = InstrClassMap[*II];
-      if (OldSCIdx && RemappedClassIDs.insert(OldSCIdx)) {
+      if (OldSCIdx && RemappedClassIDs.insert(OldSCIdx).second ) {
         for (RecIter RI = SchedClasses[OldSCIdx].InstRWs.begin(),
                RE = SchedClasses[OldSCIdx].InstRWs.end(); RI != RE; ++RI) {
           if ((*RI)->getValueAsDef("SchedModel") == RWModelDef) {
