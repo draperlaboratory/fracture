@@ -303,7 +303,8 @@ void CodeGenTarget::ComputeInstrsByEnum() const {
       "GC_LABEL",     "KILL",          "EXTRACT_SUBREG",   "INSERT_SUBREG",
       "IMPLICIT_DEF", "SUBREG_TO_REG", "COPY_TO_REGCLASS", "DBG_VALUE",
       "REG_SEQUENCE", "COPY",          "BUNDLE",           "LIFETIME_START",
-      "LIFETIME_END", "STACKMAP",      "PATCHPOINT",       nullptr};
+      "LIFETIME_END", "STACKMAP",      "PATCHPOINT" , "LOAD_STACK_GUARD",
+      "STATEPOINT", nullptr};
   const DenseMap<const Record*, CodeGenInstruction*> &Insts = getInstructions();
   for (const char *const *p = FixedInstrs; *p; ++p) {
     const CodeGenInstruction *Instr = GetInstByName(*p, Insts, Records);
@@ -319,7 +320,7 @@ void CodeGenTarget::ComputeInstrsByEnum() const {
     if (CGI->Namespace != "TargetOpcode")
       InstrsByEnum.push_back(CGI);
   }
-
+  
   assert(InstrsByEnum.size() == Insts.size() && "Missing predefined instr");
 
   // All of the instructions are now in random order based on the map iteration.

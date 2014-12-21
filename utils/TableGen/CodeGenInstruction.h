@@ -241,7 +241,7 @@ namespace llvm {
     bool isNotDuplicable;
     bool hasSideEffects;
     bool hasSideEffects_Unset;
-    bool neverHasSideEffects;
+    //    bool neverHasSideEffects;
     bool isAsCheapAsAMove;
     bool hasExtraSrcRegAllocReq;
     bool hasExtraDefRegAllocReq;
