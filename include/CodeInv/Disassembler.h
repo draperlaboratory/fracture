@@ -35,7 +35,6 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/Support/MemoryObject.h"
-#include "llvm/Support/StringRefMemoryObject.h"
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
@@ -169,7 +168,7 @@ public:
 private:
   object::SectionRef CurSection;
   object::ObjectFile *Executable;
-  StringRefMemoryObject* CurSectionMemory;
+  MemoryObject* CurSectionMemory;
   uint64_t CurSectionEnd;
   std::map<unsigned, MachineBasicBlock*> BasicBlocks;
   std::map<unsigned, MachineFunction*> Functions;
