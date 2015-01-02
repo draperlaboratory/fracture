@@ -28,7 +28,7 @@ Disassembler::Disassembler(MCDirector *NewMC, object::ObjectFile *NewExecutable,
   // If the module is null then create a new one
   if (NewModule == NULL) {
     // TODO: getloadName may fail, how to resolve?
-    TheModule = new Module(Executable->getLoadName(), *MC->getContext());
+    TheModule = new Module(Executable->getFileName(), *MC->getContext());
   } else {
     TheModule = NewModule;
   }
@@ -146,8 +146,12 @@ unsigned Disassembler::decodeInstruction(unsigned Address,
   uint64_t InstSize;
   MCInst *Inst = new MCInst();
   StringRef Bytes;
+  // TODO: Fix this bitrot
+  CurSection.getContents(Bytes);
+  std::vector<unsigned char> RawBytes(Bytes.data(),
+    Bytes.data() + Bytes.size());
 
-  if (!(DA->getInstruction(*Inst, InstSize, *CurSectionMemory, Address,
+  if (!(DA->getInstruction(*Inst, InstSize, RawBytes, Address,
         nulls(), nulls()))) {
     printError("Unknown instruction encountered, instruction decode failed!");
     return 1;
