@@ -189,8 +189,10 @@ void  FractureInstrMapEmitter::run(raw_ostream &OS) {
     MatchedChainNodes.clear();
   }
 
-  Matcher *FinalMatcher = new ScopeMatcher(&PatternMatchers[0],
-    PatternMatchers.size());
+  // this looks necessary for 3.5+ but it's mintor
+  // ArrayRef<Matcher*> pMatchers = ArrayRef<Matcher*>( PatternMatchers );
+  //   Matcher *FinalMatcher = new ScopeMatcher( pMatchers );
+  Matcher *FinalMatcher = new ScopeMatcher( &PatternMatchers[0], PatternMatchers.size() );
 
   // TheMatcher->dump();
 
