@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "DAGISelMatcher.h"
+#include "CodeGenDAGPatterns.h"
 #include "CodeGenTarget.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/Support/raw_ostream.h"
@@ -42,7 +43,7 @@ Matcher *Matcher::unlinkNode(Matcher *Other) {
   for (; Cur && Cur->getNext() != Other; Cur = Cur->getNext())
     /*empty*/;
 
-  if (Cur == 0) return 0;
+  if (!Cur) return nullptr;
   Cur->takeNext();
   Cur->setNext(Other->takeNext());
   return this;
@@ -62,7 +63,7 @@ bool Matcher::canMoveBefore(const Matcher *Other) const {
   }
 }
 
-/// canMoveBefore - Return true if it is safe to move the current matcher
+/// canMoveBeforeNode - Return true if it is safe to move the current matcher
 /// across the specified one.
 bool Matcher::canMoveBeforeNode(const Matcher *Other) const {
   // We can move simple predicates before record nodes.
@@ -83,13 +84,22 @@ ScopeMatcher::~ScopeMatcher() {
     delete Children[i];
 }
 
+SwitchOpcodeMatcher::~SwitchOpcodeMatcher() {
+  for (unsigned i = 0, e = Cases.size(); i != e; ++i)
+    delete Cases[i].second;
+}
 
-// CheckPredicateMatcher::CheckPredicateMatcher(const TreePredicateFn &pred)
-//   : Matcher(CheckPredicate), Pred(pred.getOrigPatFragRecord()) {}
+SwitchTypeMatcher::~SwitchTypeMatcher() {
+  for (unsigned i = 0, e = Cases.size(); i != e; ++i)
+    delete Cases[i].second;
+}
 
-// TreePredicateFn CheckPredicateMatcher::getPredicate() const {
-//   return TreePredicateFn(Pred);
-// }
+CheckPredicateMatcher::CheckPredicateMatcher(const TreePredicateFn &pred)
+  : Matcher(CheckPredicate), Pred(pred.getOrigPatFragRecord()) {}
+
+TreePredicateFn CheckPredicateMatcher::getPredicate() const {
+  return TreePredicateFn(Pred);
+}
 
 
 
@@ -98,7 +108,7 @@ ScopeMatcher::~ScopeMatcher() {
 void ScopeMatcher::printImpl(raw_ostream &OS, unsigned indent) const {
   OS.indent(indent) << "Scope\n";
   for (unsigned i = 0, e = getNumChildren(); i != e; ++i) {
-    if (getChild(i) == 0)
+    if (!getChild(i))
       OS.indent(indent+1) << "NULL POINTER\n";
     else
       getChild(i)->print(OS, indent+2);
@@ -133,17 +143,21 @@ void CheckSameMatcher::printImpl(raw_ostream &OS, unsigned indent) const {
   OS.indent(indent) << "CheckSame " << MatchNumber << '\n';
 }
 
+void CheckChildSameMatcher::printImpl(raw_ostream &OS, unsigned indent) const {
+  OS.indent(indent) << "CheckChild" << ChildNo << "Same\n";
+}
+
 void CheckPatternPredicateMatcher::
 printImpl(raw_ostream &OS, unsigned indent) const {
   OS.indent(indent) << "CheckPatternPredicate " << Predicate << '\n';
 }
 
-// void CheckPredicateMatcher::printImpl(raw_ostream &OS, unsigned indent) const {
-//   OS.indent(indent) << "CheckPredicate " << getPredicate().getFnName() << '\n';
-// }
+void CheckPredicateMatcher::printImpl(raw_ostream &OS, unsigned indent) const {
+  OS.indent(indent) << "CheckPredicate " << getPredicate().getFnName() << '\n';
+}
 
 void CheckOpcodeMatcher::printImpl(raw_ostream &OS, unsigned indent) const {
-  OS.indent(indent) << "CheckOpcode " << getEnumName() << '\n';
+  OS.indent(indent) << "CheckOpcode " << Opcode.getEnumName() << '\n';
 }
 
 void SwitchOpcodeMatcher::printImpl(raw_ostream &OS, unsigned indent) const {
@@ -178,6 +192,11 @@ void CheckChildTypeMatcher::printImpl(raw_ostream &OS, unsigned indent) const {
 
 void CheckIntegerMatcher::printImpl(raw_ostream &OS, unsigned indent) const {
   OS.indent(indent) << "CheckInteger " << Value << '\n';
+}
+
+void CheckChildIntegerMatcher::printImpl(raw_ostream &OS,
+                                         unsigned indent) const {
+  OS.indent(indent) << "CheckChildInteger " << ChildNo << " " << Value << '\n';
 }
 
 void CheckCondCodeMatcher::printImpl(raw_ostream &OS, unsigned indent) const {
@@ -272,12 +291,12 @@ unsigned CheckPatternPredicateMatcher::getHashImpl() const {
   return HashString(Predicate);
 }
 
-// unsigned CheckPredicateMatcher::getHashImpl() const {
-//   return HashString(getPredicate().getFnName());
-// }
+unsigned CheckPredicateMatcher::getHashImpl() const {
+  return HashString(getPredicate().getFnName());
+}
 
 unsigned CheckOpcodeMatcher::getHashImpl() const {
-  return HashString(getEnumName());
+  return HashString(Opcode.getEnumName());
 }
 
 unsigned CheckCondCodeMatcher::getHashImpl() const {
@@ -307,8 +326,8 @@ unsigned EmitMergeInputChainsMatcher::getHashImpl() const {
 bool CheckOpcodeMatcher::isEqualImpl(const Matcher *M) const {
   // Note: pointer equality isn't enough here, we have to check the enum names
   // to ensure that the nodes are for the same opcode.
-  return cast<CheckOpcodeMatcher>(M)->getEnumName() ==
-          getEnumName();
+  return cast<CheckOpcodeMatcher>(M)->Opcode.getEnumName() ==
+          Opcode.getEnumName();
 }
 
 bool EmitNodeMatcherCommon::isEqualImpl(const Matcher *m) const {
@@ -358,29 +377,29 @@ static bool TypesAreContradictory(MVT::SimpleValueType T1,
   return true;
 }
 
-// bool CheckOpcodeMatcher::isContradictoryImpl(const Matcher *M) const {
-//   if (const CheckOpcodeMatcher *COM = dyn_cast<CheckOpcodeMatcher>(M)) {
-//     // One node can't have two different opcodes!
-//     // Note: pointer equality isn't enough here, we have to check the enum names
-//     // to ensure that the nodes are for the same opcode.
-//     return COM->getOpcode().getEnumName() != getOpcode().getEnumName();
-//   }
+bool CheckOpcodeMatcher::isContradictoryImpl(const Matcher *M) const {
+  if (const CheckOpcodeMatcher *COM = dyn_cast<CheckOpcodeMatcher>(M)) {
+    // One node can't have two different opcodes!
+    // Note: pointer equality isn't enough here, we have to check the enum names
+    // to ensure that the nodes are for the same opcode.
+    return COM->getOpcode().getEnumName() != getOpcode().getEnumName();
+  }
 
-//   // If the node has a known type, and if the type we're checking for is
-//   // different, then we know they contradict.  For example, a check for
-//   // ISD::STORE will never be true at the same time a check for Type i32 is.
-//   if (const CheckTypeMatcher *CT = dyn_cast<CheckTypeMatcher>(M)) {
-//     // If checking for a result the opcode doesn't have, it can't match.
-//     if (CT->getResNo() >= getOpcode().getNumResults())
-//       return true;
+  // If the node has a known type, and if the type we're checking for is
+  // different, then we know they contradict.  For example, a check for
+  // ISD::STORE will never be true at the same time a check for Type i32 is.
+  if (const CheckTypeMatcher *CT = dyn_cast<CheckTypeMatcher>(M)) {
+    // If checking for a result the opcode doesn't have, it can't match.
+    if (CT->getResNo() >= getOpcode().getNumResults())
+      return true;
 
-//     MVT::SimpleValueType NodeType = getOpcode().getKnownType(CT->getResNo());
-//     if (NodeType != MVT::Other)
-//       return TypesAreContradictory(NodeType, CT->getType());
-//   }
+    MVT::SimpleValueType NodeType = getOpcode().getKnownType(CT->getResNo());
+    if (NodeType != MVT::Other)
+      return TypesAreContradictory(NodeType, CT->getType());
+  }
 
-//   return false;
-// }
+  return false;
+}
 
 bool CheckTypeMatcher::isContradictoryImpl(const Matcher *M) const {
   if (const CheckTypeMatcher *CT = dyn_cast<CheckTypeMatcher>(M))
@@ -403,6 +422,18 @@ bool CheckChildTypeMatcher::isContradictoryImpl(const Matcher *M) const {
 bool CheckIntegerMatcher::isContradictoryImpl(const Matcher *M) const {
   if (const CheckIntegerMatcher *CIM = dyn_cast<CheckIntegerMatcher>(M))
     return CIM->getValue() != getValue();
+  return false;
+}
+
+bool CheckChildIntegerMatcher::isContradictoryImpl(const Matcher *M) const {
+  if (const CheckChildIntegerMatcher *CCIM = dyn_cast<CheckChildIntegerMatcher>(M)) {
+    // If the two checks are about different nodes, we don't know if they
+    // conflict!
+    if (CCIM->getChildNo() != getChildNo())
+      return false;
+
+    return CCIM->getValue() != getValue();
+  }
   return false;
 }
 
