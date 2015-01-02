@@ -92,8 +92,7 @@ static MVT::SimpleValueType getRegisterValueType(Record *R,
   const CodeGenRegister *Reg = T.getRegBank().getReg(R);
   std::list<CodeGenRegisterClass> RCs = T.getRegBank().getRegClasses();
 
-  for (unsigned rc = 0, e = RCs.size(); rc != e; ++rc) {
-    const CodeGenRegisterClass &RC = RCs[rc];
+  for (auto RC : RCs) {
     if (!RC.contains(Reg))
       continue;
 
