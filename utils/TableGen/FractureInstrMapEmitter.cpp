@@ -170,7 +170,8 @@ void  FractureInstrMapEmitter::run(raw_ostream &OS) {
     MatchedChainNodes.clear();
   }
 
-  Matcher *FinalMatcher = new ScopeMatcher(PatternMatchers);
+  Matcher *FinalMatcher = new ScopeMatcher(&PatternMatchers[0],
+    PatternMatchers.size());
 
   // TheMatcher->dump();
 

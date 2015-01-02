@@ -12,7 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "DAGISelMatcher.h"
-#include "CodeGenDAGPatterns.h"
+#include "CodeInvDAGPatterns.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/StringMap.h"
@@ -32,11 +32,11 @@ OmitComments("omit-comments", cl::desc("Do not generate comments"),
 
 namespace {
 class MatcherTableEmitter {
-  const CodeGenDAGPatterns &CGP;
-  
-  DenseMap<TreePattern *, unsigned> NodePredicateMap;
-  std::vector<TreePredicateFn> NodePredicates;
-  
+  const CodeInvDAGPatterns &CGP;
+
+  // DenseMap<TreePattern *, unsigned> NodePredicateMap;
+  // std::vector<TreePredicateFn> NodePredicates;
+
   StringMap<unsigned> PatternPredicateMap;
   std::vector<std::string> PatternPredicates;
 
@@ -48,27 +48,27 @@ class MatcherTableEmitter {
   std::vector<Record*> NodeXForms;
 
 public:
-  MatcherTableEmitter(const CodeGenDAGPatterns &cgp)
-    : CGP(cgp) {}
+  MatcherTableEmitter(const CodeInvDAGPatterns &CIP) : CGP(CIP) {}
 
   unsigned EmitMatcherList(const Matcher *N, unsigned Indent,
                            unsigned StartIdx, formatted_raw_ostream &OS);
 
-  void EmitPredicateFunctions(formatted_raw_ostream &OS);
+  // void EmitPredicateFunctions(formatted_raw_ostream &OS);
+  void EmitCheckComplexPattern(formatted_raw_ostream &OS);
 
   void EmitHistogram(const Matcher *N, formatted_raw_ostream &OS);
 private:
   unsigned EmitMatcher(const Matcher *N, unsigned Indent, unsigned CurrentIdx,
                        formatted_raw_ostream &OS);
 
-  unsigned getNodePredicate(TreePredicateFn Pred) {
-    unsigned &Entry = NodePredicateMap[Pred.getOrigPatFragRecord()];
-    if (Entry == 0) {
-      NodePredicates.push_back(Pred);
-      Entry = NodePredicates.size();
-    }
-    return Entry-1;
-  }
+  // unsigned getNodePredicate(TreePredicateFn Pred) {
+  //   unsigned &Entry = NodePredicateMap[Pred.getOrigPatFragRecord()];
+  //   if (Entry == 0) {
+  //     NodePredicates.push_back(Pred);
+  //     Entry = NodePredicates.size();
+  //   }
+  //   return Entry-1;
+  // }
   
   unsigned getPatternPredicate(StringRef PredName) {
     unsigned &Entry = PatternPredicateMap[PredName];
@@ -142,7 +142,7 @@ EmitMatcher(const Matcher *N, unsigned Indent, unsigned CurrentIdx,
   switch (N->getKind()) {
   case Matcher::Scope: {
     const ScopeMatcher *SM = cast<ScopeMatcher>(N);
-    assert(SM->getNext() == nullptr && "Shouldn't have next after scope");
+    assert(SM->getNext() == 0 && "Shouldn't have next after scope");
 
     unsigned StartIdx = CurrentIdx;
 
@@ -202,15 +202,19 @@ EmitMatcher(const Matcher *N, unsigned Indent, unsigned CurrentIdx,
     return CurrentIdx - StartIdx + 1;
   }
 
-  case Matcher::RecordNode:
+  case Matcher::RecordNode: {
     OS << "OPC_RecordNode,";
-    if (!OmitComments)
+    std::string WhatFor = cast<RecordMatcher>(N)->getWhatFor();
+    // This hack fixes a specific bug where null chars get emitted in OSX. 
+    // Would be best to determine HOW this is happening, but this works for now.
+    if (!OmitComments && WhatFor[0] != 0) {
       OS.PadToColumn(CommentIndent) << "// #"
         << cast<RecordMatcher>(N)->getResultNo() << " = "
-        << cast<RecordMatcher>(N)->getWhatFor();
+        << WhatFor;
+    }
     OS << '\n';
     return 1;
-
+  }
   case Matcher::RecordChild:
     OS << "OPC_RecordChild" << cast<RecordChildMatcher>(N)->getChildNo()
        << ',';
@@ -242,12 +246,6 @@ EmitMatcher(const Matcher *N, unsigned Indent, unsigned CurrentIdx,
        << cast<CheckSameMatcher>(N)->getMatchNumber() << ",\n";
     return 2;
 
-  case Matcher::CheckChildSame:
-    OS << "OPC_CheckChild"
-       << cast<CheckChildSameMatcher>(N)->getChildNo() << "Same, "
-       << cast<CheckChildSameMatcher>(N)->getMatchNumber() << ",\n";
-    return 2;
-
   case Matcher::CheckPatternPredicate: {
     StringRef Pred =cast<CheckPatternPredicateMatcher>(N)->getPredicate();
     OS << "OPC_CheckPatternPredicate, " << getPatternPredicate(Pred) << ',';
@@ -257,19 +255,26 @@ EmitMatcher(const Matcher *N, unsigned Indent, unsigned CurrentIdx,
     return 2;
   }
   case Matcher::CheckPredicate: {
-    TreePredicateFn Pred = cast<CheckPredicateMatcher>(N)->getPredicate();
-    OS << "OPC_CheckPredicate, " << getNodePredicate(Pred) << ',';
-    if (!OmitComments)
-      OS.PadToColumn(CommentIndent) << "// " << Pred.getFnName();
-    OS << '\n';
+  //   TreePredicateFn Pred = cast<CheckPredicateMatcher>(N)->getPredicate();
+  //   OS << "OPC_CheckPredicate, " << getNodePredicate(Pred) << ',';
+  //   if (!OmitComments)
+  //     OS.PadToColumn(CommentIndent) << "// " << Pred.getFnName();
+  //   OS << '\n';
     return 2;
   }
 
-  case Matcher::CheckOpcode:
-    OS << "OPC_CheckOpcode, TARGET_VAL("
-       << cast<CheckOpcodeMatcher>(N)->getOpcode().getEnumName() << "),\n";
+  case Matcher::CheckOpcode: {
+    StringRef EnumName = cast<CheckOpcodeMatcher>(N)->getEnumName();
+    // This hack fixes a specific bug where null chars get emitted in OSX. 
+    // Would be best to determine HOW this is happening, but this works for now.
+    outs() << EnumName << "\n";
+    OS << "OPC_CheckOpcode, TARGET_VAL(";
+    for (unsigned i = 0, e = EnumName.size(); i != e; ++i) {
+	OS << EnumName[i];
+    }
+    OS << "),\n";
     return 3;
-
+  }
   case Matcher::SwitchOpcode:
   case Matcher::SwitchType: {
     unsigned StartIdx = CurrentIdx;
@@ -321,17 +326,16 @@ EmitMatcher(const Matcher *N, unsigned Indent, unsigned CurrentIdx,
       assert(ChildSize != 0 && "Should not have a zero-sized child!");
 
       if (i != 0) {
-        if (!OmitComments)
-          OS << "/*" << CurrentIdx << "*/";
         OS.PadToColumn(Indent*2);
         if (!OmitComments)
-          OS << (isa<SwitchOpcodeMatcher>(N) ?
-                     "/*SwitchOpcode*/ " : "/*SwitchType*/ ");
+        OS << (isa<SwitchOpcodeMatcher>(N) ?
+                   "/*SwitchOpcode*/ " : "/*SwitchType*/ ");
       }
 
       // Emit the VBR.
       CurrentIdx += EmitVBRValue(ChildSize, OS);
 
+      OS << ' ';
       if (const SwitchOpcodeMatcher *SOM = dyn_cast<SwitchOpcodeMatcher>(N))
         OS << "TARGET_VAL(" << SOM->getCaseOpcode(i).getEnumName() << "),";
       else
@@ -347,8 +351,6 @@ EmitMatcher(const Matcher *N, unsigned Indent, unsigned CurrentIdx,
     }
 
     // Emit the final zero to terminate the switch.
-    if (!OmitComments)
-      OS << "/*" << CurrentIdx << "*/";
     OS.PadToColumn(Indent*2) << "0, ";
     if (!OmitComments)
       OS << (isa<SwitchOpcodeMatcher>(N) ?
@@ -375,14 +377,6 @@ EmitMatcher(const Matcher *N, unsigned Indent, unsigned CurrentIdx,
   case Matcher::CheckInteger: {
     OS << "OPC_CheckInteger, ";
     unsigned Bytes=1+EmitVBRValue(cast<CheckIntegerMatcher>(N)->getValue(), OS);
-    OS << '\n';
-    return Bytes;
-  }
-  case Matcher::CheckChildInteger: {
-    OS << "OPC_CheckChild" << cast<CheckChildIntegerMatcher>(N)->getChildNo()
-       << "Integer, ";
-    unsigned Bytes=1+EmitVBRValue(cast<CheckChildIntegerMatcher>(N)->getValue(),
-                                  OS);
     OS << '\n';
     return Bytes;
   }
@@ -553,8 +547,8 @@ EmitMatcher(const Matcher *N, unsigned Indent, unsigned CurrentIdx,
 
       if (const MorphNodeToMatcher *SNT = dyn_cast<MorphNodeToMatcher>(N)) {
         OS.PadToColumn(Indent*2) << "// Src: "
-          << *SNT->getPattern().getSrcPattern() << " - Complexity = "
-          << SNT->getPattern().getPatternComplexity(CGP) << '\n';
+             << *SNT->getPattern().getSrcPattern() << " - Complexity = ?\n";
+          // << SNT->getPattern().getPatternComplexity(CGP) << '\n';
         OS.PadToColumn(Indent*2) << "// Dst: "
           << *SNT->getPattern().getDstPattern() << '\n';
       }
@@ -581,8 +575,8 @@ EmitMatcher(const Matcher *N, unsigned Indent, unsigned CurrentIdx,
     OS << '\n';
     if (!OmitComments) {
       OS.PadToColumn(Indent*2) << "// Src: "
-        << *CM->getPattern().getSrcPattern() << " - Complexity = "
-        << CM->getPattern().getPatternComplexity(CGP) << '\n';
+           << *CM->getPattern().getSrcPattern() << " - Complexity = ?\n";
+        // << CM->getPattern().getPatternComplexity(CGP) << '\n';
       OS.PadToColumn(Indent*2) << "// Dst: "
         << *CM->getPattern().getDstPattern();
     }
@@ -612,51 +606,56 @@ EmitMatcherList(const Matcher *N, unsigned Indent, unsigned CurrentIdx,
   return Size;
 }
 
-void MatcherTableEmitter::EmitPredicateFunctions(formatted_raw_ostream &OS) {
-  // Emit pattern predicates.
-  if (!PatternPredicates.empty()) {
-    OS << "bool CheckPatternPredicate(unsigned PredNo) const override {\n";
-    OS << "  switch (PredNo) {\n";
-    OS << "  default: llvm_unreachable(\"Invalid predicate in table?\");\n";
-    for (unsigned i = 0, e = PatternPredicates.size(); i != e; ++i)
-      OS << "  case " << i << ": return "  << PatternPredicates[i] << ";\n";
-    OS << "  }\n";
-    OS << "}\n\n";
-  }
+// void MatcherTableEmitter::EmitPredicateFunctions(formatted_raw_ostream &OS) {
+//   // Emit pattern predicates.
+//   if (!PatternPredicates.empty()) {
+//     OS << "virtual bool CheckPatternPredicate(unsigned PredNo) const {\n";
+//     OS << "  switch (PredNo) {\n";
+//     OS << "  default: llvm_unreachable(\"Invalid predicate in table?\");\n";
+//     for (unsigned i = 0, e = PatternPredicates.size(); i != e; ++i)
+//       OS << "  case " << i << ": return "  << PatternPredicates[i] << ";\n";
+//     OS << "  }\n";
+//     OS << "}\n\n";
+//   }
 
-  // Emit Node predicates.
-  // FIXME: Annoyingly, these are stored by name, which we never even emit. Yay?
-  StringMap<TreePattern*> PFsByName;
+//   // Emit Node predicates.
+//   // FIXME: Annoyingly, these are stored by name, which we never even emit. Yay?
+//   StringMap<TreePattern*> PFsByName;
 
-  for (CodeGenDAGPatterns::pf_iterator I = CGP.pf_begin(), E = CGP.pf_end();
-       I != E; ++I)
-    PFsByName[I->first->getName()] = I->second.get();
+//   for (CodeInvDAGPatterns::pf_iterator I = CGP.pf_begin(), E = CGP.pf_end();
+//        I != E; ++I)
+//     PFsByName[I->first->getName()] = I->second;
 
-  if (!NodePredicates.empty()) {
-    OS << "bool CheckNodePredicate(SDNode *Node,\n";
-    OS << "                        unsigned PredNo) const override {\n";
-    OS << "  switch (PredNo) {\n";
-    OS << "  default: llvm_unreachable(\"Invalid predicate in table?\");\n";
-    for (unsigned i = 0, e = NodePredicates.size(); i != e; ++i) {
-      // Emit the predicate code corresponding to this pattern.
-      TreePredicateFn PredFn = NodePredicates[i];
-      
-      assert(!PredFn.isAlwaysTrue() && "No code in this predicate");
-      OS << "  case " << i << ": { // " << NodePredicates[i].getFnName() <<'\n';
-      
-      OS << PredFn.getCodeToRunOnSDNode() << "\n  }\n";
-    }
-    OS << "  }\n";
-    OS << "}\n\n";
-  }
+//   if (!NodePredicates.empty()) {
+//     OS << "virtual bool CheckNodePredicate(SDNode *Node,\n";
+//     OS << "                                unsigned PredNo) const {\n";
+//     OS << "  switch (PredNo) {\n";
+//     OS << "  default: llvm_unreachable(\"Invalid predicate in table?\");\n";
+//     for (unsigned i = 0, e = NodePredicates.size(); i != e; ++i) {
+//       // Emit the predicate code corresponding to this pattern.
+//       TreePredicateFn PredFn = NodePredicates[i];
 
-  // Emit CompletePattern matchers.
+//       assert(!PredFn.isAlwaysTrue() && "No code in this predicate");
+//       OS << "  case " << i << ": { // " << NodePredicates[i].getFnName() <<'\n';
+
+//       OS << PredFn.getCodeToRunOnSDNode() << "\n  }\n";
+//     }
+//     OS << "  }\n";
+//     OS << "}\n\n";
+//   }
+
+//   // Emit CompletePattern matchers.
+void MatcherTableEmitter::EmitCheckComplexPattern(formatted_raw_ostream &OS) {
+    // Emit CompletePattern matchers.
   // FIXME: This should be const.
+  // std::vector<const ComplexPattern*> ComplexPatterns = CGP.getComplexPatterns();
   if (!ComplexPatterns.empty()) {
-    OS << "bool CheckComplexPattern(SDNode *Root, SDNode *Parent,\n";
-    OS << "                         SDValue N, unsigned PatternNo,\n";
-    OS << "         SmallVectorImpl<std::pair<SDValue, SDNode*> > &Result) override {\n";
-    OS << "  unsigned NextRes = Result.size();\n";
+    OS << "bool " << CGP.getTargetInfo().getName() << "InvISelDAG::";
+    OS << "CheckComplexPattern(SDNode *Root, SDNode *Parent,\n";
+    OS << "                                 SDValue N, unsigned PatternNo,\n";
+    OS << "         SmallVectorImpl<std::pair<SDValue, SDNode*> > &Result,\n";
+    OS << "         unsigned StartNo) {\n";
+    // OS << "  unsigned NextRes = Result.size();\n";
     OS << "  switch (PatternNo) {\n";
     OS << "  default: llvm_unreachable(\"Invalid pattern # in table?\");\n";
     for (unsigned i = 0, e = ComplexPatterns.size(); i != e; ++i) {
@@ -665,9 +664,8 @@ void MatcherTableEmitter::EmitPredicateFunctions(formatted_raw_ostream &OS) {
 
       if (P.hasProperty(SDNPHasChain))
         ++NumOps;  // Get the chained node too.
-
       OS << "  case " << i << ":\n";
-      OS << "    Result.resize(NextRes+" << NumOps << ");\n";
+      // OS << "    Result.resize(NextRes+" << NumOps << ");\n";
       OS << "    return "  << P.getSelectFunc();
 
       OS << "(";
@@ -683,49 +681,50 @@ void MatcherTableEmitter::EmitPredicateFunctions(formatted_raw_ostream &OS) {
 
       OS << "N";
       for (unsigned i = 0; i != NumOps; ++i)
-        OS << ", Result[NextRes+" << i << "].first";
+        OS << ", Result[StartNo+" << i << "].first";
       OS << ");\n";
-    }
-    OS << "  }\n";
-    OS << "}\n\n";
-  }
-
-
-  // Emit SDNodeXForm handlers.
-  // FIXME: This should be const.
-  if (!NodeXForms.empty()) {
-    OS << "SDValue RunSDNodeXForm(SDValue V, unsigned XFormNo) override {\n";
-    OS << "  switch (XFormNo) {\n";
-    OS << "  default: llvm_unreachable(\"Invalid xform # in table?\");\n";
-
-    // FIXME: The node xform could take SDValue's instead of SDNode*'s.
-    for (unsigned i = 0, e = NodeXForms.size(); i != e; ++i) {
-      const CodeGenDAGPatterns::NodeXForm &Entry =
-        CGP.getSDNodeTransform(NodeXForms[i]);
-
-      Record *SDNode = Entry.first;
-      const std::string &Code = Entry.second;
-
-      OS << "  case " << i << ": {  ";
-      if (!OmitComments)
-        OS << "// " << NodeXForms[i]->getName();
-      OS << '\n';
-
-      std::string ClassName = CGP.getSDNodeInfo(SDNode).getSDClassName();
-      if (ClassName == "SDNode")
-        OS << "    SDNode *N = V.getNode();\n";
-      else
-        OS << "    " << ClassName << " *N = cast<" << ClassName
-           << ">(V.getNode());\n";
-      OS << Code << "\n  }\n";
     }
     OS << "  }\n";
     OS << "}\n\n";
   }
 }
 
+
+//   // Emit SDNodeXForm handlers.
+//   // FIXME: This should be const.
+//   if (!NodeXForms.empty()) {
+//     OS << "virtual SDValue RunSDNodeXForm(SDValue V, unsigned XFormNo) {\n";
+//     OS << "  switch (XFormNo) {\n";
+//     OS << "  default: llvm_unreachable(\"Invalid xform # in table?\");\n";
+
+//     // FIXME: The node xform could take SDValue's instead of SDNode*'s.
+//     for (unsigned i = 0, e = NodeXForms.size(); i != e; ++i) {
+//       const CodeInvDAGPatterns::NodeXForm &Entry =
+//         CGP.getSDNodeTransform(NodeXForms[i]);
+
+//       Record *SDNode = Entry.first;
+//       const std::string &Code = Entry.second;
+
+//       OS << "  case " << i << ": {  ";
+//       if (!OmitComments)
+//         OS << "// " << NodeXForms[i]->getName();
+//       OS << '\n';
+
+//       std::string ClassName = CGP.getSDNodeInfo(SDNode).getSDClassName();
+//       if (ClassName == "SDNode")
+//         OS << "    SDNode *N = V.getNode();\n";
+//       else
+//         OS << "    " << ClassName << " *N = cast<" << ClassName
+//            << ">(V.getNode());\n";
+//       OS << Code << "\n  }\n";
+//     }
+//     OS << "  }\n";
+//     OS << "}\n\n";
+//   }
+// }
+
 static void BuildHistogram(const Matcher *M, std::vector<unsigned> &OpcodeFreq){
-  for (; M != nullptr; M = M->getNext()) {
+  for (; M != 0; M = M->getNext()) {
     // Count this node.
     if (unsigned(M->getKind()) >= OpcodeFreq.size())
       OpcodeFreq.resize(M->getKind()+1);
@@ -766,7 +765,6 @@ void MatcherTableEmitter::EmitHistogram(const Matcher *M,
     case Matcher::MoveChild: OS << "OPC_MoveChild"; break;
     case Matcher::MoveParent: OS << "OPC_MoveParent"; break;
     case Matcher::CheckSame: OS << "OPC_CheckSame"; break;
-    case Matcher::CheckChildSame: OS << "OPC_CheckChildSame"; break;
     case Matcher::CheckPatternPredicate:
       OS << "OPC_CheckPatternPredicate"; break;
     case Matcher::CheckPredicate: OS << "OPC_CheckPredicate"; break;
@@ -776,7 +774,6 @@ void MatcherTableEmitter::EmitHistogram(const Matcher *M,
     case Matcher::SwitchType: OS << "OPC_SwitchType"; break;
     case Matcher::CheckChildType: OS << "OPC_CheckChildType"; break;
     case Matcher::CheckInteger: OS << "OPC_CheckInteger"; break;
-    case Matcher::CheckChildInteger: OS << "OPC_CheckChildInteger"; break;
     case Matcher::CheckCondCode: OS << "OPC_CheckCondCode"; break;
     case Matcher::CheckValueType: OS << "OPC_CheckValueType"; break;
     case Matcher::CheckComplexPat: OS << "OPC_CheckComplexPat"; break;
@@ -804,12 +801,14 @@ void MatcherTableEmitter::EmitHistogram(const Matcher *M,
 
 
 void llvm::EmitMatcherTable(const Matcher *TheMatcher,
-                            const CodeGenDAGPatterns &CGP,
+                            const CodeInvDAGPatterns &CGP,
                             raw_ostream &O) {
   formatted_raw_ostream OS(O);
 
   OS << "// The main instruction selector code.\n";
-  OS << "SDNode *SelectCode(SDNode *N) {\n";
+  OS << "SDNode* " << CGP.getTargetInfo().getName() 
+     << "InvISelDAG::InvertCode(SDNode *N) {\n";
+  // OS << "SDNode *InvertCode(SDNode *N) {\n";
 
   MatcherTableEmitter MatcherEmitter(CGP);
 
@@ -817,15 +816,15 @@ void llvm::EmitMatcherTable(const Matcher *TheMatcher,
   OS << "  // this.\n";
   OS << "  #define TARGET_VAL(X) X & 255, unsigned(X) >> 8\n";
   OS << "  static const unsigned char MatcherTable[] = {\n";
-  unsigned TotalSize = MatcherEmitter.EmitMatcherList(TheMatcher, 6, 0, OS);
+  unsigned TotalSize = MatcherEmitter.EmitMatcherList(TheMatcher, 5, 0, OS);
   OS << "    0\n  }; // Total Array size is " << (TotalSize+1) << " bytes\n\n";
 
   MatcherEmitter.EmitHistogram(TheMatcher, OS);
 
   OS << "  #undef TARGET_VAL\n";
-  OS << "  return SelectCodeCommon(N, MatcherTable,sizeof(MatcherTable));\n}\n";
+  OS << "  return InvertCodeCommon(N, MatcherTable,sizeof(MatcherTable));\n}\n";
   OS << '\n';
 
   // Next up, emit the function for node and pattern predicates:
-  MatcherEmitter.EmitPredicateFunctions(OS);
+  MatcherEmitter.EmitCheckComplexPattern(OS);
 }
