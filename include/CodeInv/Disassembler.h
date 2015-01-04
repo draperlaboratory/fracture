@@ -35,7 +35,6 @@
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/FormattedStream.h"
-#include "llvm/Support/MemoryObject.h"
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
@@ -43,6 +42,7 @@
 #include <sstream>
 
 #include "CodeInv/MCDirector.h"
+#include "CodeInv/FractureMemoryObject.h"
 
 using namespace llvm;
 

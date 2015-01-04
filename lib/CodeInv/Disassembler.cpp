@@ -525,7 +525,7 @@ void Disassembler::setSection(const object::SectionRef Section) {
   SectSize = Section.getSize();
   CurSection = Section;
   CurSectionEnd = SectAddr + SectSize;
-  CurSectionMemory = new MemoryObject(Bytes, SectAddr);
+  CurSectionMemory = new FractureMemoryObject(Bytes, SectAddr);
   StringRef SectionName;
   CurSection.getName(SectionName);
   printInfo("Setting Section " + std::string(SectionName.data()));
