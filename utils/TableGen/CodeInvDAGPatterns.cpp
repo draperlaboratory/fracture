@@ -723,17 +723,6 @@ void CodeInvDAGPatterns::InferInstructionFlags() {
     CodeGenInstruction &InstInfo =
       const_cast<CodeGenInstruction &>(*Instructions[i]);
 
-<<<<<<< HEAD
-=======
-    // Treat neverHasSideEffects = 1 as the equivalent of hasSideEffects = 0.
-    // This flag is obsolete and will be removed.
-    if (!InstInfo.hasSideEffects) {
-      assert(!InstInfo.hasSideEffects);
-      InstInfo.hasSideEffects_Unset = false;
-    }
-
-
->>>>>>> 647a9557ff4ebb987eabea192f6c1f254d65338c
     // Get the primary instruction pattern.
     const InvTreePattern *Pattern = getResultPattern(InstInfo.TheDef);
     if (!Pattern) {

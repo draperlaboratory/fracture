@@ -143,10 +143,6 @@ CodeGenTarget::CodeGenTarget(RecordKeeper &records)
 }
 
 CodeGenTarget::~CodeGenTarget() {
-<<<<<<< HEAD
-=======
-  DeleteContainerSeconds(Instructions);
->>>>>>> 647a9557ff4ebb987eabea192f6c1f254d65338c
 }
 
 const std::string &CodeGenTarget::getName() const {
@@ -283,18 +279,10 @@ GetInstByName(const char *Name,
               RecordKeeper &Records) {
   const Record *Rec = Records.getDef(Name);
 
-<<<<<<< HEAD
   const auto I = Insts.find(Rec);
   if (!Rec || I == Insts.end())
     PrintFatalError(Twine("Could not find '") + Name + "' instruction!");
   return I->second.get();
-=======
-  DenseMap<const Record*, CodeGenInstruction*>::const_iterator
-    I = Insts.find(Rec);
-  if (!Rec || I == Insts.end())
-    PrintFatalError(Twine("Could not find '") + Name + "' instruction!");
-  return I->second;
->>>>>>> 647a9557ff4ebb987eabea192f6c1f254d65338c
 }
 
 /// \brief Return all of the instructions defined by the target, ordered by
@@ -309,11 +297,7 @@ void CodeGenTarget::ComputeInstrsByEnum() const {
       "LIFETIME_END", "STACKMAP",      "PATCHPOINT",       "LOAD_STACK_GUARD",
       "STATEPOINT",
       nullptr};
-<<<<<<< HEAD
   const auto &Insts = getInstructions();
-=======
-  const DenseMap<const Record*, CodeGenInstruction*> &Insts = getInstructions();
->>>>>>> 647a9557ff4ebb987eabea192f6c1f254d65338c
   for (const char *const *p = FixedInstrs; *p; ++p) {
     const CodeGenInstruction *Instr = GetInstByName(*p, Insts, Records);
     assert(Instr && "Missing target independent instruction");
@@ -353,13 +337,7 @@ void CodeGenTarget::reverseBitsForLittleEndianEncoding() {
     return;
 
   std::vector<Record*> Insts = Records.getAllDerivedDefinitions("Instruction");
-<<<<<<< HEAD
   for (Record *R : Insts) {
-=======
-  for (std::vector<Record*>::iterator I = Insts.begin(), E = Insts.end();
-       I != E; ++I) {
-    Record *R = *I;
->>>>>>> 647a9557ff4ebb987eabea192f6c1f254d65338c
     if (R->getValueAsString("Namespace") == "TargetOpcode" ||
         R->getValueAsBit("isPseudo"))
       continue;
@@ -553,12 +531,8 @@ CodeGenIntrinsic::CodeGenIntrinsic(Record *R) {
       // overloaded, all the types can be specified directly.
       assert(((!TyEl->isSubClassOf("LLVMExtendedType") &&
                !TyEl->isSubClassOf("LLVMTruncatedType") &&
-<<<<<<< HEAD
                !TyEl->isSubClassOf("LLVMVectorSameWidth") &&
                !TyEl->isSubClassOf("LLVMPointerToElt")) ||
-=======
-               !TyEl->isSubClassOf("LLVMVectorSameWidth")) ||
->>>>>>> 647a9557ff4ebb987eabea192f6c1f254d65338c
               VT == MVT::iAny || VT == MVT::vAny) &&
              "Expected iAny or vAny type");
     } else

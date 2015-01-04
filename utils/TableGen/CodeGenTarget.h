@@ -65,12 +65,8 @@ class CodeGenTarget {
   RecordKeeper &Records;
   Record *TargetRec;
 
-<<<<<<< HEAD
   mutable DenseMap<const Record*,
                    std::unique_ptr<CodeGenInstruction>> Instructions;
-=======
-  mutable DenseMap<const Record*, CodeGenInstruction*> Instructions;
->>>>>>> 647a9557ff4ebb987eabea192f6c1f254d65338c
   mutable std::unique_ptr<CodeGenRegBank> RegBank;
   mutable std::vector<Record*> RegAltNameIndices;
   mutable SmallVector<MVT::SimpleValueType, 8> LegalValueTypes;

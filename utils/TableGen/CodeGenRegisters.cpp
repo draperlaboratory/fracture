@@ -1190,7 +1190,6 @@ void CodeGenRegBank::computeSubRegLaneMasks() {
         CoveringLanes &= ~(1u << Bit);
     } else {
       Idx.LaneMask = 0;
-<<<<<<< HEAD
     }
   }
 
@@ -1255,8 +1254,6 @@ void CodeGenRegBank::computeSubRegLaneMasks() {
     if (LaneTransforms.size() == 0) {
       MaskRolPair P = { ~0u, 0 };
       LaneTransforms.push_back(P);
-=======
->>>>>>> 647a9557ff4ebb987eabea192f6c1f254d65338c
     }
   }
 
@@ -1271,7 +1268,6 @@ void CodeGenRegBank::computeSubRegLaneMasks() {
     if (!Idx.AllSuperRegsCovered)
       CoveringLanes &= ~Mask;
   }
-<<<<<<< HEAD
 
   // Compute lane mask combinations for register classes.
   for (auto &RegClass : RegClasses) {
@@ -1283,8 +1279,6 @@ void CodeGenRegBank::computeSubRegLaneMasks() {
     }
     RegClass.LaneMask = LaneMask;
   }
-=======
->>>>>>> 647a9557ff4ebb987eabea192f6c1f254d65338c
 }
 
 namespace {
@@ -1817,11 +1811,8 @@ void CodeGenRegBank::computeDerivedInfo() {
   // supersets for the union of overlapping sets.
   computeRegUnitSets();
 
-<<<<<<< HEAD
   computeRegUnitLaneMasks();
 
-=======
->>>>>>> 647a9557ff4ebb987eabea192f6c1f254d65338c
   // Get the weight of each set.
   for (unsigned Idx = 0, EndIdx = RegUnitSets.size(); Idx != EndIdx; ++Idx)
     RegUnitSets[Idx].Weight = getRegUnitSetWeight(RegUnitSets[Idx].Units);
