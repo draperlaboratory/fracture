@@ -17,6 +17,7 @@
 #ifndef DISASSEMBLER_H
 #define DISASSEMBLER_H
 
+#include "llvm/IR/Metadata.h"
 #include "llvm/CodeGen/GCStrategy.h"
 #include "llvm/CodeGen/GCMetadata.h"
 #include "llvm/CodeGen/MachineFunction.h"

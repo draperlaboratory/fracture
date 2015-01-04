@@ -259,9 +259,9 @@ DebugLoc* Disassembler::setDebugLoc(uint64_t Address) {
   Type *Int64 = Type::getInt64Ty(*MC->getContext());
   // The following sets the "scope" variable which actually holds the address.
   uint64_t AddrMask = dwarf::DW_TAG_lexical_block;
-  std::vector<Value*> *Elts = new std::vector<Value*>();
-  Elts->push_back(ConstantInt::get(Int64, AddrMask));
-  Elts->push_back(ConstantInt::get(Int64, Address));
+  std::vector<Metadata*> *Elts = new std::vector<Metadata*>();
+  Elts->push_back(ValueAsMetadata::get(ConstantInt::get(Int64, AddrMask)));
+  Elts->push_back(ValueAsMetadata::get(ConstantInt::get(Int64, Address)));
   MDNode *Scope = MDNode::get(*MC->getContext(), *Elts);
   // The following is here to fill in the value and not to be used to get
   // offsets
@@ -282,7 +282,7 @@ MachineFunction* Disassembler::getOrCreateFunction(unsigned Address) {
     FunctionType *FTy = FunctionType::get(
       Type::getPrimitiveType(TheModule->getContext(), Type::VoidTyID), false);
     Function *F = cast<Function>(TheModule->getOrInsertFunction(FN, FTy));
-    MF = new MachineFunction(F, *MC->getTargetMachine(), Address, *MMI, GMI);
+    MF = new MachineFunction(F, *MC->getTargetMachine(), Address, *MMI);
     Functions[Address] = MF;
   }
   return MF;
@@ -379,7 +379,7 @@ void Disassembler::printInstruction(formatted_raw_ostream &Out,
   unsigned Size = Inst->getDesc().getSize();
   // TODO: replace the Bytes with something memory safe (StringRef??)
   uint8_t *Bytes = new uint8_t(Size);
-  int NumRead = CurSectionMemory->readBytes(Address, Size, Bytes);
+  int NumRead = CurSectionMemory->readBytes(Bytes, Address, Size);
   if (NumRead < 0) {
     printError("Unable to read current section memory!");
     return;
@@ -521,17 +521,8 @@ void Disassembler::setSection(const object::SectionRef Section) {
     printError(ec.message());
     return;
   }
-  ec = Section.getAddress(SectAddr);
-  if (ec) {
-    printError(ec.message());
-    return;
-  }
-  ec = Section.getSize(SectSize);
-  if (ec) {
-    printError(ec.message());
-    return;
-  }
-
+  SectAddr = Section.getAddress();
+  SectSize = Section.getSize();
   CurSection = Section;
   CurSectionEnd = SectAddr + SectSize;
   CurSectionMemory = new MemoryObject(Bytes, SectAddr);
