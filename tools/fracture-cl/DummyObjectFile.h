@@ -58,15 +58,6 @@ namespace object {
       return end_sections();
     }
 
-    virtual library_iterator begin_libraries_needed() const;
-    virtual library_iterator end_libraries_needed() const;
-    virtual library_iterator needed_library_begin() const {
-      return begin_libraries_needed();
-    }
-    virtual library_iterator needed_library_end() const {
-      return end_libraries_needed();
-    }
-
     /// @brief The number of bytes used to represent an address in this object
     ///        file format.
     virtual uint8_t getBytesInAddress() const;
@@ -98,21 +89,21 @@ namespace object {
     // Section Functions
     virtual std::error_code getSectionNext(DataRefImpl Sec, SectionRef &Res) const;
     virtual std::error_code getSectionName(DataRefImpl Sec, StringRef &Res) const;
-    virtual std::error_code getSectionAddress(DataRefImpl Sec, uint64_t &Res) const;
-    virtual std::error_code getSectionSize(DataRefImpl Sec, uint64_t &Res) const;
+    virtual uint64_t getSectionAddress(DataRefImpl Sec) const;
+    virtual uint64_t getSectionSize(DataRefImpl Sec) const;
+
     virtual std::error_code getSectionContents(DataRefImpl Sec, StringRef &Res)const;
-    virtual std::error_code getSectionAlignment(DataRefImpl Sec, uint64_t &Res)const;
-    virtual std::error_code isSectionText(DataRefImpl Sec, bool &Res) const;
-    virtual std::error_code isSectionData(DataRefImpl Sec, bool &Res) const;
-    virtual std::error_code isSectionBSS(DataRefImpl Sec, bool &Res) const;
+    virtual uint64_t getSectionAlignment(DataRefImpl Sec)const;
+    virtual bool isSectionText(DataRefImpl Sec) const;
+    virtual bool isSectionData(DataRefImpl Sec) const;
+    virtual bool isSectionBSS(DataRefImpl Sec) const;
     virtual std::error_code isSectionRequiredForExecution(DataRefImpl Sec,
                                                      bool &Res) const;
     // A section is 'virtual' if its contents aren't present in the object img.
-    virtual std::error_code isSectionVirtual(DataRefImpl Sec, bool &Res) const;
+    virtual bool isSectionVirtual(DataRefImpl Sec) const;
     virtual std::error_code isSectionZeroInit(DataRefImpl Sec, bool &Res) const;
     virtual std::error_code isSectionReadOnlyData(DataRefImpl Sec, bool &Res) const;
-    virtual std::error_code sectionContainsSymbol(DataRefImpl Sec, DataRefImpl Symb,
-                                             bool &Result) const;
+    virtual bool sectionContainsSymbol(DataRefImpl Sec, DataRefImpl Symb) const;
     virtual relocation_iterator getSectionRelBegin(DataRefImpl Sec) const;
     virtual relocation_iterator getSectionRelEnd(DataRefImpl Sec) const;
 
@@ -132,10 +123,6 @@ namespace object {
                                               int64_t &Res) const;
     virtual std::error_code getRelocationValueString(DataRefImpl Rel,
                                     SmallVectorImpl<char> &Result) const;
-
-    //Libraries
-    virtual std::error_code getLibraryNext(DataRefImpl Lib, LibraryRef &Res) const;
-    virtual std::error_code getLibraryPath(DataRefImpl Lib, StringRef &Res) const;
 
 
     // Added in latest llvm-trunk update
