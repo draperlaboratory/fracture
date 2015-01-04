@@ -59,7 +59,10 @@ namespace llvm {
     uint16_t Offset;
     const unsigned EnumValue;
     mutable unsigned LaneMask;
+<<<<<<< HEAD
     mutable SmallVector<MaskRolPair,1> CompositionLaneMaskTransform;
+=======
+>>>>>>> 647a9557ff4ebb987eabea192f6c1f254d65338c
 
     // Are all super-registers containing this SubRegIndex covered by their
     // sub-registers?

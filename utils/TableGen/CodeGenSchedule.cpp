@@ -74,10 +74,18 @@ struct InstRegexOp : public SetTheory::Operator {
       }
       RegexList.push_back(Regex(pat));
     }
+<<<<<<< HEAD
     for (const CodeGenInstruction *Inst : Target.instructions()) {
       for (auto &R : RegexList) {
         if (R.match(Inst->TheDef->getName()))
           Elts.insert(Inst->TheDef);
+=======
+    for (CodeGenTarget::inst_iterator I = Target.inst_begin(),
+           E = Target.inst_end(); I != E; ++I) {
+      for (auto &R : RegexList) {
+        if (R.match((*I)->TheDef->getName()))
+          Elts.insert((*I)->TheDef);
+>>>>>>> 647a9557ff4ebb987eabea192f6c1f254d65338c
       }
     }
   }
@@ -213,8 +221,14 @@ void CodeGenSchedModels::collectSchedRW() {
 
   // Find all SchedReadWrites referenced by instruction defs.
   RecVec SWDefs, SRDefs;
+<<<<<<< HEAD
   for (const CodeGenInstruction *Inst : Target.instructions()) {
     Record *SchedDef = Inst->TheDef;
+=======
+  for (CodeGenTarget::inst_iterator I = Target.inst_begin(),
+         E = Target.inst_end(); I != E; ++I) {
+    Record *SchedDef = (*I)->TheDef;
+>>>>>>> 647a9557ff4ebb987eabea192f6c1f254d65338c
     if (SchedDef->isValueUnset("SchedRW"))
       continue;
     RecVec RWs = SchedDef->getValueAsListOfDefs("SchedRW");
@@ -507,17 +521,30 @@ void CodeGenSchedModels::collectSchedClasses() {
 
   // Create a SchedClass for each unique combination of itinerary class and
   // SchedRW list.
+<<<<<<< HEAD
   for (const CodeGenInstruction *Inst : Target.instructions()) {
     Record *ItinDef = Inst->TheDef->getValueAsDef("Itinerary");
     IdxVec Writes, Reads;
     if (!Inst->TheDef->isValueUnset("SchedRW"))
       findRWs(Inst->TheDef->getValueAsListOfDefs("SchedRW"), Writes, Reads);
+=======
+  for (CodeGenTarget::inst_iterator I = Target.inst_begin(),
+         E = Target.inst_end(); I != E; ++I) {
+    Record *ItinDef = (*I)->TheDef->getValueAsDef("Itinerary");
+    IdxVec Writes, Reads;
+    if (!(*I)->TheDef->isValueUnset("SchedRW"))
+      findRWs((*I)->TheDef->getValueAsListOfDefs("SchedRW"), Writes, Reads);
+>>>>>>> 647a9557ff4ebb987eabea192f6c1f254d65338c
 
     // ProcIdx == 0 indicates the class applies to all processors.
     IdxVec ProcIndices(1, 0);
 
     unsigned SCIdx = addSchedClass(ItinDef, Writes, Reads, ProcIndices);
+<<<<<<< HEAD
     InstrClassMap[Inst->TheDef] = SCIdx;
+=======
+    InstrClassMap[(*I)->TheDef] = SCIdx;
+>>>>>>> 647a9557ff4ebb987eabea192f6c1f254d65338c
   }
   // Create classes for InstRW defs.
   RecVec InstRWDefs = Records.getAllDerivedDefinitions("InstRW");
@@ -532,16 +559,30 @@ void CodeGenSchedModels::collectSchedClasses() {
   if (!EnableDump)
     return;
 
+<<<<<<< HEAD
   for (const CodeGenInstruction *Inst : Target.instructions()) {
     std::string InstName = Inst->TheDef->getName();
     unsigned SCIdx = InstrClassMap.lookup(Inst->TheDef);
     if (!SCIdx) {
       dbgs() << "No machine model for " << Inst->TheDef->getName() << '\n';
+=======
+  for (CodeGenTarget::inst_iterator I = Target.inst_begin(),
+         E = Target.inst_end(); I != E; ++I) {
+
+    std::string InstName = (*I)->TheDef->getName();
+    unsigned SCIdx = InstrClassMap.lookup((*I)->TheDef);
+    if (!SCIdx) {
+      dbgs() << "No machine model for " << (*I)->TheDef->getName() << '\n';
+>>>>>>> 647a9557ff4ebb987eabea192f6c1f254d65338c
       continue;
     }
     CodeGenSchedClass &SC = getSchedClass(SCIdx);
     if (SC.ProcIndices[0] != 0)
+<<<<<<< HEAD
       PrintFatalError(Inst->TheDef->getLoc(), "Instruction's sched class "
+=======
+      PrintFatalError((*I)->TheDef->getLoc(), "Instruction's sched class "
+>>>>>>> 647a9557ff4ebb987eabea192f6c1f254d65338c
                       "must not be subtarget specific.");
 
     IdxVec ProcIndices;
@@ -579,7 +620,11 @@ void CodeGenSchedModels::collectSchedClasses() {
     for (std::vector<CodeGenProcModel>::iterator PI = ProcModels.begin(),
            PE = ProcModels.end(); PI != PE; ++PI) {
       if (!std::count(ProcIndices.begin(), ProcIndices.end(), PI->Index))
+<<<<<<< HEAD
         dbgs() << "No machine model for " << Inst->TheDef->getName()
+=======
+        dbgs() << "No machine model for " << (*I)->TheDef->getName()
+>>>>>>> 647a9557ff4ebb987eabea192f6c1f254d65338c
                << " on processor " << PI->ModelName << '\n';
     }
   }
@@ -776,7 +821,13 @@ bool CodeGenSchedModels::hasItineraries() const {
 
 // Gather the processor itineraries.
 void CodeGenSchedModels::collectProcItins() {
+<<<<<<< HEAD
   for (CodeGenProcModel &ProcModel : ProcModels) {
+=======
+  for (std::vector<CodeGenProcModel>::iterator PI = ProcModels.begin(),
+         PE = ProcModels.end(); PI != PE; ++PI) {
+    CodeGenProcModel &ProcModel = *PI;
+>>>>>>> 647a9557ff4ebb987eabea192f6c1f254d65338c
     if (!ProcModel.hasItineraries())
       continue;
 
