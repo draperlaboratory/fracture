@@ -577,7 +577,7 @@ const object::SectionRef Disassembler::getSectionByName(StringRef SectionName)
     StringRef Name;
     if (si->getName(Name)) {
       uint64_t Addr;
-      si->getAddress(Addr);
+      Addr = si->getAddress();
       Infos << "Disassembler: Unnamed section encountered at "
             << format("%8" PRIx64 , Addr) << "\n";
       continue;
@@ -605,11 +605,11 @@ const object::SectionRef Disassembler::getSectionByAddress(unsigned Address)
     }
 
     uint64_t SectionAddr;
-    if (si->getAddress(SectionAddr))
+    if ((SectionAddr = si->getAddress()))
       break;
 
     uint64_t SectionSize;
-    if (si->getSize(SectionSize))
+    if ((SectionSize = si->getSize()))
       break;
 
     if (SectionAddr <= Address && Address < SectionAddr + SectionSize) {
@@ -627,7 +627,8 @@ uint64_t Disassembler::getDebugOffset(const DebugLoc &Loc) const {
     return 0;
   }
 
-  if (ConstantInt *OffsetVal = dyn_cast<ConstantInt>(Scope->getOperand(1))) {
+  if (ConstantInt *OffsetVal = dyn_cast<ConstantInt>(
+      dyn_cast<ValueAsMetadata>(Scope->getOperand(1))->getValue())) {
     return OffsetVal->getZExtValue();
   }
 
