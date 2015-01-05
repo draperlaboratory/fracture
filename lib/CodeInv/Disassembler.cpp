@@ -231,22 +231,22 @@ unsigned Disassembler::decodeInstruction(unsigned Address,
   // ... at least for ARM.
   unsigned flags = 0;
   if (MCID->mayLoad())
-  	flags |= MachineMemOperand::MOLoad;
+    flags |= MachineMemOperand::MOLoad;
   if (MCID->mayStore())
-  	flags |= MachineMemOperand::MOStore;
+    flags |= MachineMemOperand::MOStore;
   if (flags != 0) {
-  	// Constant* cInt = ConstantInt::get(Type::getInt64Ty(ctx), MCO.getImm());
-  	// Value *Val = ConstantExpr::getIntToPtr(cInt,
-  	// PointerType::getUnqual(Type::getInt32Ty(ctx)));
-  	// FIXME: note size of 4 is known to be bad for
-  	// some targets
+    // Constant* cInt = ConstantInt::get(Type::getInt64Ty(ctx), MCO.getImm());
+    // Value *Val = ConstantExpr::getIntToPtr(cInt,
+    // PointerType::getUnqual(Type::getInt32Ty(ctx)));
+    // FIXME: note size of 4 is known to be bad for
+    // some targets
 
-  	//Copy & paste set getImm to zero
-  	MachineMemOperand* MMO = new MachineMemOperand(
-  			MachinePointerInfo(), flags, 4, 0);	//MCO.getImm()
-		 	 MIB.addMemOperand(MMO);
-		 	 //outs() << "Name: " << MII->getName(Inst->getOpcode()) << " Flags: " << flags << "\n";
-	 }
+    //Copy & paste set getImm to zero
+    MachineMemOperand* MMO = new MachineMemOperand(
+      MachinePointerInfo(), flags, 4, 0);	//MCO.getImm()
+    MIB.addMemOperand(MMO);
+    //outs() << "Name: " << MII->getName(Inst->getOpcode()) << " Flags: " << flags << "\n";
+  }
 
   // Note: I don't know why they decided instruction size needed to be 64 bits,
   // but the following conversion shouldn't be an issue.
