@@ -153,15 +153,18 @@ static std::error_code loadBinary(StringRef FileName) {
     TempExecutable.swap(ret);
   } else {
     if (Binary.get().getBinary()->isObject()) {
-      std::unique_ptr<object::ObjectFile> ret(
-        dyn_cast<object::ObjectFile>(Binary.get().getBinary()));
-      TempExecutable.swap(ret);
+      std::pair<std::unique_ptr<object::Binary>, std::unique_ptr<MemoryBuffer> >
+        res = Binary.get().takeBinary();
+      ErrorOr<std::unique_ptr<object::ObjectFile> > ret
+        = object::ObjectFile::createObjectFile(
+          res.second.release()->getMemBufferRef());
+      TempExecutable.swap(ret.get());
     }
   }
 
   // Initialize the Disassembler
   std::string FeaturesStr;
-  if (MAttrs.size()) { 
+  if (MAttrs.size()) {
     SubtargetFeatures Features;
     for (unsigned int i = 0; i < MAttrs.size(); ++i) {
       Features.AddFeature(MAttrs[i]);
@@ -189,7 +192,7 @@ static std::error_code loadBinary(StringRef FileName) {
   MCD = new MCDirector(TripleName, "generic", FeaturesStr,
     TargetOptions(), Reloc::Default, CodeModel::Default, CodeGenOpt::Default,
     outs(), errs());
-  DAS = new Disassembler(MCD, TempExecutable.get(), NULL, outs(), outs());
+  DAS = new Disassembler(MCD, TempExecutable.release(), NULL, outs(), outs());
   DEC = new Decompiler(DAS, NULL, outs(), outs());
 
   if (!MCD->isValid()) {
