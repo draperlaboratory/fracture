@@ -145,18 +145,23 @@ unsigned Disassembler::decodeInstruction(unsigned Address,
   const MCDisassembler *DA = MC->getMCDisassembler();
   uint64_t InstSize;
   MCInst *Inst = new MCInst();
-  StringRef Bytes;
-  // TODO: Fix this bitrot
-  CurSection.getContents(Bytes);
-  std::vector<unsigned char> RawBytes(Bytes.data(),
-    Bytes.data() + Bytes.size());
+  ArrayRef<unsigned char> Bytes(
+      (unsigned char*)CurSectionMemory->getBytes().data(),
+      (size_t)CurSectionMemory->getBytes().size());
 
-  if (!(DA->getInstruction(*Inst, InstSize, RawBytes, Address,
-        nulls(), nulls()))) {
+  uint64_t NewAddr = Address - CurSectionMemory->getBase();
+  outs() << "Bytes: ";
+  for (int i = NewAddr, e = NewAddr + 4; i != e; ++i) {
+    outs() << Twine::utohexstr(Bytes[i]) << " ";
+  }
+  outs() << "\n";
+
+  if (!(DA->getInstruction(*Inst, InstSize, Bytes, NewAddr,
+        errs(), errs()))) {
     printError("Unknown instruction encountered, instruction decode failed!");
     return 1;
     // Instructions[Address] = NULL;
-    // Block->push_back(NULL);	
+    // Block->push_back(NULL);
     // TODO: Replace with default size for each target.
     // return 1;
     // outs() << format("%8" PRIx64 ":\t", SectAddr + Index);

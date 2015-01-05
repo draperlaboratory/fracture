@@ -170,7 +170,7 @@ public:
 private:
   object::SectionRef CurSection;
   object::ObjectFile *Executable;
-  MemoryObject* CurSectionMemory;
+  FractureMemoryObject* CurSectionMemory;
   uint64_t CurSectionEnd;
   std::map<unsigned, MachineBasicBlock*> BasicBlocks;
   std::map<unsigned, MachineFunction*> Functions;

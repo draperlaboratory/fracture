@@ -30,8 +30,8 @@ class FractureMemoryObject : public MemoryObject {
   StringRef Bytes;
   uint64_t Base;
 public:
-  FractureMemoryObject(StringRef Bytes, uint64_t Base = 0)
-    : Bytes(Bytes), Base(Base) {}
+  FractureMemoryObject(StringRef Bytes, uint64_t Base = 0) :
+    Bytes(Bytes), Base(Base) {};
 
   uint64_t getBase() const { return Base; }
   uint64_t getExtent() const { return Bytes.size(); }
@@ -41,14 +41,16 @@ public:
 
   const uint8_t *getPointer(uint64_t address, uint64_t size) const {
     if (isValidAddress(address)) {
-      return ((const uint8_t*)Bytes.data())+address;
+      return ((const uint8_t*)Bytes.data())+(address-Base);
     } else {
       return nullptr;
     }
   };
   bool isValidAddress(uint64_t address) const {
-    return ((Base+address) < Bytes.size());
+    return ((address-Base) < Bytes.size());
   };
+
+  StringRef getBytes() { return Bytes; };
 
 };
 
