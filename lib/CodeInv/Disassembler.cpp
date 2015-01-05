@@ -259,16 +259,17 @@ DebugLoc* Disassembler::setDebugLoc(uint64_t Address) {
   Type *Int64 = Type::getInt64Ty(*MC->getContext());
   // The following sets the "scope" variable which actually holds the address.
   uint64_t AddrMask = dwarf::DW_TAG_lexical_block;
+  Twine DIType = "0x" + Twine::utohexstr(AddrMask);
   std::vector<Metadata*> *Elts = new std::vector<Metadata*>();
-  Elts->push_back(ValueAsMetadata::get(ConstantInt::get(Int64, AddrMask)));
+  Elts->push_back(MDString::get(*MC->getContext(), StringRef(DIType.str())));
   Elts->push_back(ValueAsMetadata::get(ConstantInt::get(Int64, Address)));
-  MDNode *Scope = MDNode::get(*MC->getContext(), *Elts);
+  DIScope *Scope = new DIScope(MDNode::get(*MC->getContext(), *Elts));
   // The following is here to fill in the value and not to be used to get
   // offsets
   unsigned ColVal = (Address & 0xFF000000) >> 24;
   unsigned LineVal = Address & 0xFFFFFF;
   DebugLoc *Location = new DebugLoc(DebugLoc::get(LineVal, ColVal,
-      Scope, NULL));
+      Scope->get(), NULL));
 
   return Location;
 }
