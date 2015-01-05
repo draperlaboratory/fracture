@@ -136,7 +136,7 @@ int main(int argc, char* argv[])
     Arch arch = NONE;
     bool printAsm = false;
     bool res = false, sup = false, unsup = false;
-    std::string ErrMsg;
+    std::error_code ErrMsg;
     for(int i = 1; i < argc; i++) {
         arg = argv[i];
         if(arg == "-asm") {
@@ -235,7 +235,7 @@ int main(int argc, char* argv[])
         TripleName = *MIPS triple*;
         LLVMInitializeMipsTargetMC();*/
     }
-    
+
     if(res) {
         RS = new raw_fd_ostream((filePre + "results.txt").c_str(),
           ErrMsg, sys::fs::OpenFlags::F_RW);
@@ -246,23 +246,22 @@ int main(int argc, char* argv[])
         SS = new raw_fd_ostream((filePre + "supported.txt").c_str(),
           ErrMsg, sys::fs::OpenFlags::F_RW);
     }
-    
+
     //Call function to create the binaries
     makeBins(TripleName, DirName, printAsm);
-    
+
     if(RS) { delete RS; }
     if(US) { delete US; }
     if(SS) { delete SS; }
-    
+
     return 0;
 }
 
 //===----------------------------------------------------------------------===//
 // * makeBins - For each instruction on a given architecture, make a file in a
 // *            sub-directory containing a binary that can be run on Fracture
-void makeBins(std::string TripleName, std::string DirName, bool printAsm)
-{    
-    //Create LLVM objects necessary for building a machine instruction
+void makeBins(std::string TripleName, std::string DirName, bool printAsm) {
+  //Create LLVM objects necessary for building a machine instruction
     std::string ErrMsg;
     const Target *TheTarget = TargetRegistry::lookupTarget(TripleName, ErrMsg);
     const MCInstrInfo *MII = TheTarget->createMCInstrInfo();
@@ -346,9 +345,10 @@ void makeBins(std::string TripleName, std::string DirName, bool printAsm)
                 }
             }
             flist[op] = tempname;
-            
+
             //Print the instruction to a file and put the file in place
-            FS = new raw_fd_ostream(fname.c_str(), ErrMsg, sys::fs::F_None);
+            std::error_code ErrCd;
+            FS = new raw_fd_ostream(fname.c_str(), ErrCd, sys::fs::F_None);
             MCInst MI = static_cast<MCInst&>(*(MIBP.MIB));
             cmd = DirName;
             if(RS && MIBP.asmPrintable) {
