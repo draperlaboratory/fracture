@@ -35,6 +35,10 @@ namespace object {
     static ObjectFile *createDummyObjectFile(std::unique_ptr<MemoryBuffer>
       &Object);
 
+    virtual bool isRelocatableObject() const {
+      return false;
+    }
+
     virtual symbol_iterator begin_symbols() const;
     virtual symbol_iterator end_symbols() const;
     virtual basic_symbol_iterator symbol_begin_impl() const {
