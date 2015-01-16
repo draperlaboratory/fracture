@@ -132,7 +132,7 @@ public:
   /// \brief Symbol accessors
   std::string getSymbolName(unsigned Address);
   const StringRef getFunctionName(unsigned Address) const;
-
+  void getRelocFunctionName(unsigned Address, StringRef &NameRef);
   /// \brief Set the current section reference in the Disassembler
   ///
   /// \param SectionName a string representing the name, e.g. ".text"

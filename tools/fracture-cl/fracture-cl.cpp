@@ -91,6 +91,7 @@ MCDirector *MCD = 0;
 Disassembler *DAS = 0;
 Decompiler *DEC = 0;
 std::unique_ptr<object::ObjectFile> TempExecutable;
+EngineBuilder *TheEngine = 0;
 
 //Command Line Options
 cl::opt<std::string> TripleName("triple",
@@ -185,7 +186,7 @@ static std::error_code loadBinary(StringRef FileName) {
   delete MCD;
 
   MCD = new MCDirector(TripleName, "generic", FeaturesStr,
-    TargetOptions(), Reloc::Default, CodeModel::Default, CodeGenOpt::Default,
+    TargetOptions(), Reloc::DynamicNoPIC, CodeModel::Default, CodeGenOpt::Default,
     outs(), errs());
   DAS = new Disassembler(MCD, TempExecutable.get(), NULL, outs(), outs());
   DEC = new Decompiler(DAS, NULL, outs(), outs());
@@ -247,10 +248,10 @@ static bool lookupELFName(const object::ELFObjectFile<ELFT>* elf,
          elf->symbols().end(); si != se; ++si) {
     Syms.push_back(*si);
   }
-  // for (object::symbol_iterator si = elf->begin_dynamic_symbols(), se =
-  //        elf->end_dynamic_symbols(); si != se; ++si) {
-  //   Syms.push_back(*si);
-  // }
+   for (object::symbol_iterator si = elf->dynamic_symbol_begin(), se =
+          elf->dynamic_symbol_end(); si != se; ++si) {
+     Syms.push_back(*si);
+   }
 
   for (std::vector<object::SymbolRef>::iterator si = Syms.begin(),
       se = Syms.end();
@@ -407,6 +408,12 @@ static void runDisassembleCommand(std::vector<std::string> &CommandLine) {
       return;
     }
   }
+  //Set section to section containing address
+  StringRef SectionName;
+  object::SectionRef Section = DAS->getSectionByAddress(Address);
+  Section.getName(SectionName);
+  DAS->setSection(SectionName);
+  
 
 //  Commenting this out so raw binaries can be disassembled at 0x0
 //  if (Address == 0) {
@@ -457,6 +464,68 @@ static void runSectionsCommand(std::vector<std::string> &CommandLine) {
   }
 }
 
+bool symbolSorter(object::SymbolRef symOne, object::SymbolRef symTwo) {
+  uint64_t addrOne = 0, addrTwo = 0;
+  symOne.getAddress(addrOne);
+  symTwo.getAddress(addrTwo);
+  return addrOne < addrTwo;
+}
+
+template <class ELFT>
+static void dumpELFRelocSymbols(const object::ELFObjectFile<ELFT>* elf,
+  unsigned Address) {
+  std::vector<object::RelocationRef> Rels;
+  std::error_code ec;
+  // Load relocation symbols
+  for (object::section_iterator seci = elf->section_begin(); seci !=
+       elf->section_end(); ++seci)
+    for (object::relocation_iterator ri = seci->relocation_begin(); ri != 
+         seci->relocation_end(); ++ri)
+      Rels.push_back(*ri);
+
+  // Print relocation symbols 
+  for (std::vector<object::RelocationRef>::iterator ri = Rels.begin();
+       ri != Rels.end(); ++ri) {
+    if (error(ec))
+      return;
+    uint64_t Addr = 0;
+    uint64_t SectAddr = 0;
+    uint64_t Offset = 0;
+    uint64_t Type = 0;
+    SmallVector<char, 20> TypeName;
+    SmallVector<char, 20> Value;
+    StringRef Name;
+    StringRef SectionName;
+
+    ri->getSymbol()->getName(Name);
+    if (error(ri->getAddress(Addr)))
+      continue;
+    //if (error(ri->getOffset(Offset))) // FIXME: Maybe getOffset only 
+    //  continue;                       // works for a certain reloc type?
+    if (error(ri->getType(Type)))
+      continue;
+    if (error(ri->getTypeName(TypeName)))
+      continue;
+    if (error(ri->getValueString(Value)))
+      continue;
+
+    object::SectionRef Section = DAS->getSectionByAddress(Addr);
+    Section.getAddress(SectAddr);
+    if (SectAddr != Address)
+      continue;
+
+    const char *Fmt;
+    Fmt = elf->getBytesInAddress() > 4 ? "%016" PRIx64 :
+      "%08" PRIx64;
+    SmallVectorImpl<char>::iterator ti= TypeName.begin();
+    outs() << format(Fmt, Addr) << " "
+           << format(Fmt, Offset) << " " // FIXME: Should be Info section
+           << ti << "\t"
+           << format(Fmt, Offset) << " " // FIXME: Should be Symbol Value
+           << Name << "\n";
+  }
+}
+
 template <class ELFT>
 static void dumpELFSymbols(const object::ELFObjectFile<ELFT>* elf,
   unsigned Address) {
@@ -466,13 +535,24 @@ static void dumpELFSymbols(const object::ELFObjectFile<ELFT>* elf,
          elf->symbols().end(); si != se; ++si) {
     Syms.push_back(*si);
   }
+
+  for (object::symbol_iterator si = elf->dynamic_symbol_begin(), se =
+         elf->dynamic_symbol_end(); si != se; ++si) {
+    Syms.push_back(*si);
+  }
+  
+  // Sort symbols by address
+  sort(Syms.begin(), Syms.end(), symbolSorter);
+
   for (std::vector<object::SymbolRef>::iterator si = Syms.begin(),
          se = Syms.end();
        si != se; ++si) {
     if (error(ec))
       return;
     StringRef Name;
-    uint64_t Address;
+    StringRef SectionName;
+    object::SectionRef Sect;
+    uint64_t Addr = 0;
     object::SymbolRef::Type Type;
     uint64_t Size;
     uint32_t Flags = 0;
@@ -481,7 +561,7 @@ static void dumpELFSymbols(const object::ELFObjectFile<ELFT>* elf,
     object::section_iterator Section = elf->section_end();
     if (error(si->getName(Name)))
       continue;
-    if (error(si->getAddress(Address)))
+    if (error(si->getAddress(Addr)))
       continue;
     if (error(si->getAlignment(Value))) // NOTE: This used to be getValue...
       continue;
@@ -496,14 +576,17 @@ static void dumpELFSymbols(const object::ELFObjectFile<ELFT>* elf,
 
     // Doesn't print symbol information for symbols which aren't in the section
     // specified by the function parameter
-    if (SectAddr == Address)
+    if (SectAddr != Address)
+      continue;
+    Section->getName(SectionName);
+    if (Name == SectionName)
       continue;
 
     bool Global = Flags & object::SymbolRef::SF_Global;
     bool Weak = Flags & object::SymbolRef::SF_Weak;
 
-    if (Address == object::UnknownAddressOrSize)
-      Address = 0;
+    if (Addr == object::UnknownAddressOrSize)
+      Addr = 0;
     if (Size == object::UnknownAddressOrSize)
       Size = 0;
     char GlobLoc = ' ';
@@ -524,7 +607,7 @@ static void dumpELFSymbols(const object::ELFObjectFile<ELFT>* elf,
     Fmt = elf->getBytesInAddress() > 4 ? "%016" PRIx64 :
       "%08" PRIx64;
 
-    outs() << format(Fmt, Address) << " "
+    outs() << format(Fmt, Addr) << " "
            << GlobLoc  // Local -> 'l', Global -> 'g', Neither -> ' '
            << (Weak ? 'w' : ' ')      // Weak?
            << ' '      // Constructor. Not supported yet.
@@ -539,6 +622,7 @@ static void dumpELFSymbols(const object::ELFObjectFile<ELFT>* elf,
            << Name
            << '\n';
   }
+  dumpELFRelocSymbols(elf, Address);
 }
 
 static void dumpCOFFSymbols(const object::COFFObjectFile *coff,
