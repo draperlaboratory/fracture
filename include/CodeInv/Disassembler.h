@@ -144,6 +144,7 @@ public:
     return CurSection;
   }
   const object::SectionRef getSectionByName(StringRef SectionName) const;
+  const object::SectionRef getSectionByExpression(StringRef SectionExpression) const;
   const object::SectionRef getSectionByAddress(unsigned Address) const;
 
   object::ObjectFile* getExecutable() const { return Executable; }
