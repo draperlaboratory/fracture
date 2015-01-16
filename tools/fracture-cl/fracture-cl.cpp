@@ -91,7 +91,6 @@ MCDirector *MCD = 0;
 Disassembler *DAS = 0;
 Decompiler *DEC = 0;
 std::unique_ptr<object::ObjectFile> TempExecutable;
-EngineBuilder *TheEngine = 0;
 
 //Command Line Options
 cl::opt<std::string> TripleName("triple",
