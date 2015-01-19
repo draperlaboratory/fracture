@@ -127,7 +127,7 @@ bool MCDirector::isValid() {
 }
 
 EVT MCDirector::getRegType(unsigned RegisterID) {
-  const TargetRegisterInfo *TRI = TM->getRegisterInfo();
+  const TargetRegisterInfo *TRI = TM->getSubtargetImpl()->getRegisterInfo();
   if (RegTypes.size() == 0) {
     RegTypes.grow(TRI->getNumRegs());
   }

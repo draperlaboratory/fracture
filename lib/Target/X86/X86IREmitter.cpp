@@ -91,7 +91,6 @@ Value* X86IREmitter::visit(const SDNode *N) {
     case X86ISD::PSHUFB:          return visitPSHUFB(N);
     case X86ISD::ANDNP:           return visitANDNP(N);
     case X86ISD::PSIGN:           return visitPSIGN(N);
-    case X86ISD::BLENDV:          return visitBLENDV(N);
     case X86ISD::BLENDI:          return visitBLENDI(N);
     case X86ISD::SUBUS:           return visitSUBUS(N);
     case X86ISD::HADD:            return visitHADD(N);
@@ -173,7 +172,6 @@ Value* X86IREmitter::visit(const SDNode *N) {
     case X86ISD::MOVSS:           return visitMOVSS(N);
     case X86ISD::UNPCKL:          return visitUNPCKL(N);
     case X86ISD::UNPCKH:          return visitUNPCKH(N);
-    case X86ISD::VPERMILP:        return visitVPERMILP(N);
     case X86ISD::VPERMV:          return visitVPERMV(N);
     case X86ISD::VPERMV3:         return visitVPERMV3(N);
     case X86ISD::VPERMIV3:        return visitVPERMIV3(N);

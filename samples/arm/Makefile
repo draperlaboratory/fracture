@@ -4,7 +4,7 @@ LLC_Path = /opt/x-tools/ellcc/bin
 
 FNAME = fib
 
-all: fib
+all: fib 
 
 fib:
 	$(CC) -O0 $(FNAME).c -o fib_O0_gcc_arm

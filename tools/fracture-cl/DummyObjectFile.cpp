@@ -27,7 +27,8 @@ namespace llvm {
 namespace object {
 
   DummyObjectFile::DummyObjectFile(std::unique_ptr<MemoryBuffer> &Object,
-    std::error_code& ec) : ObjectFile(Binary::ID_ELF32B, std::move(Object)) {
+    std::error_code& ec) : ObjectFile(Binary::ID_ELF32B,
+      std::move(Object)->getMemBufferRef()) {
     // NOTE: Figure out if using ID_ELF32B breaks anything.
     //       We want it to ID as an object, but we don't want it to try to
     //       disassemble as an ELF...We may have to change the LLVM base code.
@@ -66,7 +67,7 @@ namespace object {
 
   section_iterator DummyObjectFile::begin_sections() const {
     DataRefImpl ret;
-    ret.p = intptr_t(this->Data.get());
+    ret.p = intptr_t(this->Data.getBufferStart());
     return section_iterator(SectionRef(ret, this));
   }
 
@@ -75,16 +76,6 @@ namespace object {
     //ret.p = intptr_t(0);
     //return section_iterator(SectionRef(ret, this));
 	 return begin_sections();
-  }
-
-  library_iterator DummyObjectFile::begin_libraries_needed() const {
-    //TODO: Implement?
-    report_fatal_error("Libraries needed unimplemented in DummyObjectFile");
-  }
-
-  library_iterator DummyObjectFile::end_libraries_needed() const {
-    //TODO: Implement?
-    report_fatal_error("Libraries needed unimplemented in DummyObjectFile");
   }
 
   uint8_t DummyObjectFile::getBytesInAddress() const {
@@ -192,19 +183,15 @@ namespace object {
     return object_error::success;
   }
 
-  std::error_code DummyObjectFile::getSectionAddress(DataRefImpl Sec,
-                                                uint64_t& Res) const {
+  uint64_t DummyObjectFile::getSectionAddress(DataRefImpl Sec) const {
     // TODO: Implement
-    Res = 0;
-    return object_error::success;
+    return 0;
   }
 
-  std::error_code DummyObjectFile::getSectionSize(DataRefImpl Sec,
-                                             uint64_t& Res) const {
+  uint64_t DummyObjectFile::getSectionSize(DataRefImpl Sec) const {
     // TODO: we will need a custom section type if we want to add sections
     MemoryBuffer *Buf = reinterpret_cast<MemoryBuffer*>(Sec.p);
-    Res = Buf->getBufferSize();
-    return object_error::success;
+    return Buf->getBufferSize();
   }
 
   std::error_code DummyObjectFile::getSectionContents(DataRefImpl Sec,
@@ -215,29 +202,24 @@ namespace object {
     return object_error::success;
   }
 
-  std::error_code DummyObjectFile::getSectionAlignment(DataRefImpl Sec,
-                                                  uint64_t& Res) const {
+  uint64_t DummyObjectFile::getSectionAlignment(DataRefImpl Sec) const {
     // TODO: Implement
-    Res = 0;
-    return object_error::success;
+    return 0;
   }
 
-  std::error_code DummyObjectFile::isSectionText(DataRefImpl Sec, bool& Res) const {
+  bool DummyObjectFile::isSectionText(DataRefImpl Sec) const {
     // TODO: Implement
-    Res = true;
-    return object_error::success;
+    return true;
   }
 
-  std::error_code DummyObjectFile::isSectionData(DataRefImpl Sec, bool& Res) const {
+  bool DummyObjectFile::isSectionData(DataRefImpl Sec) const {
     // TODO: Implement
-    Res = true;
-    return object_error::success;
+    return true;
   }
 
-  std::error_code DummyObjectFile::isSectionBSS(DataRefImpl Sec, bool& Res) const {
+  bool DummyObjectFile::isSectionBSS(DataRefImpl Sec) const {
     // TODO: Implement
-    Res = true;
-    return object_error::success;
+    return true;
   }
 
   std::error_code DummyObjectFile::isSectionRequiredForExecution(DataRefImpl Sec,
@@ -247,11 +229,9 @@ namespace object {
     return object_error::success;
   }
 
-  std::error_code DummyObjectFile::isSectionVirtual(DataRefImpl Sec,
-                                               bool& Res) const {
+  bool DummyObjectFile::isSectionVirtual(DataRefImpl Sec) const {
     // TODO: Implement
-    Res = false;
-    return object_error::success;
+    return false;
   }
 
   std::error_code DummyObjectFile::isSectionZeroInit(DataRefImpl Sec,
@@ -268,12 +248,10 @@ namespace object {
     return object_error::success;
   }
 
-  std::error_code DummyObjectFile::sectionContainsSymbol(DataRefImpl Sec,
-                                                    DataRefImpl Symb,
-                                                    bool& Result) const {
+  bool DummyObjectFile::sectionContainsSymbol(DataRefImpl Sec,
+                                              DataRefImpl Symb) const {
     // TODO: Implement
-    Result = true;
-    return object_error::success;
+    return true;
   }
 
   relocation_iterator DummyObjectFile::getSectionRelBegin(
@@ -344,24 +322,6 @@ namespace object {
     // TODO: Implement
     StringRef Res("Unknown");
     Result.append(Res.begin(), Res.end());
-    return object_error::success;
-  }
-
-  std::error_code DummyObjectFile::getLibraryNext(DataRefImpl Lib,
-                                             LibraryRef& Res) const {
-    // TODO: Implement
-    DataRefImpl Ret;
-    Ret.p = 0;
-    Res = LibraryRef(Ret, this);
-
-    return object_error::success;
-  }
-
-
-  std::error_code DummyObjectFile::getLibraryPath(DataRefImpl Lib,
-                                             StringRef& Res) const {
-    // TODO: Implement
-    Res = "";
     return object_error::success;
   }
 

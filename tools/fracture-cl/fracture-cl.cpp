@@ -33,6 +33,7 @@
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/Object/Error.h"
 #include "llvm/PassAnalysisSupport.h"
+#include "llvm/Support/COFF.h"
 #include "llvm/Support/CodeGen.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/ManagedStatic.h"
@@ -134,7 +135,8 @@ static std::error_code loadBinary(StringRef FileName) {
     return make_error_code(std::errc::no_such_file_or_directory);
   }
 
-  ErrorOr<object::Binary*> Binary = object::createBinary(FileName);
+  ErrorOr<object::OwningBinary<object::Binary> > Binary
+    = object::createBinary(FileName);
   if (std::error_code err = Binary.getError()) {
     errs() << ProgramName << ": Unknown file format: '" << FileName.data()
         << "'.\n Error Msg: " << err.message() << "\n";
@@ -150,16 +152,19 @@ static std::error_code loadBinary(StringRef FileName) {
       object::DummyObjectFile::createDummyObjectFile(MemBuf.get()));
     TempExecutable.swap(ret);
   } else {
-    if (Binary.get()->isObject()) {
-      std::unique_ptr<object::ObjectFile> ret(
-        dyn_cast<object::ObjectFile>(Binary.get()));
-      TempExecutable.swap(ret);
+    if (Binary.get().getBinary()->isObject()) {
+      std::pair<std::unique_ptr<object::Binary>, std::unique_ptr<MemoryBuffer> >
+        res = Binary.get().takeBinary();
+      ErrorOr<std::unique_ptr<object::ObjectFile> > ret
+        = object::ObjectFile::createObjectFile(
+          res.second.release()->getMemBufferRef());
+      TempExecutable.swap(ret.get());
     }
   }
 
   // Initialize the Disassembler
   std::string FeaturesStr;
-  if (MAttrs.size()) { 
+  if (MAttrs.size()) {
     SubtargetFeatures Features;
     for (unsigned int i = 0; i < MAttrs.size(); ++i) {
       Features.AddFeature(MAttrs[i]);
@@ -187,7 +192,7 @@ static std::error_code loadBinary(StringRef FileName) {
   MCD = new MCDirector(TripleName, "generic", FeaturesStr,
     TargetOptions(), Reloc::Default, CodeModel::Default, CodeGenOpt::Default,
     outs(), errs());
-  DAS = new Disassembler(MCD, TempExecutable.get(), NULL, outs(), outs());
+  DAS = new Disassembler(MCD, TempExecutable.release(), NULL, outs(), outs());
   DEC = new Decompiler(DAS, NULL, outs(), outs());
 
   if (!MCD->isValid()) {
@@ -435,19 +440,12 @@ static void runSectionsCommand(std::vector<std::string> &CommandLine) {
     StringRef Name;
     if (error(si->getName(Name)))
       return;
-    uint64_t Address;
-    if (error(si->getAddress(Address)))
-      return;
-    uint64_t Size;
-    if (error(si->getSize(Size)))
-      return;
+    uint64_t Address = si->getAddress();
+    uint64_t Size = si->getSize();
     bool Text, Data, BSS;
-    if (error(si->isText(Text)))
-      return;
-    if (error(si->isData(Data)))
-      return;
-    if (error(si->isBSS(BSS)))
-      return;
+    Text = si->isText();
+    Data = si->isData();
+    BSS = si->isBSS();
     std::string Type =
       (std::string(Text ? "TEXT " : "") + (Data ? "DATA " : "")
         + (BSS ? "BSS" : ""));
@@ -487,8 +485,7 @@ static void dumpELFSymbols(const object::ELFObjectFile<ELFT>* elf,
       continue;
     if (error(si->getSection(Section)))
       continue;
-    if (error(Section->getAddress(SectAddr)))
-      continue;
+    SectAddr = Section->getAddress();
     if (error(si->getType(Type)))
       continue;
     if (error(si->getSize(Size)))
@@ -565,12 +562,8 @@ static void dumpCOFFSymbols(const object::COFFObjectFile *coff,
   std::error_code ec;
   for (object::section_iterator si = coff->section_begin(), se =
          coff->section_end(); si != se; ++si, ++Index) {
-    uint64_t SectionAddr;
-    if (error(si->getAddress(SectionAddr)))
-      break;
-    uint64_t SectionSize;
-    if (error(si->getSize(SectionSize)))
-      break;
+    uint64_t SectionAddr = si->getAddress();
+    uint64_t SectionSize = si->getSize();
     if (SectionAddr <= Address && Address < SectionAddr + SectionSize) {
       SectionIndex = Index;
       break;
@@ -581,16 +574,13 @@ static void dumpCOFFSymbols(const object::COFFObjectFile *coff,
     return;
   }
 
-  const object::coff_file_header *header;
-  if (error(coff->getHeader(header)))
-    return;
   int aux_count = 0;
-  const object::coff_symbol *symbol = 0;
-  for (int i = 0, e = header->NumberOfSymbols; i != e; ++i) {
+  for (int i = 0, e = coff->getNumberOfSymbols(); i != e; ++i) {
+    ErrorOr<object::COFFSymbolRef> symbol = coff->getSymbol(i);
     if (aux_count--) {
       // Figure out which type of aux this is.
-      if (symbol->StorageClass == COFF::IMAGE_SYM_CLASS_STATIC
-        && symbol->Value == 0) { // Section definition.
+      if (symbol->getStorageClass() == COFF::IMAGE_SYM_CLASS_STATIC
+        && symbol->getValue() == 0) { // Section definition.
         const object::coff_aux_section_definition *asd;
         if (error(coff->getAuxSymbol<object::coff_aux_section_definition>(i,
               asd)))
@@ -599,31 +589,32 @@ static void dumpCOFFSymbols(const object::COFFObjectFile *coff,
                << format("scnlen 0x%x nreloc %d nlnno %d checksum 0x%x ",
                  unsigned(asd->Length), unsigned(asd->NumberOfRelocations),
                  unsigned(asd->NumberOfLinenumbers), unsigned(asd->CheckSum))
-               << format("assoc %d comdat %d\n", unsigned(asd->Number),
+               << format("assoc %d comdat %d\n",
+                 unsigned(asd->getNumber(false)),
                  unsigned(asd->Selection));
       } else
         outs() << "AUX Unknown\n";
     } else {
       StringRef name;
-      if (error(coff->getSymbol(i, symbol)))
+      if (error(coff->getSymbolName(symbol.get(), name)))
         return;
-      if (error(coff->getSymbolName(symbol, name)))
-        return;
-      if ((int) symbol->SectionNumber != SectionIndex) {
-        aux_count = symbol->NumberOfAuxSymbols;
+      if ((int) symbol->getSectionNumber() != SectionIndex) {
+        aux_count = symbol->getNumberOfAuxSymbols();
         continue;
       }
 
       outs() << "[" << format("%2d", i) << "]" << "(sec "
-             << format("%2d", int(symbol->SectionNumber)) << ")" << "(fl 0x00)"
+             << format("%2d", int(symbol->getSectionNumber()))
+             << ")" << "(fl 0x00)"
              // Flag bits, which COFF doesn't have.
-             << "(ty " << format("%3x", unsigned(symbol->Type)) << ")"
+             << "(ty " << format("%3x", unsigned(symbol->getType())) << ")"
              << "(scl "
-             << format("%3x", unsigned(symbol->StorageClass)) << ") "
+             << format("%3x", unsigned(symbol->getStorageClass())) << ") "
              << "(nx "
-             << unsigned(symbol->NumberOfAuxSymbols) << ") " << "0x"
-             << format("%08x", unsigned(symbol->Value)) << " " << name << "\n";
-      aux_count = symbol->NumberOfAuxSymbols;
+             << unsigned(symbol->getNumberOfAuxSymbols()) << ") " << "0x"
+             << format("%08x", unsigned(symbol->getValue()))
+             << " " << name << "\n";
+      aux_count = symbol->getNumberOfAuxSymbols();
     }
   }
 
@@ -654,9 +645,7 @@ static void runSymbolsCommand(std::vector<std::string> &CommandLine) {
     return;
   }
 
-  if (error(Section.getAddress(Address))) {
-    return;
-  }
+  Address = Section.getAddress();
 
   StringRef SectionName;
   error(Section.getName(SectionName));
@@ -692,14 +681,14 @@ static void runSaveCommand(std::vector<std::string> &CommandLine) {
     return;
   }
 
-  std::string ErrorInfo;
-  raw_fd_ostream FOut(CommandLine[1].c_str(), ErrorInfo,
+  std::error_code ErrorInfo;
+  raw_fd_ostream FOut(CommandLine[1], ErrorInfo,
     sys::fs::OpenFlags::F_RW);
 
   FOut << *(DEC->getModule());
 
-  if (!ErrorInfo.empty()) {
-    outs() << "Errors on write: \n" << ErrorInfo << "\n";
+  if (ErrorInfo) {
+    outs() << "Errors on write: \n" << ErrorInfo.message() << "\n";
   }
 }
 
@@ -742,10 +731,8 @@ static void runDumpCommand(std::vector<std::string> &CommandLine) {
     return;
   if (error(Section.getContents(Contents)))
     return;
-  if (error(Section.getAddress(BaseAddr)))
-    return;
-  if (error(Section.isBSS(BSS)))
-    return;
+  BaseAddr = Section.getAddress();
+  BSS = Section.isBSS();
 
   if (Section == *DAS->getExecutable()->section_end()) {
     outs() << "No section found with that name or containing that address\n";
