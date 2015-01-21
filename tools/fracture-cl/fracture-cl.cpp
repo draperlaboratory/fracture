@@ -80,6 +80,7 @@ using namespace llvm;
 using namespace fracture;
 		using std::string;  //new
 
+static uint64_t dotText();
 static uint64_t findStrippedMain();
 //===----------------------------------------------------------------------===//
 // Global Variables and Parameters
@@ -462,6 +463,7 @@ static void dumpELFSymbols(const object::ELFObjectFile<ELFT>* elf,
   unsigned Address) {
   std::error_code ec;
   std::vector<object::SymbolRef> Syms;
+
   for (object::symbol_iterator si = elf->symbols().begin(), se =
          elf->symbols().end(); si != se; ++si) {
     Syms.push_back(*si);
@@ -850,6 +852,39 @@ int main(int argc, char *argv[]) {
 
   return 0;
 }
+static uint64_t dotText(){
+
+
+
+	  StringRef SectionNameOrAddress = ".text";
+	  const object::ObjectFile* Executable = DAS->getExecutable();
+
+	  std::error_code ec;
+	  uint64_t Address;
+	  object::SectionRef Section = *Executable->section_end();
+	  if (SectionNameOrAddress.getAsInteger(0, Address) && Address != 0) {
+	    Section = DAS->getSectionByAddress(Address);
+	  }
+
+	  if (Section == *Executable->section_end()) {
+	    Section = DAS->getSectionByName(SectionNameOrAddress);
+	  }
+
+	  if (Section == *Executable->section_end()) {
+	    errs() << "Could not find section!\n";
+	    return 0;
+	  }
+
+	  if (error(Section.getAddress(Address))) {
+	    return 0;
+	  }
+
+	  StringRef SectionName;
+	  error(Section.getName(SectionName));
+
+
+	  return Address;
+}
 //===---------------------------------------------------------------------===//
 /// findStrippedMain - Point the Disassembler to main
 ///
@@ -860,24 +895,104 @@ static uint64_t findStrippedMain()  {
 	int offset = 0x14;
 	int toAdd;
 	char tArr[100];
-	std::string word, dis, prev, line, tmpAddress, bits, bitA, bitB;
+	uint64_t address = 0;
+	unsigned Size = 0;
+	std::string word, prev, line, tmpAddress, bits, bitA, bitB;
+
 	//For all files, this retrieves the start location of .text
+    uint64_t symbAddr = dotText();
+	std::ostringstream sin;
+	sin << std::hex << symbAddr;
+	string dis(sin.str());
+    dis.insert(0,"0x");
+
+    // duplicate using MC
+    formatted_raw_ostream Out(outs(), false);
+    MachineFunction *MF = DAS->disassemble(symbAddr);
+    object::SectionRef Section = DAS->getSectionByAddress(symbAddr);
+    DAS->setSection(Section);
+
+
+    MachineFunction::iterator BI = MF->begin(), BE = MF->end();
+
+    while (BI != BE
+      && DAS->getDebugOffset(BI->instr_rbegin()->getDebugLoc()) < symbAddr) {
+      ++BI;
+    }
+    if (BI == BE) {
+      outs() << "Could not disassemble, reached end of function's basic blocks"
+        " when looking for first instruction.";
+      return 0;
+    }
+
+
+    MachineBasicBlock::iterator II = BI->instr_begin(), IE = BI->instr_end();
+    // skip to first instruction
+    while (DAS->getDebugOffset(II->getDebugLoc()) < symbAddr) {
+      if (II == IE) {
+        outs() << "Unreachable: reached end of basic block when looking for first"
+          " instruction.";
+        ++BI;
+        II = BI->instr_begin();
+        IE = BI->instr_end();
+      }
+      ++II;
+    }
+    if (symbAddr != DAS->getDebugOffset(II->getDebugLoc())) {
+      outs() << "Warning: starting at " << DAS->getDebugOffset(II->getDebugLoc())
+          << " instead of " << symbAddr << ".\n";
+    }
+
+    // Print Function Name and Offset
+    outs() << "<" << MF->getName();
+    if (DAS->getDebugOffset(MF->begin()->instr_begin()->getDebugLoc()) != symbAddr) {
+      outs() << "+"
+          << (symbAddr
+            - DAS->getDebugOffset(MF->begin()->instr_begin()->getDebugLoc()));
+    }
+    outs() << ">:\n";
+
+
+    unsigned InstrCount = 0;
+    while (BI != BE && (Size == 0 || InstrCount < Size)) {
+    //im looping through this basic block
+    	outs() << "\n" << II->getOpcode() << "\n";
+      ++InstrCount;
+      ++II;
+      if (II == IE) {
+        ++BI;
+        II = BI->instr_begin();
+        IE = BI->instr_end();
+      }
+    }
+
+outs() << "Look what I did \n";
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	freopen( "file.txt", "w", stdout );
 	std::vector<std::string> CommandLine;
-	std::string sym = ".text";
-	CommandLine.push_back (sym);
-	CommandLine.push_back (sym);
-	runSymbolsCommand(CommandLine);
 	std::ifstream in ("file.txt");
 
-	uint64_t address = 0;
-	while(in.good()) {
-		in >> word;
-	//finding the x at the end of the line right past the address
-		if((word[0] == '0') && (word[1] == 'x'))
-				dis = word;
-		}
 	CommandLine.clear();
 	CommandLine.push_back (dis);
 	CommandLine.push_back (dis);
