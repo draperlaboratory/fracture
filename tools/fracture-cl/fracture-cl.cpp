@@ -893,7 +893,7 @@ static uint64_t dotText(){
 static uint64_t findStrippedMain()  {
 
 	int offset = 0x14;
-	int toAdd;
+	int toAdd, pre;
 	char tArr[100];
 	uint64_t address = 0;
 	unsigned Size = 0;
@@ -954,40 +954,53 @@ static uint64_t findStrippedMain()  {
 
 
     unsigned InstrCount = 0;
-    while (BI != BE && (Size == 0 || InstrCount < Size)) {
-    //im looping through this basic block
-    	outs() << "\n" << II->getOpcode() << "\n";
-      ++InstrCount;
-      ++II;
+
+
+
+    //switch to set arch
+
+    if(TripleName.find("arm") != std::string::npos){
+      outs() << "FOUND ARM \n";
+      //loop to find compiler. then call specific solution
+      while (BI != BE && (Size == 0 || InstrCount < Size)) {
+      //im looping through this basic block
+        outs() << "\n" << II->getOpcode() << "\n";
+        if(II->getOpcode() == 187){
+          ++II;
+	  ++II;
+	  if(II->getOpcode() == 441) {
+            outs() << "FOUND ARM GCC\n";
+	    while (BI != BE && (Size == 0 || InstrCount < Size)) {
+              if(II->getOpcode() == 192 && pre == 192){
+              //some magic here, prev = main
+	      outs() << "FOUND main\n";
+	      // add 0x14 then access the data
+
+
+	      unsigned Size = II->getDesc().getSize();
+	      uint8_t *Bytes = new uint8_t(Size);
+	        for (unsigned i = 0, e = ((Size > 8) ? 8 : Size); i != e; ++i){
+	          outs() << format("%02" PRIX8 " ", Bytes[i]);
+	        }
+	      outs() << "FIN\n";
+	      break;
+              }
+	    pre = II->getOpcode();
+	    ++II;
+	    ++InstrCount;
+	    }
+	  }
+
+        }
+    	++InstrCount;
+    	++II;
       if (II == IE) {
         ++BI;
         II = BI->instr_begin();
         IE = BI->instr_end();
       }
+     }
     }
-
-outs() << "Look what I did \n";
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 	freopen( "file.txt", "w", stdout );
 	std::vector<std::string> CommandLine;
