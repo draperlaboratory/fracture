@@ -973,21 +973,32 @@ static uint64_t findStrippedMain()  {
 	    while (BI != BE && (Size == 0 || InstrCount < Size)) {
               if(II->getOpcode() == 192 && pre == 192){
               //some magic here, prev = main
-	      outs() << "FOUND main\n";
+	      outs() << "FOUND main call\n";
 	      // add 0x14 then access the data
 
-
+	      unsigned Address = DAS->getDebugOffset(II->getDebugLoc());
 	      unsigned Size = II->getDesc().getSize();
 	      uint8_t *Bytes = new uint8_t(Size);
-	        for (unsigned i = 0, e = ((Size > 8) ? 8 : Size); i != e; ++i){
-	          outs() << format("%02" PRIX8 " ", Bytes[i]);
-	        }
-	      outs() << "FIN\n";
+
+	      DAS->getCurSectionMemory()->readBytes(Address, Size, Bytes);
+
+	        // Print Address
+	        Out << format("%08" PRIX64 ":", Address);
+	        Out.PadToColumn(12);        // 12345678: <- 9 chars + 1 space
+
+
+	        for (unsigned i = 0, e = Size; i != e; ++i){
+	            Out << format("%02" PRIX8 " ", Bytes[i]);	        }
+	      outs() << "\nFIN\n";
 	      break;
+
               }
+
 	    pre = II->getOpcode();
 	    ++II;
 	    ++InstrCount;
+            outs() << "pre = " << pre << "\n";
+
 	    }
 	  }
 
@@ -1001,6 +1012,9 @@ static uint64_t findStrippedMain()  {
       }
      }
     }
+
+
+
 
 	freopen( "file.txt", "w", stdout );
 	std::vector<std::string> CommandLine;
