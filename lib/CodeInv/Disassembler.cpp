@@ -393,7 +393,8 @@ void Disassembler::printInstruction(formatted_raw_ostream &Out,
   StringRef FuncName;
   if (Inst->isCall()) {
     Size != 5 ? Size = 8 : Size; // Instruction size is 8 for ARM
-    DestInt = Inst->getOperand(0).getImm();
+    if(Inst->getOperand(0).isImm())
+      DestInt = Inst->getOperand(0).getImm();
     Tgt = Address + Size + DestInt;
     FuncName = getFunctionName(Tgt);
     if (FuncName.startswith("func")) {
@@ -462,28 +463,30 @@ std::string Disassembler::getSymbolName(unsigned Address) {
   }
   return "";
 }
-
+// getRelocFunctionName() pairs function call addresses with dynamically relocated
+// library function addresses and sets the function name to the actual name 
+// rather than the function address
 void Disassembler::getRelocFunctionName(unsigned Address, StringRef &NameRef) {
   MachineFunction *MF = disassemble(Address);
   MachineBasicBlock *MBB = &(MF->front());
   uint64_t JumpAddr = 0;
-  const uint64_t ARMINSTSIZE = 8;
-  bool isARM = MBB->size() > 1;
   StringRef RelName;
   std::error_code ec;
-  
+  // Iterate through each operand of each instruction in the basic block 
+  // checking if each operand isImm() and grabbing the value if true 
   for (MachineBasicBlock::iterator MBI = MBB->begin(); MBI != MBB->end(); ++MBI)
     for (MachineInstr::mop_iterator MII = MBI->operands_begin(); MII != 
          MBI->operands_end(); ++MII) {
-      if (MII->isImm() && isARM) {
+      if (MII->isImm() && MBB->size() > 1) {
         JumpAddr += MII->getImm();
         break;
       }
       if (MII->isImm())
         JumpAddr = MII->getImm();
     }
-  isARM ? JumpAddr += Address + ARMINSTSIZE : JumpAddr;
-
+  MBB->size() > 1 ? JumpAddr += Address + 8 : JumpAddr;
+  // Check if address matches relocation symbol address and if so
+  // grab the symbol name
   for (object::section_iterator seci = Executable->section_begin(); seci !=
       Executable->section_end(); ++seci)
     for (object::relocation_iterator ri = seci->relocation_begin(); ri != 
@@ -499,6 +502,8 @@ void Disassembler::getRelocFunctionName(unsigned Address, StringRef &NameRef) {
           continue;
         }
     }
+  // NameRef is passed by reference, so if relocation doesn't match,
+  // we don't want to modify the StringRef
   if (!RelName.empty())
     NameRef = RelName;
 }
