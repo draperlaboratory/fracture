@@ -149,6 +149,8 @@ public:
   MCDirector* getMCDirector() const { return MC; }
   Module* getModule() const { return TheModule; }
 
+  StringRefMemoryObject* getCurSectionMemory() const { return CurSectionMemory; }
+
   const MachineInstr* getMachineInstr(unsigned Address) const {
      if (MachineInstructions.find(Address) != MachineInstructions.end()) {
         return MachineInstructions.at(Address);
