@@ -17,6 +17,7 @@
 #ifndef DISASSEMBLER_H
 #define DISASSEMBLER_H
 
+#include "llvm/IR/Metadata.h"
 #include "llvm/CodeGen/GCStrategy.h"
 #include "llvm/CodeGen/GCMetadata.h"
 #include "llvm/CodeGen/MachineFunction.h"
@@ -25,6 +26,7 @@
 #include "llvm/CodeGen/MachineModuleInfo.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DebugInfo.h"
+#include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/Module.h"
 #include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/MCDisassembler.h"
@@ -34,7 +36,6 @@
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/FormattedStream.h"
-#include "llvm/Support/MemoryObject.h"
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
@@ -42,6 +43,7 @@
 #include <sstream>
 
 #include "CodeInv/MCDirector.h"
+#include "CodeInv/FractureMemoryObject.h"
 
 using namespace llvm;
 
@@ -142,6 +144,7 @@ public:
     return CurSection;
   }
   const object::SectionRef getSectionByName(StringRef SectionName) const;
+  const object::SectionRef getSectionByExpression(StringRef SectionExpression) const;
   const object::SectionRef getSectionByAddress(unsigned Address) const;
 
   object::ObjectFile* getExecutable() const { return Executable; }
@@ -168,7 +171,7 @@ public:
 private:
   object::SectionRef CurSection;
   object::ObjectFile *Executable;
-  MemoryObject* CurSectionMemory;
+  FractureMemoryObject* CurSectionMemory;
   uint64_t CurSectionEnd;
   std::map<unsigned, MachineBasicBlock*> BasicBlocks;
   std::map<unsigned, MachineFunction*> Functions;

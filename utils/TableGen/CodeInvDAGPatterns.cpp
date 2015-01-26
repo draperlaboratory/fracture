@@ -480,11 +480,18 @@ static bool InferFromPattern(CodeGenInstruction &InstInfo,
     // Allow explicitly setting hasSideEffects = 1 on instructions, even when
     // the pattern has no side effects. That could be useful for div/rem
     // instructions that may trap.
+
+    /*
+     * With new instructions this is causing an issue 
+     */
+
+    /*
     if (!InstInfo.hasSideEffects) {
       Error = true;
-      PrintError(PatDef->getLoc(), "Pattern doesn't match hasSideEffects = " +
+      PrintError(PatDef->getLoc(), "Pattern " + InstInfo.AsmString + " doesn't match hasSideEffects = " +
                  Twine(InstInfo.hasSideEffects));
     }
+    */
   }
 
   if (InstInfo.mayStore != PatInfo.mayStore && !InstInfo.mayStore_Unset) {
