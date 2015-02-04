@@ -31,6 +31,7 @@
 #include "llvm/MC/MCInstrInfo.h"
 #include "llvm/MC/MCRegisterInfo.h"
 #include "llvm/MC/MCSubtargetInfo.h"
+#include "llvm/Object/Error.h"
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/FormattedStream.h"
@@ -163,6 +164,7 @@ public:
     return NULL;
   }
 
+  std::map<StringRef, uint64_t> getRelocOrigins() { return RelocOrigins; };
   uint64_t getDebugOffset(const DebugLoc &Loc) const;
   DebugLoc* setDebugLoc(uint64_t Address);
   void deleteFunction(MachineFunction* MF);
@@ -175,6 +177,7 @@ private:
   std::map<unsigned, MachineFunction*> Functions;
   std::map<unsigned, MCInst*> Instructions;
   std::map<unsigned, const MachineInstr*> MachineInstructions;
+  std::map<StringRef, uint64_t> RelocOrigins;
 
   MachineModuleInfo *MMI;
   GCModuleInfo *GMI;

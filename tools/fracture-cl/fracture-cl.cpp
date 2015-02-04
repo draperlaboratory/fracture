@@ -66,6 +66,7 @@
 #include "DummyObjectFile.h"
 #include "CodeInv/Decompiler.h"
 #include "CodeInv/Disassembler.h"
+#include "CodeInv/FractureSymbol.h"
 //#include "CodeInv/InvISelDAG.h"
 //#include "CodeInv/MCDirector.h"
 #include "Commands/Commands.h"
@@ -412,7 +413,6 @@ static void runDisassembleCommand(std::vector<std::string> &CommandLine) {
   object::SectionRef Section = DAS->getSectionByAddress(Address);
   Section.getName(SectionName);
   DAS->setSection(SectionName);
-  
 
 //  Commenting this out so raw binaries can be disassembled at 0x0
 //  if (Address == 0) {
@@ -463,36 +463,31 @@ static void runSectionsCommand(std::vector<std::string> &CommandLine) {
   }
 }
 
-bool symbolSorter(object::SymbolRef symOne, object::SymbolRef symTwo) {
+bool symbolSorter(FractureSymbol *symOne, FractureSymbol *symTwo) {
   uint64_t addrOne = 0, addrTwo = 0;
-  symOne.getAddress(addrOne);
-  symTwo.getAddress(addrTwo);
+  symOne->getAddress(addrOne);
+  symTwo->getAddress(addrTwo);
   return addrOne < addrTwo;
 }
 
 template <class ELFT>
 static void dumpELFRelocSymbols(const object::ELFObjectFile<ELFT>* elf,
   unsigned Address) {
-  std::vector<object::RelocationRef> Rels;
   std::error_code ec;
-  // Load relocation symbols
-  for (object::section_iterator seci = elf->section_begin(); seci !=
-       elf->section_end(); ++seci)
-    for (object::relocation_iterator ri = seci->relocation_begin(); ri != 
-         seci->relocation_end(); ++ri)
-      Rels.push_back(*ri);
 
-  // Print relocation symbols 
-  for (std::vector<object::RelocationRef>::iterator ri = Rels.begin();
-       ri != Rels.end(); ++ri) {
+  // Grab symbols only for the current section so that relocation entries
+  // actually print in proper sections, i.e .rel.dyn and .rel.plt
+  object::SectionRef CurrentSection = DAS->getSectionByAddress(Address);
+  for (object::relocation_iterator ri = CurrentSection.relocation_begin(); ri !=
+      CurrentSection.relocation_end(); ++ri) {
     if (error(ec))
       return;
     uint64_t Addr = 0;
     uint64_t SectAddr = 0;
     uint64_t Offset = 0;
     uint64_t Type = 0;
-    SmallVector<char, 20> TypeName;
-    SmallVector<char, 20> Value;
+    SmallVector<char, 25> TypeName;
+    SmallVector<char, 25> Value;
     StringRef Name;
     StringRef SectionName;
 
@@ -510,8 +505,6 @@ static void dumpELFRelocSymbols(const object::ELFObjectFile<ELFT>* elf,
 
     object::SectionRef Section = DAS->getSectionByAddress(Addr);
     Section.getAddress(SectAddr);
-    if (SectAddr != Address)
-      continue;
 
     const char *Fmt;
     Fmt = elf->getBytesInAddress() > 4 ? "%016" PRIx64 :
@@ -529,55 +522,57 @@ template <class ELFT>
 static void dumpELFSymbols(const object::ELFObjectFile<ELFT>* elf,
   unsigned Address) {
   std::error_code ec;
-  std::vector<object::SymbolRef> Syms;
+  std::vector<FractureSymbol *> Syms;
+  std::map<StringRef, uint64_t> RelocOrigins = DAS->getRelocOrigins();
+
   for (object::symbol_iterator si = elf->symbols().begin(), se =
          elf->symbols().end(); si != se; ++si) {
-    Syms.push_back(*si);
+    Syms.push_back(new FractureSymbol(*si));
   }
 
   for (object::symbol_iterator si = elf->dynamic_symbol_begin(), se =
          elf->dynamic_symbol_end(); si != se; ++si) {
-    Syms.push_back(*si);
+    FractureSymbol *temp = new FractureSymbol(*si);
+    temp->matchAddress(RelocOrigins);
+    Syms.push_back(temp);
   }
   
   // Sort symbols by address
   sort(Syms.begin(), Syms.end(), symbolSorter);
 
-  for (std::vector<object::SymbolRef>::iterator si = Syms.begin(),
+  for (std::vector<FractureSymbol *>::iterator si = Syms.begin(),
          se = Syms.end();
        si != se; ++si) {
     if (error(ec))
       return;
     StringRef Name;
     StringRef SectionName;
-    object::SectionRef Sect;
+    object::SectionRef Section;
     uint64_t Addr = 0;
     object::SymbolRef::Type Type;
     uint64_t Size;
     uint32_t Flags = 0;
     uint64_t SectAddr;
     uint32_t Value;
-    object::section_iterator Section = elf->section_end();
-    if (error(si->getName(Name)))
+    if (error((*si)->getName(Name)))
       continue;
-    if (error(si->getAddress(Addr)))
+    if (error((*si)->getAddress(Addr)))
       continue;
-    if (error(si->getAlignment(Value))) // NOTE: This used to be getValue...
+    if (error((*si)->getAlignment(Value))) // NOTE: This used to be getValue...
       continue;
-    if (error(si->getSection(Section)))
+    Section = DAS->getSectionByAddress(Addr);
+    if (error(Section.getAddress(SectAddr)))
       continue;
-    if (error(Section->getAddress(SectAddr)))
+    if (error((*si)->getType(Type)))
       continue;
-    if (error(si->getType(Type)))
-      continue;
-    if (error(si->getSize(Size)))
+    if (error((*si)->getSize(Size)))
       continue;
 
     // Doesn't print symbol information for symbols which aren't in the section
     // specified by the function parameter
     if (SectAddr != Address)
       continue;
-    Section->getName(SectionName);
+    Section.getName(SectionName);
     if (Name == SectionName)
       continue;
 
@@ -622,6 +617,9 @@ static void dumpELFSymbols(const object::ELFObjectFile<ELFT>* elf,
            << '\n';
   }
   dumpELFRelocSymbols(elf, Address);
+
+  for(auto &it : Syms)
+    delete it;
 }
 
 static void dumpCOFFSymbols(const object::COFFObjectFile *coff,

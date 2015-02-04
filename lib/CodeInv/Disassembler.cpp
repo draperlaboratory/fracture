@@ -393,8 +393,10 @@ void Disassembler::printInstruction(formatted_raw_ostream &Out,
   StringRef FuncName;
   if (Inst->isCall()) {
     Size != 5 ? Size = 8 : Size; // Instruction size is 8 for ARM
-    if(Inst->getOperand(0).isImm())
-      DestInt = Inst->getOperand(0).getImm();
+    for (MachineInstr::mop_iterator MII = Inst->operands_begin(); MII !=
+         Inst->operands_end(); ++MII)
+    if (MII->isImm())
+      DestInt = MII->getImm();
     Tgt = Address + Size + DestInt;
     FuncName = getFunctionName(Tgt);
     if (FuncName.startswith("func")) {
@@ -472,35 +474,45 @@ void Disassembler::getRelocFunctionName(unsigned Address, StringRef &NameRef) {
   uint64_t JumpAddr = 0;
   StringRef RelName;
   std::error_code ec;
+  bool isOffsetJump = false;
   // Iterate through each operand of each instruction in the basic block 
   // checking if each operand isImm() and grabbing the value if true 
-  for (MachineBasicBlock::iterator MBI = MBB->begin(); MBI != MBB->end(); ++MBI)
+  for (MachineBasicBlock::iterator MBI = MBB->begin(); MBI != MBB->end(); ++MBI) {
     for (MachineInstr::mop_iterator MII = MBI->operands_begin(); MII != 
          MBI->operands_end(); ++MII) {
-      if (MII->isImm() && MBB->size() > 1) {
-        JumpAddr += MII->getImm();
-        break;
-      }
-      if (MII->isImm())
+      if (MII->isImm()) {
+        if (MBB->size() > 1) {
+          JumpAddr += MII->getImm();
+          break;
+        }
         JumpAddr = MII->getImm();
+      }
     }
-  MBB->size() > 1 ? JumpAddr += Address + 8 : JumpAddr;
+    if (JumpAddr < Address) isOffsetJump = true;
+  }
+  if (MBB->size() > 1 && isOffsetJump)
+    JumpAddr += Address + 8;
+  else if (isOffsetJump) 
+    JumpAddr += Address + 6;
+
   // Check if address matches relocation symbol address and if so
   // grab the symbol name
   for (object::section_iterator seci = Executable->section_begin(); seci !=
       Executable->section_end(); ++seci)
     for (object::relocation_iterator ri = seci->relocation_begin(); ri != 
-        seci->relocation_end(); ++ri) {
+         seci->relocation_end(); ++ri) {
       uint64_t RelocAddr;
       if ((ec = ri->getAddress(RelocAddr))) {
         errs() << ec.message() << "\n";
         continue;
       }
-      if (JumpAddr == RelocAddr)
+      if (JumpAddr == RelocAddr) {
         if ((ec = ri->getSymbol()->getName(RelName))) {
           errs() << ec.message() << "\n";
           continue;
         }
+        RelocOrigins[RelName] = Address;
+      }
     }
   // NameRef is passed by reference, so if relocation doesn't match,
   // we don't want to modify the StringRef
