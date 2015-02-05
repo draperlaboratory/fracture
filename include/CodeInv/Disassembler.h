@@ -42,7 +42,18 @@
 #include "llvm/Target/TargetOptions.h"
 
 #include <sstream>
-
+#include <string>
+#include <iostream>
+#include <ostream>
+#include <iomanip>
+#include <stdio.h>
+#include <algorithm>
+#include <map>
+#include <inttypes.h>
+#include <signal.h>
+#include <sstream>
+#include <unistd.h>
+#include <cstdlib>
 #include "CodeInv/MCDirector.h"
 
 using namespace llvm;
@@ -145,7 +156,7 @@ public:
   }
   const object::SectionRef getSectionByName(StringRef SectionName) const;
   const object::SectionRef getSectionByAddress(unsigned Address) const;
-
+  StringRefMemoryObject* getCurSectionMemory() const { return CurSectionMemory; }
   object::ObjectFile* getExecutable() const { return Executable; }
   MCDirector* getMCDirector() const { return MC; }
   Module* getModule() const { return TheModule; }
@@ -163,6 +174,7 @@ public:
     }
     return NULL;
   }
+
 
   std::map<StringRef, uint64_t> getRelocOrigins() { return RelocOrigins; };
   uint64_t getDebugOffset(const DebugLoc &Loc) const;
