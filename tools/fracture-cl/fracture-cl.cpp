@@ -535,13 +535,16 @@ static void dumpELFSymbols(const object::ELFObjectFile<ELFT>* elf,
     }
 
   // Sort symbols by address
-  //sort(Syms.begin(), Syms.end(), symbolSorter);
+  sort(Syms.begin(), Syms.end(), symbolSorter);
 
   for (std::vector<FractureSymbol *>::iterator si = Syms.begin(),
          se = Syms.end();
        si != se; ++si) {
-    if (error(ec))
+    if (error(ec)) {
+      for(auto &it : Syms)
+        delete it;
       return;
+    }
     StringRef Name;
     StringRef SectionName;
     object::SectionRef Section;
