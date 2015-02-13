@@ -556,6 +556,8 @@ static void dumpELFSymbols(const object::ELFObjectFile<ELFT>* elf,
     uint32_t Value;
     if (error((*si)->getName(Name)))
       continue;
+    if(Name == "$d" || Name == "$a" || Name == "$t")
+      continue;
     if (error((*si)->getAddress(Addr)))
       continue;
     if (error((*si)->getAlignment(Value))) // NOTE: This used to be getValue...
