@@ -66,7 +66,7 @@ class FractureSymbol : public object::SymbolRef {
     }
 
   private: 
-    uint64_t Address;
+    uint64_t Address = 0;
     StringRef Name ;
     uint32_t Alignment;
     SymbolRef::Type Type;

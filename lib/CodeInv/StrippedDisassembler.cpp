@@ -74,19 +74,19 @@ uint64_t StrippedDisassembler::getHexAddress(MachineBasicBlock::iterator II){
 
 void StrippedDisassembler::findStrippedFunctions(uint64_t Address) {
   //print out stripped function locations
-  int fCount = 0;
   formatted_raw_ostream Out(outs(), false);
   MachineFunction *MF = DAS->disassemble(Address);
   object::SectionRef Section = DAS->getSectionByAddress(Address);
   DAS->setSection(Section);
   MachineFunction::iterator BI = MF->begin(), BE = MF->end();
+  int offset = 0;
 
   while (BI != BE
     && DAS->getDebugOffset(BI->instr_begin()->getDebugLoc()) < Address) {
     ++BI;
   }
   if (BI == BE) {
-    outs() << "Could not disassemble, reached end of function's basic blocks"
+    outs() << "Could not disassemble :( reached end of function's basic blocks"
       " when looking for first instruction.";
       //DIE
   }
@@ -97,6 +97,7 @@ void StrippedDisassembler::findStrippedFunctions(uint64_t Address) {
     if (II == IE) {
       outs() << "Unreachable: reached end of basic block when looking for first"
         " instruction.";
+      //broke
       ++BI;
       II = BI->instr_begin();
       IE = BI->instr_end();
@@ -110,21 +111,28 @@ void StrippedDisassembler::findStrippedFunctions(uint64_t Address) {
 
   //Here we have two loops that will find the first selection block which
   //points to the next selection block and the first function and so on.
-  while(true){
-  //There is an issue with re assigning *MF, need to delete.
+
   while (II != IE ){
+    //Wanted to use II->isCall() but this failed often
     if(II->getOpcode() == 70)
       break;
-      ++II;
+    else if(II->getOpcode() == 65 || II->getOpcode() == 68){
+        outs() << "END OF Functions\n";
+            return;
     }
-    //outs() << " Operand " << II->getOperand(0) << " : " << II->getOperand(1) << " : "
-    //       << DAS->getDebugOffset(II->getDebugLoc()) << "\n";
 
+    ++II;
+    }
+    outs() << "First Catch in loop " << II->getOperand(0) << " : " << II->getOperand(1) << " : "
+           << DAS->getDebugOffset(II->getDebugLoc()) << "\n";
+
+  //Take the first operand and add it to the address.
   if (II->getOperand(0).isImm()) {
     //adding offset + 8 to address.
-    unsigned offset = II->getOperand(0).getImm();
+    offset = II->getOperand(0).getImm();
     offset += 8;
-    Address = DAS->getDebugOffset(II->getDebugLoc()) + offset;
+    Address = DAS->getDebugOffset(II->getDebugLoc());
+    offset += Address;
   }
   else {
     outs() << "Wrong Opcode found\n";
@@ -132,16 +140,16 @@ void StrippedDisassembler::findStrippedFunctions(uint64_t Address) {
       //DIE
   }
   //into the selection block
-
-  MachineFunction *MF = DAS->disassemble(Address);
+  outs() << "Beginning of the selection block " << offset << "\n";
+  MF = DAS->disassemble((unsigned(offset)));
   BI = MF->begin(), BE = MF->end();
 
   while (BI != BE
-    && DAS->getDebugOffset(BI->instr_rbegin()->getDebugLoc()) < Address) {
+    && DAS->getDebugOffset(BI->instr_rbegin()->getDebugLoc()) < (unsigned(offset))) {
     ++BI;
   }
   if (BI == BE) {
-    outs() << "Could not disassemble, reached end of function's basic blocks"
+    outs() << "Could not disassemble selection block, reached end of function's basic blocks"
         " when looking for first instruction.\n";
     return;
         //DIE
@@ -149,33 +157,67 @@ void StrippedDisassembler::findStrippedFunctions(uint64_t Address) {
 
   II = BI->instr_begin();
   IE = BI->instr_end();
-  //Find first branch in block, (bls) this leads to function
+  //Find first branch in block, (bls) this leads to next block before function
   while(II != IE){
     if(II->getOpcode() == 70)
     break;
     ++II;
   }
-
-  //outs() << "Branch function Operands " << II->getOperand(0) << " : " << II->getOperand(1) << " : "
-  //           << DAS->getDebugOffset(II->getDebugLoc()) << "\n";
-  int offset = II->getOperand(0).getImm();
+  if(Address == DAS->getDebugOffset(II->getDebugLoc())){
+      outs()<< "Branch is calling its own block. Exiting\n";
+      return;
+  }
+  outs() << "Branch function Operands " << II->getOperand(0) << " : " << II->getOperand(1) << " : "
+             << DAS->getDebugOffset(II->getDebugLoc()) << "\n";
+  offset = II->getOperand(0).getImm();
   offset += 8;
   Address = DAS->getDebugOffset(II->getDebugLoc());
-  int tempAddr = Address;
-  tempAddr += offset;
-  Address = tempAddr;
-  outs() << "Function address is " << Address << "\n";
-  FractureSymbol tempSym(Address, "function", 0, object::SymbolRef::Type::ST_Function, 0);
+  uint64_t nextCall = DAS->getDebugOffset(II->getDebugLoc());
+  offset += Address ;
+  outs() << "Final loc = " << offset << "\n";
+  //First branch here leads to the function
+  MF = DAS->disassemble((unsigned)offset);
+  BI = MF->begin(), BE = MF->end();
+
+    while (BI != BE
+      && DAS->getDebugOffset(BI->instr_rbegin()->getDebugLoc()) < (unsigned(offset))) {
+      ++BI;
+    }
+    if (BI == BE) {
+      outs() << "Could not disassemble selection block, reached end of function's basic blocks"
+          " when looking for first instruction.\n";
+      return;
+          //DIE
+    }
+
+    II = BI->instr_begin();
+    IE = BI->instr_end();
+    //Find first branch in block, (bls) this leads to function
+    while(II != IE){
+      if(II->getOpcode() == 70 || II->getOpcode() == 55)
+      break;
+      outs() << "addr= " << DAS->getDebugOffset(II->getDebugLoc()) << " : " << II->getOpcode() << "\n";
+      ++II;
+    }
+
+  outs() << "Actual Function Operands " << II->getOperand(0) << " : " << II->getOperand(1) << " : "
+         << DAS->getDebugOffset(II->getDebugLoc()) << "\n";
+  offset = II->getOperand(0).getImm();
+  offset += 8;
+  Address = DAS->getDebugOffset(II->getDebugLoc());
+  offset += Address ;
+  Address = (unsigned(offset));
+  outs() << "Function address is " << Address << "\n\n";
+  FractureSymbol tempSym(Address, DAS->getFunctionName(Address), 0, object::SymbolRef::Type::ST_Function, 0);
   addSymbol(tempSym);
 
   //While we are not yet at the end the file, or have any possibility of finding new functions
-  while(fCount < 1){
-    fCount++;
-    findStrippedFunctions(Address);
-  }
 
-  break;
-  }
+  findStrippedFunctions(nextCall);
+
+
+
+
 }
 
 uint64_t StrippedDisassembler::findStrippedMain() {
@@ -231,16 +273,6 @@ uint64_t StrippedDisassembler::findStrippedMain() {
         outs() << "Warning: starting at " << DAS->getDebugOffset(II->getDebugLoc())
             << " instead of " << symbAddr << ".\n";
       }
-/*
-      // Print Function Name and Offset
-      outs() << "<" << MF->getName();
-      if (DAS->getDebugOffset(MF->begin()->instr_begin()->getDebugLoc()) != symbAddr) {
-        outs() << "+"
-            << (symbAddr
-                - DAS->getDebugOffset(MF->begin()->instr_begin()->getDebugLoc()));
-      }
-      outs() << ">:\n";
-*/
       unsigned InstrCount = 0;
       //set arch
 
@@ -249,12 +281,15 @@ uint64_t StrippedDisassembler::findStrippedMain() {
         //loop to find compiler. then call specific solution
         while (BI != BE && (Size == 0 || InstrCount < Size)) {
           //looping through this basic block
-          if(II->getOpcode() == 187){
+          outs() << "Loop 1 to find ldr " << II->getOpcode() << " : "
+              << DAS->getDebugOffset(II->getDebugLoc()) << "\n";
+          if(II->getOpcode() == 187 || II->getOpcode() == 147){
             ++II;
             ++II;
-            if(II->getOpcode() == 441) {
-              //outs() << "FOUND ARM GCC\n";
+            outs() << "check for st " << II->getOpcode() << "\n";
+            if(II->getOpcode() == 441 || II->getOpcode() == 407) {
               while (BI != BE && (Size == 0 || InstrCount < Size)) {
+                outs() << "to find addr " << II->getOpcode() << "\n";
                 if(II->getOpcode() == 192 && pre == 192){
                 //some magic here, prev = main
                 //outs() << "FOUND main call\n";
@@ -268,31 +303,6 @@ uint64_t StrippedDisassembler::findStrippedMain() {
                 FractureSymbol tempSym(Address, "main", 0, object::SymbolRef::Type::ST_Function, 0);
                 addSymbol(tempSym);
                 return Address;
-
-        /*        string mn;
-
-
-                unsigned Address = DAS->getDebugOffset(II->getDebugLoc());
-                unsigned Size = II->getDesc().getSize();
-                uint8_t *Bytes = new uint8_t(Size);
-                DAS->getCurSectionMemory()->readBytes(Address, Size, Bytes);
-                outs() << "SIZE = " << Size << "\n";
-                  for (unsigned i = (Size/2); i >= 1; --i){
-                      Out << format("%" PRIx8, Bytes[i-1]);
-                      sin << std::uppercase << std::hex << static_cast<int>(Bytes[i-1]);
-                      mn.append(sin.str());
-                      sin.str("");
-                  }
-
-                mn.insert(0,"0x");
-                outs() << "\n" << mn << "\nFIN\n";
-                //had to create a new string stream for some reason
-                std::stringstream ss(mn);
-                ss >> std::hex >> address;
-                delete Bytes;
-                findStrippedFunctions(address);
-                return address;
-          */
                 }
 
               pre = II->getOpcode();
@@ -314,7 +324,7 @@ uint64_t StrippedDisassembler::findStrippedMain() {
       }
     }
 
-      outs() << "NO SUCCESS. RETURNING 0 \n";
+      outs() << "No Success finding main. RETURNING\n";
        return 0;
 
   }
