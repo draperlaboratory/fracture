@@ -1003,7 +1003,8 @@ int main(int argc, char *argv[]) {
     outs() << "File is Stripped\n";
     SDAS = new StrippedDisassembler(DAS, TripleName);
     mainAddr = SDAS->findStrippedMain();
-    SDAS->findStrippedFunctions(mainAddr);
+    if(mainAddr != 0)
+      SDAS->findStrippedFunctions(mainAddr);
   }
 
 
