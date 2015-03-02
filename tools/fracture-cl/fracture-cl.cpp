@@ -201,6 +201,11 @@ static std::error_code loadBinary(StringRef FileName) {
   return std::error_code();
 }
 
+// Hasher for using strings in switch statements
+constexpr unsigned int str2int(const char* str, int h = 0) {
+  return !str[h] ? 5381 : (str2int(str, h + 1) * 33) ^ str[h];
+}
+
 ///===---------------------------------------------------------------------===//
 /// printHelp       - Prints the possible commands
 /// TODO: Expand this to print descriptions of the commands.
@@ -209,12 +214,74 @@ static std::error_code loadBinary(StringRef FileName) {
 static void printHelp(std::vector<std::string> &CommandLine) {
   std::map<std::string, void (*)(std::vector<std::string> &)> Commands =
       CommandParser.getCmdMap();
+  outs() << "\n--COMMANDS--\n\n";
   for (std::map<std::string, void (*)(std::vector<std::string> &)>::iterator
       CmdIt = Commands.begin(), CmdEnd = Commands.end(); CmdIt != CmdEnd;
       ++CmdIt) {
-    if (CmdIt != Commands.begin())
-      outs() << ",";
-    outs() << CmdIt->first;
+    switch(str2int(CmdIt->first.c_str())) {
+      case  str2int("?") :
+        outs() << "? - Displays usable commands and descriptions "
+               << "of their uses\n\n\n";
+        break;
+      case  str2int("decompile") :
+        outs() << "decompile - Decompile a given function\n"
+               << "USAGE:\n"
+               << "\tdec [FUNCNAME] or dec [FUNCADDRESS]\n"
+               << "DESCRIPTION:\n"
+               << "\tDecompile a machine function into LLVM IR given a "
+               << "function name or\n\tfunction address\n\n\n";
+        break;
+      case  str2int("disassemble") :
+        outs() << "disassemble - Disassemble a given function\n"
+               << "USAGE:\n"
+               << "\tdis [FUNCNAME] or dis [FUNCADDRESS]\n"
+               << "DESCRIPTION:\n"
+               << "\tDisassemble a machine function into architecture-specific"
+               << " assembly\n\tlanguage given a function name or function "
+               << "address\n\n\n";
+        break;
+      case  str2int("dump") :
+        outs() << "dump - Fill me in...\n\n\n";
+        break;
+      case  str2int("help") :
+        outs() << "help - Displays usable commands and descriptions "
+               << "of their uses\n\n\n";
+        break;
+      case  str2int("load") :
+        outs() << "load - Load a binary into Fracture\n"
+               << "USAGE:\n"
+               << "\tload [FILENAME]\n"
+               << "DESCRIPTION:\n"
+               << "\tLoad a given binary into Fracture while Fracture is "
+               << "already running\n\n\n";
+        break;
+      case  str2int("quit") :
+        outs() << "quit - Terminate the application\n\n\n";
+        break;
+      case  str2int("save") :
+        outs() << "save - Save LLVM IR to a file\n"
+               << "USAGE:\n"
+               << "\tsave [FILENAME]\n"
+               << "DESCRIPTION:\n"
+               << "\tSave decompiled LLVM IR to a file using the specified file"
+               << "name.\n\tThe decompile command must be run before running "
+               << "the save command.\n\tDecompiled LLVM IR should be saved as a"
+               << " .ll file, which can then be\n\trun using the lli command"
+               << " outside of fracture.\n\n\n";
+               break;
+      case  str2int("sections") :
+        outs() << "sections - Print the names of all sections contained"
+               << " in the binary\n\n\n";
+        break;
+      case  str2int("symbols") :
+        outs() << "symbols - Print section symbols\n"
+               << "USAGE:\n"
+               << "\tsym [SECTIONNAME]\n"
+               << "DESCRIPTION:\n"
+               << "\tPrint all symbols contained in a given section, sorted by"
+               << " address.\n\n";
+               break;
+    }
   }
   outs() << "\n";
 }
@@ -535,13 +602,16 @@ static void dumpELFSymbols(const object::ELFObjectFile<ELFT>* elf,
     }
 
   // Sort symbols by address
-  //sort(Syms.begin(), Syms.end(), symbolSorter);
+  sort(Syms.begin(), Syms.end(), symbolSorter);
 
   for (std::vector<FractureSymbol *>::iterator si = Syms.begin(),
          se = Syms.end();
        si != se; ++si) {
-    if (error(ec))
+    if (error(ec)) {
+      for(auto &it : Syms)
+        delete it;
       return;
+    }
     StringRef Name;
     StringRef SectionName;
     object::SectionRef Section;
@@ -552,6 +622,8 @@ static void dumpELFSymbols(const object::ELFObjectFile<ELFT>* elf,
     uint64_t SectAddr;
     uint32_t Value;
     if (error((*si)->getName(Name)))
+      continue;
+    if(Name == "$d" || Name == "$a" || Name == "$t")
       continue;
     if (error((*si)->getAddress(Addr)))
       continue;
