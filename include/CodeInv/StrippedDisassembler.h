@@ -56,6 +56,7 @@ namespace fracture{
       DAS = D;
     }
 
+    bool opcodeCheck(int opc);
     uint64_t getHexAddress(MachineBasicBlock::iterator II);
     uint64_t getStrippedSection(std::string section);
     void findStrippedFunctions(uint64_t Address);
@@ -67,6 +68,10 @@ namespace fracture{
     Disassembler *DAS;
     std::string TripleName;
     std::vector<FractureSymbol> Symbols;
+    struct inst {
+      enum instructonType {call, branch, ret, jump};
+      uint64_t Addr;
+    };
 
   };
 }

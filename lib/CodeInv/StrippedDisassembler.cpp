@@ -72,6 +72,84 @@ uint64_t StrippedDisassembler::getHexAddress(MachineBasicBlock::iterator II){
 
 }
 
+bool opcodeCheck(int opc){
+  //ARM
+  if(TripleName.find("arm") != std::string::npos){
+    if(opc >= 45 && opc <= 70){
+      inst.instructionType = branch;
+      return true;
+    }
+  }
+  //x86
+  else if((TripleName.find("i386") != std::string::npos) || (TripleName.find("x86_64") !=std::string::npos)){
+    if(opc >= 1063 && opc <= 1123){
+      inst.instructionType = jump;
+      return true;
+    }
+    else if(opc >= 2313 && opc <= 2318){
+      inst.instructionType = ret;
+      return true;
+    }
+  }
+  return false;
+}
+
+inst StrippedDisassembler::functionsIterator(uint64_t Address) {
+  //print out stripped function locations
+  MachineFunction *MF = DAS->disassemble(Address);
+  object::SectionRef Section = DAS->getSectionByAddress(Address);
+  DAS->setSection(Section);
+  MachineFunction::iterator BI = MF->begin(), BE = MF->end();
+  int offset = 0;
+
+  while (BI != BE
+    && DAS->getDebugOffset(BI->instr_begin()->getDebugLoc()) < Address) {
+    ++BI;
+  }
+  if (BI == BE) {
+    outs() << "Could not disassemble :( reached end of function's basic blocks"
+      " when looking for first instruction.";
+      //DIE
+  }
+  MachineBasicBlock::iterator II = BI->instr_begin(), IE = BI->instr_end();
+
+  // skip to first instruction
+  while (DAS->getDebugOffset(II->getDebugLoc()) < Address) {
+    if (II == IE) {
+      outs() << "Unreachable: reached end of basic block when looking for first"
+        " instruction.";
+      //broke
+      ++BI;
+      II = BI->instr_begin();
+      IE = BI->instr_end();
+    }
+    ++II;
+  }
+  if (Address != DAS->getDebugOffset(II->getDebugLoc())) {
+    outs() << "Warning: starting at " << DAS->getDebugOffset(II->getDebugLoc())
+        << " instead of " << Address << ".\n";
+  }
+
+  //loop through the BB to find the first jump or branch
+
+  while (II != IE ){
+    //Wanted to use II->isCall() but this failed often
+    // 45-70 arm   1063-1123 x86
+    int opc = II->getOpcode();
+    if(opcodeCheck(opc))
+      break;
+    //TODO EI EOF
+    ++II;
+  }
+  //broken, we have the enum. now set address and return
+  inst.Addr = DAS->getDebugOffset(II->getDebugLoc());
+  return inst;
+
+}
+
+
+
+
 void StrippedDisassembler::findStrippedFunctions(uint64_t Address) {
   //print out stripped function locations
   formatted_raw_ostream Out(outs(), false);
@@ -327,7 +405,7 @@ uint64_t StrippedDisassembler::findStrippedMain() {
       outs() << "No Success finding main. RETURNING\n";
        return 0;
 
-  }
+}
 
 void StrippedDisassembler::addSymbol(FractureSymbol tempSym){
   Symbols.push_back(tempSym);
@@ -335,6 +413,5 @@ void StrippedDisassembler::addSymbol(FractureSymbol tempSym){
 std::vector<FractureSymbol> StrippedDisassembler::getSymbolVector(){
   return Symbols;
 }
-
 
 } // end namespace fracture
