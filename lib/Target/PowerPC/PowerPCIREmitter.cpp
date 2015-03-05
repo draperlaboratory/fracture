@@ -32,6 +32,11 @@ PowerPCIREmitter::~PowerPCIREmitter() {
   // Nothing to do here
 }
 
+// must implement this function
+bool PowerPCIREmitter::isStkReg(unsigned reg) {
+    return false;
+}
+
 Value* PowerPCIREmitter::visit(const SDNode *N) {
   // return the parent if we are in IR only territory
   if (N->getOpcode() <= ISD::BUILTIN_OP_END){

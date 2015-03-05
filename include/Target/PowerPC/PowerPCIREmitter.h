@@ -30,6 +30,11 @@ public:
   PowerPCIREmitter(Decompiler *TheDec, raw_ostream &InfoOut = nulls(),
     raw_ostream &ErrOut = nulls());
   ~PowerPCIREmitter();
+
+  // returns true if reg is the stack pointer
+  // This function must be implemented for IR to be produced correctly
+  bool isStkReg(unsigned reg);
+
 private:
   virtual Value* visit(const SDNode *N);
   //Value* visitRET(const SDNode *N);

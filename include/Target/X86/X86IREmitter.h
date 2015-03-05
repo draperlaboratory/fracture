@@ -30,6 +30,10 @@ public:
   X86IREmitter(Decompiler *TheDec, raw_ostream &InfoOut = nulls(),
     raw_ostream &ErrOut = nulls());
   ~X86IREmitter();
+
+  // returns true if reg is the stack pointer
+  bool isStkReg(unsigned reg);
+
 private:
   virtual Value* visit(const SDNode *N);
 

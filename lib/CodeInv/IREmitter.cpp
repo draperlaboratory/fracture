@@ -566,6 +566,22 @@ Value* IREmitter::visitRegister(const SDNode *N) {
                                GlobalValue::ExternalLinkage,
                                Initializer,
                                RegName);
+      // when the stack register is encountered for the first time,
+      // create a stack for it to point at
+      if(isStkReg(R->getReg())) {
+    	  unsigned size = 1048576;   //FIXME: is 1MB a good stack size?
+    	  Value *stkSize = ConstantInt::get(Ty, size);
+    	  Value *middleStk = ConstantInt::get(Ty, size/2);
+    	  StringRef Name, BaseName = getBaseValueName(RegName);
+
+    	  Name = getIndexedValueName(BaseName);
+    	  Instruction *alloca = IRB->CreateAlloca(Ty, stkSize, Name);
+    	  Name = getIndexedValueName(BaseName);
+    	  Value *pti = IRB->CreatePtrToInt(alloca, Ty, Name);
+    	  Name = getIndexedValueName(BaseName);
+    	  Value *add = IRB->CreateAdd(pti, middleStk, Name);
+    	  IRB->CreateStore(add, Reg);
+      }
     }
     RegMap[R->getReg()] = Reg;
   }

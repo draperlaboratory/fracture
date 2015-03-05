@@ -32,6 +32,10 @@ X86IREmitter::~X86IREmitter() {
   // Nothing to do here
 }
 
+bool X86IREmitter::isStkReg(unsigned reg) {
+    return (reg == X86::SP || reg == X86::ESP || reg == X86::RSP);
+}
+
 Value* X86IREmitter::visit(const SDNode *N) {
   // return the parent if we are in IR only territory
   if (N->getOpcode() <= ISD::BUILTIN_OP_END){

@@ -69,6 +69,11 @@ public:
   }
 
   void endDAG() { assert(EndHandleDAG && "Reached End of DAG and did not see handle node."); }
+
+  // returns true if reg is the stack pointer
+  // this function must be implemented by each target
+  virtual bool isStkReg(unsigned reg) { return false; }
+
 protected:
   bool EndHandleDAG;
   Decompiler *Dec;
