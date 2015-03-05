@@ -563,7 +563,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       SDLoc SL(N);
       SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::i32);
 
-      SDValue Node = CurDAG->getNode(ISD::SUB, SL, VTList, Constant, Reg);
+      SDValue Node = CurDAG->getNode(ISD::SUB, SL, VTList, Reg, Constant);
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Node);
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), SDValue(Node.getNode(),1));
 
