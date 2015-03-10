@@ -22,12 +22,13 @@
 
 #include "CodeInv/Decompiler.h"
 #include "CodeInv/Disassembler.h"
-#include "CodeInv/MCDirector.h"
 #include "CodeInv/FractureSymbol.h"
+#include "CodeInv/MCDirector.h"
+#include "CodeInv/StrippedGraph.h"
 #include "llvm/Object/Error.h"
 #include "llvm/Object/ObjectFile.h"
 
-
+#include <vector>
 
 #include <sstream>
 #include <string>
@@ -45,34 +46,34 @@
 
 using namespace llvm;
 
-namespace fracture{
+namespace fracture {
 
-  class StrippedDisassembler{
+  class StrippedDisassembler {
   public:
     StrippedDisassembler() {}
+    ~StrippedDisassembler() { delete Graph; }
     StrippedDisassembler(Disassembler *D, std::string T) {
 
       TripleName = T;
       DAS = D;
+      Graph = new StrippedGraph;
     }
 
-    bool opcodeCheck(int opc);
+    //NodeType opcodeCheck(int opc, MachineBasicBlock::iterator II);
     uint64_t getHexAddress(MachineBasicBlock::iterator II);
     uint64_t getStrippedSection(std::string section);
+    void functionsIterator(uint64_t Address);
     void findStrippedFunctions(uint64_t Address);
     uint64_t findStrippedMain();
     void addSymbol(FractureSymbol S);
     std::vector<FractureSymbol> getSymbolVector();
+    StrippedGraph *getStrippedGraph();
 
   private:
     Disassembler *DAS;
+    StrippedGraph *Graph;
     std::string TripleName;
     std::vector<FractureSymbol> Symbols;
-    struct inst {
-      enum instructonType {call, branch, ret, jump};
-      uint64_t Addr;
-    };
-
   };
 }
 

@@ -17,6 +17,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "CodeInv/StrippedDisassembler.h"
+#include "CodeInv/StrippedGraph.h"
 
 using namespace llvm;
 
@@ -49,7 +50,7 @@ uint64_t StrippedDisassembler::getStrippedSection(std::string section) {
   return Address;
 }
 
-uint64_t StrippedDisassembler::getHexAddress(MachineBasicBlock::iterator II){
+uint64_t StrippedDisassembler::getHexAddress(MachineBasicBlock::iterator II) {
   //Returns location of iterator. converts from int > hex > int sheeesh.
   std::string mn;
   uint64_t address;
@@ -58,7 +59,7 @@ uint64_t StrippedDisassembler::getHexAddress(MachineBasicBlock::iterator II){
   unsigned Size = II->getDesc().getSize();
   uint8_t *Bytes = new uint8_t(Size);
   DAS->getCurSectionMemory()->readBytes(Address, Size, Bytes);
-  for (unsigned i = (Size/2); i >= 1; --i){
+  for (unsigned i = (Size/2); i >= 1; --i) {
     sin << std::uppercase << std::hex << static_cast<int>(Bytes[i-1]);
     mn.append(sin.str());
     sin.str("");
@@ -72,35 +73,51 @@ uint64_t StrippedDisassembler::getHexAddress(MachineBasicBlock::iterator II){
 
 }
 
-bool opcodeCheck(int opc){
+/*NodeType StrippedDisassembler::opcodeCheck(int opc, MachineBasicBlock::iterator II) {
   //ARM
-  if(TripleName.find("arm") != std::string::npos){
-    if(opc >= 45 && opc <= 70){
-      inst.instructionType = branch;
-      return true;
-    }
+  MachineBasicBlock::iterator IX = II;
+  if(TripleName.find("arm") != std::string::npos) {
+    if(opc >= 45 && opc <= 70)
+      return NodeType::BRANCH;
   }
   //x86
-  else if((TripleName.find("i386") != std::string::npos) || (TripleName.find("x86_64") !=std::string::npos)){
+  else if((TripleName.find("i386") != std::string::npos) || (TripleName.find("x86_64") !=std::string::npos)) {
     if(opc >= 1063 && opc <= 1123){
-      inst.instructionType = jump;
-      return true;
+      //outs() << "BRANCH " << DAS->getDebugOffset(II->getDebugLoc()) <<"\n";
+      return NodeType::BRANCH;
     }
+
     else if(opc >= 2313 && opc <= 2318){
-      inst.instructionType = ret;
-      return true;
+      //outs() << "FUNCEND " << DAS->getDebugOffset(II->getDebugLoc()) <<"\n";
+      return NodeType::FUNCEND;
+    }
+
+    else if((opc >= 2186 && opc <= 2220 ) && II->getOperand(0).isReg()){
+      //outs() << "Possible FUNCBEGIN OPERAND 0 is " << II->getOperand(0).getReg()
+      //       << "OPC " << opc << "\n";
+      ++IX;
+      opc = IX->getOpcode();
+      if((opc >= 1535 && opc <= 1721) && (IX->getOperand(0).isReg() && IX->getOperand(1).isReg())){
+        //outs() << "FUNCBEGIN FOUND at " << DAS->getDebugOffset(II->getDebugLoc()) << "\n";
+        return NodeType::FUNCBEGIN;
+      }
     }
   }
-  return false;
-}
+  //outs() << "UNKNOWN " << DAS->getDebugOffset(II->getDebugLoc()) <<"\n";
+  return NodeType::UNKNOWN;
+}*/
 
-inst StrippedDisassembler::functionsIterator(uint64_t Address) {
+void StrippedDisassembler::functionsIterator(uint64_t Address) {
   //print out stripped function locations
   MachineFunction *MF = DAS->disassemble(Address);
   object::SectionRef Section = DAS->getSectionByAddress(Address);
   DAS->setSection(Section);
   MachineFunction::iterator BI = MF->begin(), BE = MF->end();
-  int offset = 0;
+  //NodeType T;
+  //uint64_t entry = 0, exit = 0;
+
+  const char *Fmt;
+  Fmt = "%08" PRIx64;
 
   while (BI != BE
     && DAS->getDebugOffset(BI->instr_begin()->getDebugLoc()) < Address) {
@@ -108,8 +125,9 @@ inst StrippedDisassembler::functionsIterator(uint64_t Address) {
   }
   if (BI == BE) {
     outs() << "Could not disassemble :( reached end of function's basic blocks"
-      " when looking for first instruction.";
-      //DIE
+      " when looking for first instruction.\n";
+    return;
+    //TODO find a way to fail gracefully
   }
   MachineBasicBlock::iterator II = BI->instr_begin(), IE = BI->instr_end();
 
@@ -132,21 +150,71 @@ inst StrippedDisassembler::functionsIterator(uint64_t Address) {
 
   //loop through the BB to find the first jump or branch
 
-  while (II != IE ){
-    //Wanted to use II->isCall() but this failed often
-    // 45-70 arm   1063-1123 x86
-    int opc = II->getOpcode();
-    if(opcodeCheck(opc))
-      break;
-    //TODO EI EOF
-    ++II;
+
+  for(; BI != BE; ++BI) {
+  //while (BI != BE ) {
+      outs() << "New BasicBlock!: \n";
+      uint64_t ad = DAS->getDebugOffset(BI->instr_begin()->getDebugLoc());
+      outs() << "Begin:\t";
+      outs() << format(Fmt, ad);
+      outs() << "\n";
+      GraphNode *tempNode = new GraphNode;
+      tempNode->NodeBlock = BI;
+      tempNode->Address = DAS->getDebugOffset(BI->instr_begin()->getDebugLoc());
+      tempNode->End = DAS->getDebugOffset(BI->instr_end()->getPrevNode()->getDebugLoc());
+      if(BI->instr_end()->getPrevNode()->isBranch()) {
+        uint64_t InstAddr = DAS->getDebugOffset(BI->instr_end()->getPrevNode()->getDebugLoc());
+        uint64_t InstSize = BI->instr_end()->getPrevNode()->getDesc().getSize();
+        uint64_t JumpAddr = 0;
+        if (BI->instr_end()->getPrevNode()->getOperand(0).isImm())
+          JumpAddr = BI->instr_end()->getPrevNode()->getOperand(0).getImm();
+        tempNode->BranchAddress = JumpAddr + InstSize + InstAddr;
+      }
+      Graph->addGraphNode(tempNode);
+      Graph->addToList(tempNode);
+    //for(II = BI->instr_begin(), IE = BI->instr_end(); II != IE; ++II) {
+      //Wanted to use II->isCall() but this failed often
+      // 45-70 arm   1063-1123 x86
+      //outs() <<"Calling GetOpcode\n";
+      //int opc = II->getOpcode();
+      //outs() <<"Post GetOpcode\n";
+      //T = opcodeCheck(opc, II);
+      //if(T == NodeType::BRANCH && entry == 0){
+        //outs() << "Branch with no prev head\n";
+        //++II;
+        //continue;
+      //}
+      //else if (T != NodeType::UNKNOWN) {
+        //outs() << "NodeType Catch\n";
+      //  if(entry == 0)
+      //    entry = DAS->getDebugOffset(II->getDebugLoc());
+      //  else
+      //    exit = DAS->getDebugOffset(II->getDebugLoc());
+        /*if(entry != 0 && exit != 0) {
+          temp = new GraphNode;
+          temp->Type = T;
+          temp->Address = entry;
+          temp->End = exit;
+          if(T == NodeType::BRANCH)
+            temp->BranchAddress = II->getOperand(0).getImm();
+          Graph->addGraphNode(temp);
+          entry = 0;
+          //entry = exit;
+        }*/
+      //}
+      ad = DAS->getDebugOffset(BI->instr_end()->getPrevNode()->getDebugLoc());
+      outs() << "End:\t";
+      outs() << format(Fmt, ad);
+      outs() << "\n\n";
   }
-  //broken, we have the enum. now set address and return
-  inst.Addr = DAS->getDebugOffset(II->getDebugLoc());
-  return inst;
-
+  //outs() << "Calling functionsIterator\n";
+  //outs() << DAS->getDebugOffset(IE->getPrevNode()->getDebugLoc()) + IE->getPrevNode()->getDesc().getSize() << "\n";
+  //outs() << DAS->getDebugOffset((--BI)->instr_end()->getPrevNode()->getDebugLoc())
+   //         + BI->instr_end()->getPrevNode()->getDesc().getSize();
+  functionsIterator(DAS->getDebugOffset((--BI)->instr_end()->getPrevNode()->getDebugLoc())
+                    + BI->instr_end()->getPrevNode()->getDesc().getSize());
+  return;
 }
-
 
 
 
@@ -412,6 +480,10 @@ void StrippedDisassembler::addSymbol(FractureSymbol tempSym){
 }
 std::vector<FractureSymbol> StrippedDisassembler::getSymbolVector(){
   return Symbols;
+}
+
+StrippedGraph *StrippedDisassembler::getStrippedGraph() {
+  return Graph;
 }
 
 } // end namespace fracture

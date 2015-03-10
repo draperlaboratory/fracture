@@ -998,13 +998,15 @@ int main(int argc, char *argv[]) {
   }
 
   if(DAS->getExecutable()->symbol_begin() == DAS->getExecutable()->symbol_end()){
-    uint64_t mainAddr;
     isStripped = true;
     outs() << "File is Stripped\n";
     SDAS = new StrippedDisassembler(DAS, TripleName);
-    mainAddr = SDAS->findStrippedMain();
-    if(mainAddr != 0)
-      SDAS->findStrippedFunctions(mainAddr);
+    //mainAddr = SDAS->findStrippedMain();
+    //if(mainAddr != 0)
+    //  SDAS->findStrippedFunctions(mainAddr);
+    
+    SDAS->functionsIterator(SDAS->getStrippedSection(".text"));
+    SDAS->getStrippedGraph()->printGraph();
   }
 
 
