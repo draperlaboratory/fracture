@@ -324,8 +324,10 @@ static bool lookupELFName(const object::ELFObjectFile<ELFT>* elf,
     Syms.push_back(temp);
   }
   if (isStripped)
-    for (auto &it : SDAS->getSymbolVector()) {
-      Syms.push_back(new FractureSymbol(it));
+    for (auto &it : SDAS->getStrippedGraph()->getHeadNodes()) {
+      FractureSymbol tempSym(it->Address, DAS->getFunctionName(it->Address),
+                             0, object::SymbolRef::Type::ST_Function, 0);
+      Syms.push_back(new FractureSymbol(tempSym));
     }
 
   for (std::vector<FractureSymbol *>::iterator si = Syms.begin(),
@@ -597,8 +599,10 @@ static void dumpELFSymbols(const object::ELFObjectFile<ELFT>* elf,
     Syms.push_back(temp);
   }
   if (isStripped)
-    for (auto &it : SDAS->getSymbolVector()) {
-      Syms.push_back(new FractureSymbol(it));
+    for (auto &it : SDAS->getStrippedGraph()->getHeadNodes()) {
+      FractureSymbol tempSym(it->Address, DAS->getFunctionName(it->Address),
+                             0, object::SymbolRef::Type::ST_Function, 0);
+      Syms.push_back(new FractureSymbol(tempSym));
     }
 
   // Sort symbols by address
@@ -1007,6 +1011,7 @@ int main(int argc, char *argv[]) {
     
     SDAS->functionsIterator(SDAS->getStrippedSection(".text"));
     SDAS->getStrippedGraph()->printGraph();
+    SDAS->getStrippedGraph()->correctHeadNodes();
   }
 
 

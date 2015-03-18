@@ -20,7 +20,7 @@
 
 
 #include "llvm/Object/ObjectFile.h"
-
+#include "llvm/Target/TargetInstrInfo.h"
 #include <list>
 #include <vector>
 
@@ -39,17 +39,25 @@ struct GraphNode {
     
 class StrippedGraph {
   public:
-    StrippedGraph(){}
-    StrippedGraph(GraphNode *Head);
+    StrippedGraph(Disassembler *D, std::string T) {
+      DAS = D;
+      Triple = T;
+    }
+    ~StrippedGraph() {
+      for (auto &it : AllNodes)
+        delete it;
+    }
     void addGraphNode(GraphNode *Node);
     void addToList(GraphNode *Node);
     void printGraph();
-
+    std::vector<GraphNode *> getHeadNodes();
+    void correctHeadNodes();
 
   private:
+    Disassembler *DAS;
+    std::string Triple;
     std::vector<GraphNode *> HeadNodes;
     std::vector<GraphNode *> NeedsLink;
-    std::vector<std::vector<GraphNode *>::iterator> ToErase;
     std::list<GraphNode *> AllNodes;
     GraphNode *PrevNode;
     bool AlreadyASuccessor;
@@ -61,6 +69,10 @@ class StrippedGraph {
     bool isJumpToCompleteFunction(GraphNode *Node);
     void initializeColors();
     bool isAlreadySuccessor(GraphNode *Node, GraphNode *Succ);
+    bool isSuccessorLoop(GraphNode *Node);
+    MachineInstr *bypassNops(GraphNode *Node);
+    bool isConditionalTerminator(GraphNode *Node);
+    bool isFunctionBegin(GraphNode *Node);
 
 };
 }

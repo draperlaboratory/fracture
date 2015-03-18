@@ -56,7 +56,7 @@ namespace fracture {
 
       TripleName = T;
       DAS = D;
-      Graph = new StrippedGraph;
+      Graph = new StrippedGraph(D, T);
     }
 
     //NodeType opcodeCheck(int opc, MachineBasicBlock::iterator II);

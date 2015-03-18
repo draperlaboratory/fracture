@@ -151,7 +151,7 @@ void StrippedDisassembler::functionsIterator(uint64_t Address) {
   //loop through the BB to find the first jump or branch
 
 
-  for(; BI != BE; ++BI) {
+  for (; BI != BE; ++BI) {
   //while (BI != BE ) {
       outs() << "New BasicBlock!: \n";
       uint64_t ad = DAS->getDebugOffset(BI->instr_begin()->getDebugLoc());
@@ -162,9 +162,10 @@ void StrippedDisassembler::functionsIterator(uint64_t Address) {
       tempNode->NodeBlock = BI;
       tempNode->Address = DAS->getDebugOffset(BI->instr_begin()->getDebugLoc());
       tempNode->End = DAS->getDebugOffset(BI->instr_end()->getPrevNode()->getDebugLoc());
-      if(BI->instr_end()->getPrevNode()->isBranch()) {
+      if (BI->instr_end()->getPrevNode()->isBranch()) {
         uint64_t InstAddr = DAS->getDebugOffset(BI->instr_end()->getPrevNode()->getDebugLoc());
-        uint64_t InstSize = BI->instr_end()->getPrevNode()->getDesc().getSize();
+        uint64_t InstSize = (TripleName.find("arm") != std::string::npos) ? 8
+                          : BI->instr_end()->getPrevNode()->getDesc().getSize();
         uint64_t JumpAddr = 0;
         if (BI->instr_end()->getPrevNode()->getOperand(0).isImm())
           JumpAddr = BI->instr_end()->getPrevNode()->getOperand(0).getImm();
@@ -205,6 +206,11 @@ void StrippedDisassembler::functionsIterator(uint64_t Address) {
       ad = DAS->getDebugOffset(BI->instr_end()->getPrevNode()->getDebugLoc());
       outs() << "End:\t";
       outs() << format(Fmt, ad);
+      outs() << "\nOPCODE: " << BI->instr_rbegin()->getOpcode();
+      if (BI->instr_rbegin()->isUnconditionalBranch())
+        outs() << "\nUNCONDITIONAL\n";
+      if (BI->instr_rbegin()->findFirstPredOperandIdx() != -1)
+        outs() << "Condit: " << BI->instr_rbegin()->getOperand(BI->instr_rbegin()->findFirstPredOperandIdx()).getImm();
       outs() << "\n\n";
   }
   //outs() << "Calling functionsIterator\n";

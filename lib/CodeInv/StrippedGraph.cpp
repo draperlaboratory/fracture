@@ -18,13 +18,8 @@
 #include "CodeInv/Disassembler.h"
 #include "CodeInv/StrippedGraph.h"
 
-namespace fracture {
 
-StrippedGraph::StrippedGraph(GraphNode *Head) {
-  GraphNode *temp = new GraphNode;
-  *temp = *Head;
-  HeadNodes.push_back(temp);
-}
+namespace fracture {
 
 void StrippedGraph::addGraphNode(GraphNode *Node) {
   outs() << "Initial NeedsLink: ";
@@ -39,23 +34,12 @@ void StrippedGraph::addGraphNode(GraphNode *Node) {
     HeadNodes.push_back(Node);
     return;
   }
-  // If there are links that need to be resolved, check the link branch address
-  // with the current node to see if they match up, and if so, link them.
-  if (!NeedsLink.empty()) {
-    for (std::vector<GraphNode *>::iterator it = NeedsLink.begin();
-         it != NeedsLink.end(); ++it) {
-      if ((*it)->BranchAddress == Node->Address) {
-        (*it)->SuccNodes.push_back(Node);
-        NeedsLink.erase(it);
-        break;
-      }
-    }
-  }
-  // If the previous basic block ends with a return instruction, and we've already
-  // checked that the current basic block isn't jumped to from somewhere, then
-  // the current basic block must be the start of a new function.
-  else if ((PrevNode != NULL && PrevNode->NodeBlock->instr_rbegin()->isReturn()) ||
-           isJumpToCompleteFunction(PrevNode)) {
+  // If the previous basic block ends with a return instruction that is
+  // not a conditional return, or the current basic block starts with a
+  // function prologue, this must be the start of a function.
+  if ((PrevNode != NULL && PrevNode->NodeBlock->instr_rbegin()->isReturn()
+      && !isConditionalTerminator(PrevNode))
+      || isFunctionBegin(Node)) {
     outs() << "Prev is Terminator\n";
     HeadNodes.push_back(Node);
   }
@@ -65,16 +49,17 @@ void StrippedGraph::addGraphNode(GraphNode *Node) {
   // of the other successor. 
   if (PrevNode->NodeBlock->instr_rbegin()->isConditionalBranch() &&
            !isAddressInBasicBlock(PrevNode->BranchAddress, Node)) {
-    
     PrevNode->SuccNodes.push_back(Node);
     NeedsLink.push_back(PrevNode);
-    
   }
+  // If the current block ends with an unconditional branch, we want to
+  // push it into NeedsLink for later linking.
   if (Node->NodeBlock->instr_rbegin()->isUnconditionalBranch())
     NeedsLink.push_back(Node);
-  if (!NeedsLink.empty()) {
+  // If there are links that need to be resolved, attempt to resolve them.
+  if (!NeedsLink.empty())
     resolveLinks();
-  }
+
   PrevNode = Node;
   outs() << "NeedsLink: ";
   for (auto &it : NeedsLink)
@@ -87,28 +72,14 @@ void StrippedGraph::addToList(GraphNode *Node) {
   AllNodes.push_back(Node);
 }
 
-/*void StrippedGraph::resolveLinks() {
-  for (std::vector<GraphNode *>::iterator it = NeedsLink.begin();
-       it != NeedsLink.end(); ++it) {
-    initializeColors();
-    for (auto &git : HeadNodes) {
-      //if (AlreadyASuccessor)
-      //  return;
-       it = nodeVisit(it, git);
-    }
-  }
-}*/
-
 void StrippedGraph::resolveLinks() {
   bool NodeDeleted = false;
   for (std::vector<GraphNode *>::iterator vecit = NeedsLink.begin();
        vecit != NeedsLink.end(); ) {
-    outs() << "TESTING NEEDSLINK NODE\n";
     for(auto &it : AllNodes) {
       if (isAddressInBasicBlock((*vecit)->BranchAddress, it) &&
           !isAlreadySuccessor(*vecit, it)) {
         (*vecit)->SuccNodes.push_back(it);
-        outs() <<"Link Resolved!!!! AHHHH\n";
         vecit = NeedsLink.erase(vecit);
         NodeDeleted = true;
       }
@@ -118,28 +89,6 @@ void StrippedGraph::resolveLinks() {
     NodeDeleted = false; 
   }
 }
-       
-
-/*std::vector<GraphNode *>::iterator StrippedGraph::nodeVisit(std::vector<GraphNode *>::iterator NodeIt, GraphNode *ToAdd) {
-  const char *Fmt;
-  Fmt = "%08" PRIx64;
-  AlreadyASuccessor = false;
-
-  if (ToAdd->NodeColor == Color::GRAY &&
-      isAddressInBasicBlock((*NodeIt)->BranchAddress, ToAdd) &&
-      !isAlreadySuccessor(*NodeIt, ToAdd)) {
-    (*NodeIt)->SuccNodes.push_back(ToAdd);
-    NodeIt = NeedsLink.erase(NodeIt);
-  }
-  for (auto &it : ToAdd->SuccNodes) {
-    //if (AlreadyASuccessor)
-    //  return;
-    nodeVisit(NodeIt, it);
-    
-  }
-  ToAdd->NodeColor = Color::BLACK;
-  return NodeIt;
-}*/
 
 void StrippedGraph::printGraph() {
   initializeColors();
@@ -147,6 +96,10 @@ void StrippedGraph::printGraph() {
     outs() << "Function Begin!\n";
     printVisit(it);
   }
+}
+
+std::vector<GraphNode *> StrippedGraph::getHeadNodes() {
+  return HeadNodes;
 }
 
 void StrippedGraph::printNode(GraphNode *Node) {
@@ -158,14 +111,20 @@ void StrippedGraph::printNode(GraphNode *Node) {
   for (auto &it : Node->SuccNodes)
     outs() << format(Fmt, it->Address) << " ";
   outs() << "\n\n";
+  Node->NodeColor = Color::BLACK;
 }
 
 void StrippedGraph::printVisit(GraphNode *Node) {
-  if(Node->NodeColor == Color::GRAY) {
+  if (Node->NodeColor == Color::GRAY) {
     printNode(Node);
-    for (auto &it : Node->SuccNodes)
+    for (auto &it : Node->SuccNodes) {
+      if(it->Address == it->BranchAddress)
+        continue;
+      if(isSuccessorLoop(it))
+        continue;
       printVisit(it);
-    Node->NodeColor = Color::BLACK;
+    }
+    //Node->NodeColor = Color::BLACK;
   }
 }
 
@@ -176,8 +135,8 @@ bool StrippedGraph::isAddressInBasicBlock(uint64_t Address, GraphNode *Node) {
 }
 
 bool StrippedGraph::isJumpToCompleteFunction(GraphNode *Node) {
-  for(auto &it : HeadNodes)
-    if(isAddressInBasicBlock(Node->BranchAddress, it))
+  for (auto &it : HeadNodes)
+    if (isAddressInBasicBlock(Node->BranchAddress, it))
       return true;
   return false;
 }
@@ -194,9 +153,76 @@ bool StrippedGraph::isAlreadySuccessor(GraphNode *Node, GraphNode *Succ) {
   return false;
 }
 
+bool StrippedGraph::isSuccessorLoop(GraphNode *Node) {
+  for (auto &it : Node->SuccNodes)
+    for (auto &it2 : it->SuccNodes)
+      if (it2->Address == Node->Address)
+        return true;
+  return false;
+}
 
+MachineInstr *StrippedGraph::bypassNops(GraphNode *Node) {
+  for (MachineBasicBlock::iterator MI = Node->NodeBlock->instr_begin();
+       MI != Node->NodeBlock->instr_end(); MI++) {
+    unsigned opcode = MI->getOpcode();
+    if (Triple.find("i386") != std::string::npos) {
+      if (opcode >= 1778 && opcode <= 1780) // NOOP
+        continue;
+      if (opcode >= 5709 && opcode <= 5721) // XCH
+        continue;
+      if (opcode >= 1178 && opcode <= 1181) // LEA
+        continue;
+    }
+    if (Triple.find("arm") != std::string::npos) {
+      if (opcode >= 39 && opcode <= 42 &&  // ANDEQ
+          MI->getOperand(MI->findFirstPredOperandIdx()).getImm() == 0)
+        continue;
+      if (opcode >= 237 && opcode <= 238 &&  // MULEQ
+          MI->getOperand(MI->findFirstPredOperandIdx()).getImm() == 0)
+        continue;
+    }
+    return &(*MI);
+  }
+  return NULL;
+}
 
+void StrippedGraph::correctHeadNodes() {
+  for (auto &it : HeadNodes) {
+    MachineInstr *temp = bypassNops(it);
+    if (temp != NULL)
+      it->Address = DAS->getDebugOffset(temp->getDebugLoc());
+  }
+}
 
+bool StrippedGraph::isConditionalTerminator(GraphNode *Node) {
+  if (Node->NodeBlock->instr_rbegin()->isPredicable()) {
+    int predOpIndex = Node->NodeBlock->instr_rbegin()->findFirstPredOperandIdx();
+    if (predOpIndex != -1) {
+      int condCode = Node->NodeBlock->instr_rbegin()->getOperand(predOpIndex).getImm();
+      if (condCode >= 0 && condCode < 14) {
+        outs() << "Prev Conditional Terminator\n";
+        return true;
+      }
+    }
+  }
+  return false;
+}
 
-
+bool StrippedGraph::isFunctionBegin(GraphNode *Node) {
+  MachineInstr *begin = bypassNops(Node);
+  if (Triple.find("arm") != std::string::npos)
+    if (begin->getOpcode() >= 404 && begin->getOpcode() <= 411)
+      for (MachineInstr::mop_iterator mop = begin->operands_begin();
+           mop != begin->operands_end(); ++mop)
+        if (mop->isReg() && mop->getReg() == 10)
+          return true;
+  if (Triple.find("i386") != std::string::npos)
+    if (begin->getOpcode() >= 2186 && begin->getOpcode() <= 2220)
+      for (MachineInstr::mop_iterator mop = begin->operands_begin();
+           mop != begin->operands_end(); ++mop)
+        if (mop->isReg() && mop->getReg() == 20 &&
+            !PrevNode->NodeBlock->instr_rbegin()->isConditionalBranch())
+          return true;
+  return false;
+}
 } // end namespace fracture
