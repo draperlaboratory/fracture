@@ -114,6 +114,9 @@ static cl::opt<bool> ViewMachineDAGs("view-machine-dags", cl::Hidden,
 static cl::opt<bool> ViewIRDAGs("view-ir-dags", cl::Hidden,
     cl::desc("Pop up a window to show dags after Inverse DAG Select."));
 
+static cl::opt<bool> StrippedBinary("stripped", cl::Hidden,
+    cl::desc("Run stripped disassembler to locate functions in stripped binary."));
+
 static bool error(std::error_code ec) {
   if (!ec)
     return false;
@@ -1001,7 +1004,8 @@ int main(int argc, char *argv[]) {
         << InputFileName.getValue() << "'. " << Err.message() << ".\n";
   }
 
-  if(DAS->getExecutable()->symbol_begin() == DAS->getExecutable()->symbol_end()){
+  if(DAS->getExecutable()->symbol_begin() == DAS->getExecutable()->symbol_end() 
+     && StrippedBinary){
     isStripped = true;
     outs() << "File is Stripped\n";
     SDAS = new StrippedDisassembler(DAS, TripleName);
