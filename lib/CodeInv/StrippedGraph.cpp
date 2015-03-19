@@ -180,6 +180,9 @@ MachineInstr *StrippedGraph::bypassNops(GraphNode *Node) {
       if (opcode >= 237 && opcode <= 238 &&  // MULEQ
           MI->getOperand(MI->findFirstPredOperandIdx()).getImm() == 0)
         continue;
+      if (opcode >= 150 && opcode <= 193 &&  // LDREQ
+          MI->getOperand(MI->findFirstPredOperandIdx()).getImm() == 0)
+        continue;
     }
     return &(*MI);
   }
