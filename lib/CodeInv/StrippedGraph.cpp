@@ -165,7 +165,8 @@ MachineInstr *StrippedGraph::bypassNops(GraphNode *Node) {
   for (MachineBasicBlock::iterator MI = Node->NodeBlock->instr_begin();
        MI != Node->NodeBlock->instr_end(); MI++) {
     unsigned opcode = MI->getOpcode();
-    if (Triple.find("i386") != std::string::npos) {
+    if (Triple.find("i386") != std::string::npos ||
+        Triple.find("x86_64") != std::string::npos) {
       if (opcode >= 1778 && opcode <= 1780) // NOOP
         continue;
       if (opcode >= 5709 && opcode <= 5721) // XCH
@@ -219,12 +220,13 @@ bool StrippedGraph::isFunctionBegin(GraphNode *Node) {
            mop != begin->operands_end(); ++mop)
         if (mop->isReg() && mop->getReg() == 10)
           return true;
-  if (Triple.find("i386") != std::string::npos)
+  if (Triple.find("i386") != std::string::npos ||
+      Triple.find("x86_64") != std::string::npos)
     if (begin->getOpcode() >= 2186 && begin->getOpcode() <= 2220)
       for (MachineInstr::mop_iterator mop = begin->operands_begin();
            mop != begin->operands_end(); ++mop)
-        if (mop->isReg() && mop->getReg() == 20 &&
-            !PrevNode->NodeBlock->instr_rbegin()->isConditionalBranch())
+        if (mop->isReg() && (mop->getReg() == 20 || mop->getReg() == 36)
+            && !PrevNode->NodeBlock->instr_rbegin()->isConditionalBranch())
           return true;
   return false;
 }
