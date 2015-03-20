@@ -64,16 +64,18 @@ namespace fracture {
     uint64_t getStrippedSection(std::string section);
     void functionsIterator(uint64_t Address);
     void findStrippedFunctions(uint64_t Address);
-    uint64_t findStrippedMain();
+    void findStrippedMain();
     void addSymbol(FractureSymbol S);
     std::vector<FractureSymbol> getSymbolVector();
     StrippedGraph *getStrippedGraph();
+    uint64_t getMain();
 
   private:
     Disassembler *DAS;
     StrippedGraph *Graph;
     std::string TripleName;
     std::vector<FractureSymbol> Symbols;
+    uint64_t mainAddr = 0;
   };
 }
 

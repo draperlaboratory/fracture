@@ -22,12 +22,13 @@
 namespace fracture {
 
 void StrippedGraph::addGraphNode(GraphNode *Node) {
-  outs() << "Initial NeedsLink: ";
+  /*outs() << "Initial NeedsLink: ";
   const char *Fmt;
   Fmt = "%08" PRIx64;
   for (auto &it : NeedsLink)
     outs() << format(Fmt, it->Address) << " ";
   outs() << "\n";
+  */
   // If the graph is empty, start a new node with the first basic block.
   if (HeadNodes.empty()) {
     PrevNode = Node;
@@ -40,7 +41,7 @@ void StrippedGraph::addGraphNode(GraphNode *Node) {
   if ((PrevNode != NULL && PrevNode->NodeBlock->instr_rbegin()->isReturn()
       && !isConditionalTerminator(PrevNode))
       || isFunctionBegin(Node)) {
-    outs() << "Prev is Terminator\n";
+    //outs() << "Prev is Terminator\n";
     HeadNodes.push_back(Node);
   }
   // If the previous basic block ends with a conditional branch, we want to
@@ -61,10 +62,11 @@ void StrippedGraph::addGraphNode(GraphNode *Node) {
     resolveLinks();
 
   PrevNode = Node;
-  outs() << "NeedsLink: ";
+  /*outs() << "NeedsLink: ";
   for (auto &it : NeedsLink)
     outs() << format(Fmt, it->Address) << " ";
   outs() << "\n";
+  */
   return;
 }
 
@@ -204,7 +206,7 @@ bool StrippedGraph::isConditionalTerminator(GraphNode *Node) {
     if (predOpIndex != -1) {
       int condCode = Node->NodeBlock->instr_rbegin()->getOperand(predOpIndex).getImm();
       if (condCode >= 0 && condCode < 14) {
-        outs() << "Prev Conditional Terminator\n";
+        //outs() << "Prev Conditional Terminator\n";
         return true;
       }
     }

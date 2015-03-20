@@ -117,6 +117,10 @@ static cl::opt<bool> ViewIRDAGs("view-ir-dags", cl::Hidden,
 static cl::opt<bool> StrippedBinary("stripped", cl::Hidden,
     cl::desc("Run stripped disassembler to locate functions in stripped binary."));
 
+static cl::opt<bool> printGraph("print-graph", cl::Hidden,
+    cl::desc("Print graph for stripped file, must also enable stripped command"));
+
+
 static bool error(std::error_code ec) {
   if (!ec)
     return false;
@@ -327,11 +331,13 @@ static bool lookupELFName(const object::ELFObjectFile<ELFT>* elf,
     Syms.push_back(temp);
   }
   if (isStripped)
-    for (auto &it : SDAS->getStrippedGraph()->getHeadNodes()) {
-      FractureSymbol tempSym(it->Address, DAS->getFunctionName(it->Address),
-                             0, object::SymbolRef::Type::ST_Function, 0);
-      Syms.push_back(new FractureSymbol(tempSym));
-    }
+      for (auto &it : SDAS->getStrippedGraph()->getHeadNodes()) {
+        StringRef name = (SDAS->getMain() == it->Address ?
+                                  "main" : DAS->getFunctionName(it->Address));
+        FractureSymbol tempSym(it->Address, name,
+                               0, object::SymbolRef::Type::ST_Function, 0);
+        Syms.push_back(new FractureSymbol(tempSym));
+      }
 
   for (std::vector<FractureSymbol *>::iterator si = Syms.begin(),
       se = Syms.end();
@@ -603,7 +609,9 @@ static void dumpELFSymbols(const object::ELFObjectFile<ELFT>* elf,
   }
   if (isStripped)
     for (auto &it : SDAS->getStrippedGraph()->getHeadNodes()) {
-      FractureSymbol tempSym(it->Address, DAS->getFunctionName(it->Address),
+      StringRef name = (SDAS->getMain() == it->Address ?
+                                "main" : DAS->getFunctionName(it->Address));
+      FractureSymbol tempSym(it->Address, name,
                              0, object::SymbolRef::Type::ST_Function, 0);
       Syms.push_back(new FractureSymbol(tempSym));
     }
@@ -1009,12 +1017,10 @@ int main(int argc, char *argv[]) {
     isStripped = true;
     outs() << "File is Stripped\n";
     SDAS = new StrippedDisassembler(DAS, TripleName);
-    //mainAddr = SDAS->findStrippedMain();
-    //if(mainAddr != 0)
-    //  SDAS->findStrippedFunctions(mainAddr);
-    
+    SDAS->findStrippedMain();
     SDAS->functionsIterator(SDAS->getStrippedSection(".text"));
-    SDAS->getStrippedGraph()->printGraph();
+    if(printGraph)
+      SDAS->getStrippedGraph()->printGraph();
     SDAS->getStrippedGraph()->correctHeadNodes();
   }
 
