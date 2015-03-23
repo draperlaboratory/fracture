@@ -31,6 +31,7 @@
 #include "llvm/MC/MCInstrInfo.h"
 #include "llvm/MC/MCRegisterInfo.h"
 #include "llvm/MC/MCSubtargetInfo.h"
+#include "llvm/Object/Error.h"
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/FormattedStream.h"
@@ -41,7 +42,18 @@
 #include "llvm/Target/TargetOptions.h"
 
 #include <sstream>
-
+#include <string>
+#include <iostream>
+#include <ostream>
+#include <iomanip>
+#include <stdio.h>
+#include <algorithm>
+#include <map>
+#include <inttypes.h>
+#include <signal.h>
+#include <sstream>
+#include <unistd.h>
+#include <cstdlib>
 #include "CodeInv/MCDirector.h"
 
 using namespace llvm;
@@ -132,7 +144,7 @@ public:
   /// \brief Symbol accessors
   std::string getSymbolName(unsigned Address);
   const StringRef getFunctionName(unsigned Address) const;
-
+  void getRelocFunctionName(unsigned Address, StringRef &NameRef);
   /// \brief Set the current section reference in the Disassembler
   ///
   /// \param SectionName a string representing the name, e.g. ".text"
@@ -144,7 +156,7 @@ public:
   }
   const object::SectionRef getSectionByName(StringRef SectionName) const;
   const object::SectionRef getSectionByAddress(unsigned Address) const;
-
+  StringRefMemoryObject* getCurSectionMemory() const { return CurSectionMemory; }
   object::ObjectFile* getExecutable() const { return Executable; }
   MCDirector* getMCDirector() const { return MC; }
   Module* getModule() const { return TheModule; }
@@ -163,6 +175,8 @@ public:
     return NULL;
   }
 
+
+  std::map<StringRef, uint64_t> getRelocOrigins() { return RelocOrigins; };
   uint64_t getDebugOffset(const DebugLoc &Loc) const;
   DebugLoc* setDebugLoc(uint64_t Address);
   void deleteFunction(MachineFunction* MF);
@@ -175,6 +189,7 @@ private:
   std::map<unsigned, MachineFunction*> Functions;
   std::map<unsigned, MCInst*> Instructions;
   std::map<unsigned, const MachineInstr*> MachineInstructions;
+  std::map<StringRef, uint64_t> RelocOrigins;
 
   MachineModuleInfo *MMI;
   GCModuleInfo *GMI;

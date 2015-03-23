@@ -80,6 +80,18 @@ void Decompiler::decompile(unsigned Address) {
         DEBUG(outs() << "Read Address as: " << format("%1" PRIx64, Addr)
           << ", " << AddrStr << "\n");
         StringRef FName = Dis->getFunctionName(Addr);
+        // Change sections to check if function address is paired with a 
+        // relocated function and then set function name accordingly
+        StringRef SectionName;
+        object::SectionRef Section = Dis->getSectionByAddress(Addr);
+        Section.getName(SectionName);
+        Dis->setSection(SectionName);
+        Dis->getRelocFunctionName(Addr, FName);
+        Section = Dis->getSectionByAddress(Address);
+        Section.getName(SectionName);
+        Dis->setSection(SectionName);
+        CI->getCalledFunction()->setName(FName);
+
         Function *NF = Mod->getFunction(FName);
         if (Addr != 0 && (NF == NULL || NF->empty())) {
           Children.push_back(Addr);

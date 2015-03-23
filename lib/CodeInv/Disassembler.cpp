@@ -233,7 +233,6 @@ unsigned Disassembler::decodeInstruction(unsigned Address,
   if (flags != 0) {
   	// Constant* cInt = ConstantInt::get(Type::getInt64Ty(ctx), MCO.getImm());
   	// Value *Val = ConstantExpr::getIntToPtr(cInt,
-  	// PointerType::getUnqual(Type::getInt32Ty(ctx)));
   	// FIXME: note size of 4 is known to be bad for
   	// some targets
 
@@ -388,6 +387,29 @@ void Disassembler::printInstruction(formatted_raw_ostream &Out,
   for (unsigned i = 0, e = ((Size > 8) ? 8 : Size); i != e; ++i)
     Out << format("%02" PRIX8 " ", Bytes[i]);
   Out.PadToColumn(40);        // 8 bytes (2 char) + 1 space each + 2 spaces
+  
+  // Calculate function address for printing function names in disassembly
+  int64_t Tgt = 0, DestInt = 0;
+  StringRef FuncName;
+  if (Inst->isCall()) {
+    Size != 5 ? Size = 8 : Size; // Instruction size is 8 for ARM
+    for (MachineInstr::mop_iterator MII = Inst->operands_begin(); MII !=
+         Inst->operands_end(); ++MII)
+    if (MII->isImm())
+      DestInt = MII->getImm();
+    Tgt = Address + Size + DestInt;
+    FuncName = getFunctionName(Tgt);
+    if (FuncName.startswith("func")) {
+      StringRef SectionName;
+      object::SectionRef Section = getSectionByAddress(Tgt);
+      Section.getName(SectionName);
+      setSection(SectionName);
+      getRelocFunctionName(Tgt, FuncName);
+      Section = getSectionByAddress(Address);
+      Section.getName(SectionName);
+      setSection(SectionName);
+    }
+  }
 
   // Print instruction
   // NOTE: We could print the "Full" machine instruction version here instead
@@ -395,7 +417,8 @@ void Disassembler::printInstruction(formatted_raw_ostream &Out,
   if (PrintTypes) {
     Inst->print(Out, MC->getTargetMachine(), false);
   } else {
-    MC->getMCInstPrinter()->printInst(Instructions[Address], Out, "");
+    MC->getMCInstPrinter()->printInst(Instructions[Address], Out,
+    Inst->isCall() ? FuncName : "");
     Out << "\n";
   }
 
@@ -442,6 +465,60 @@ std::string Disassembler::getSymbolName(unsigned Address) {
   }
   return "";
 }
+// getRelocFunctionName() pairs function call addresses with dynamically relocated
+// library function addresses and sets the function name to the actual name 
+// rather than the function address
+void Disassembler::getRelocFunctionName(unsigned Address, StringRef &NameRef) {
+  MachineFunction *MF = disassemble(Address);
+  MachineBasicBlock *MBB = &(MF->front());
+  uint64_t JumpAddr = 0;
+  StringRef RelName;
+  std::error_code ec;
+  bool isOffsetJump = false;
+  // Iterate through each operand of each instruction in the basic block 
+  // checking if each operand isImm() and grabbing the value if true 
+  for (MachineBasicBlock::iterator MBI = MBB->begin(); MBI != MBB->end(); ++MBI) {
+    for (MachineInstr::mop_iterator MII = MBI->operands_begin(); MII != 
+         MBI->operands_end(); ++MII) {
+      if (MII->isImm()) {
+        if (MBB->size() > 1) {
+          JumpAddr += MII->getImm();
+          break;
+        }
+        JumpAddr = MII->getImm();
+      }
+    }
+    if (JumpAddr < Address) isOffsetJump = true;
+  }
+  if (MBB->size() > 1 && isOffsetJump)
+    JumpAddr += Address + 8;
+  else if (isOffsetJump) 
+    JumpAddr += Address + 6;
+
+  // Check if address matches relocation symbol address and if so
+  // grab the symbol name
+  for (object::section_iterator seci = Executable->section_begin(); seci !=
+      Executable->section_end(); ++seci)
+    for (object::relocation_iterator ri = seci->relocation_begin(); ri != 
+         seci->relocation_end(); ++ri) {
+      uint64_t RelocAddr;
+      if ((ec = ri->getAddress(RelocAddr))) {
+        errs() << ec.message() << "\n";
+        continue;
+      }
+      if (JumpAddr == RelocAddr) {
+        if ((ec = ri->getSymbol()->getName(RelName))) {
+          errs() << ec.message() << "\n";
+          continue;
+        }
+        RelocOrigins[RelName] = Address;
+      }
+    }
+  // NameRef is passed by reference, so if relocation doesn't match,
+  // we don't want to modify the StringRef
+  if (!RelName.empty())
+    NameRef = RelName;
+}
 
 const StringRef Disassembler::getFunctionName(unsigned Address) const {
   uint64_t SymAddr;
@@ -472,8 +549,8 @@ const StringRef Disassembler::getFunctionName(unsigned Address) const {
   }
   // NOTE: Dynamic symbols accessors removed in newer version of llvm-trunk
   // Now check dynamic symbols
-  // for (object::symbol_iterator I = Executable->begin_dynamic_symbols(),
-  //        E = Executable->end_dynamic_symbols(); I != E; I.increment(ec)) {
+  // for (object::symbol_iterator I = elf->dynamic_symbol_begin(),
+  //        E = elf->dynamic_symbol_end(); I != E; ++I) {
   //   object::SymbolRef::Type SymbolTy;
   //   if ((ec = I->getType(SymbolTy))) {
   //     errs() << ec.message() << "\n";
@@ -482,7 +559,7 @@ const StringRef Disassembler::getFunctionName(unsigned Address) const {
   //   if (SymbolTy != object::SymbolRef::ST_Function) {
   //     continue;
   //   }
-  //   if ((ec = I->getValue(SymAddr))) {
+  //   if ((ec = I->getAddress(SymAddr))) {
   //     errs() << ec.message() << "\n";
   //     continue;
   //   }
@@ -527,29 +604,13 @@ void Disassembler::setSection(const object::SectionRef Section) {
     printError(ec.message());
     return;
   }
-
+  std::error_code er;
   CurSection = Section;
   CurSectionEnd = SectAddr + SectSize;
   CurSectionMemory = new StringRefMemoryObject(Bytes, SectAddr);
   StringRef SectionName;
   CurSection.getName(SectionName);
-  printInfo("Setting Section " + std::string(SectionName.data()));
-  // TODO: Add section relocations (if ncessary).
-  // Make a list of all the relocations for this section.
-  // error_code ec;
-  // std::vector<object::RelocationRef> Rels;
-  // for (relocation_iterator ri = Section.begin_relocations(), re =
-  //     Section.end_relocations(); ri != re; ri.increment(ec)) {
-  //   if (error(ec))
-  //     break;
-  //   Rels.push_back(*ri);
-  // }
-
-  // Sort relocations by address.
-  // std::sort(Rels.begin(), Rels.end(), relocAddressLess);
-
-  // std::vector<RelocationRef>::const_iterator rel_cur = Rels.begin();
-  // std::vector<RelocationRef>::const_iterator rel_end = Rels.end();
+  //printInfo("Setting Section " + std::string(SectionName.data()));
 }
 
 std::string Disassembler::rawBytesToString(StringRef Bytes) {
@@ -587,7 +648,7 @@ const object::SectionRef Disassembler::getSectionByName(StringRef SectionName)
             << format("%8" PRIx64 , Addr) << "\n";
       continue;
     }
-
+    
     if (Name == SectionName) {
       return *si;
     }
@@ -603,7 +664,7 @@ const object::SectionRef Disassembler::getSectionByAddress(unsigned Address)
   std::error_code ec;
   for (object::section_iterator si = Executable->section_begin(), se =
          Executable->section_end(); si != se; ++si) {
-
+    
     if (ec) {
       printError(ec.message());
       break;
@@ -623,7 +684,7 @@ const object::SectionRef Disassembler::getSectionByAddress(unsigned Address)
   }
 
   return *Executable->section_end();
-}
+}   
 
 uint64_t Disassembler::getDebugOffset(const DebugLoc &Loc) const {
   MDNode *Scope = Loc.getScope(*MC->getContext());
