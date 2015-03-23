@@ -22,6 +22,7 @@ using namespace llvm;
 
 namespace fracture {
 
+//Returns address of section
 uint64_t StrippedDisassembler::getStrippedSection(std::string section) {
 
   StringRef SectionNameOrAddress = section;
@@ -44,14 +45,12 @@ uint64_t StrippedDisassembler::getStrippedSection(std::string section) {
   if (std::error_code(Section.getAddress(Address)))
       return 0;
 
-  //StringRef SectionName;
-  //std::error_code(Section.getName(SectionName));
   return Address;
 }
 
 //Returns address in hex
 uint64_t StrippedDisassembler::getHexAddress(MachineBasicBlock::iterator II) {
-  //Returns location of iterator. converts from int > hex > int sheeesh.
+
   std::string mn;
   uint64_t address;
   std::stringstream sin;
@@ -74,7 +73,7 @@ uint64_t StrippedDisassembler::getHexAddress(MachineBasicBlock::iterator II) {
 }
 //Iterate through basic blocks of a section and push them to the graph
 void StrippedDisassembler::functionsIterator(uint64_t Address) {
-  //print out stripped function locations
+
   MachineFunction *MF = DAS->disassemble(Address);
   object::SectionRef Section = DAS->getSectionByAddress(Address);
   DAS->setSection(Section);
@@ -92,7 +91,7 @@ void StrippedDisassembler::functionsIterator(uint64_t Address) {
   }
   MachineBasicBlock::iterator II = BI->instr_begin(), IE = BI->instr_end();
 
-  // skip to first instruction
+//Skip to first instruction
   while (DAS->getDebugOffset(II->getDebugLoc()) < Address) {
     if (II == IE) {
       outs() << "Unreachable: reached end of basic block when looking for first"
@@ -109,20 +108,19 @@ void StrippedDisassembler::functionsIterator(uint64_t Address) {
   }
 
   for (; BI != BE; ++BI) {
-    //outs() << "New BasicBlock!: \n";
+//Inside a new basic block
     uint64_t ad = DAS->getDebugOffset(BI->instr_begin()->getDebugLoc());
-    //outs() << "Begin:\t";
-    //outs() << format(Fmt, ad);
-    //outs() << "\n";
     GraphNode *tempNode = new GraphNode;
     tempNode->NodeBlock = BI;
     tempNode->Address = DAS->getDebugOffset(BI->instr_begin()->getDebugLoc());
     tempNode->End = DAS->getDebugOffset(BI->instr_end()->getPrevNode()->getDebugLoc());
+
     if (BI->instr_end()->getPrevNode()->isBranch()) {
       uint64_t InstAddr = DAS->getDebugOffset(BI->instr_end()->getPrevNode()->getDebugLoc());
       uint64_t InstSize = (TripleName.find("arm") != std::string::npos) ? 8
                           : BI->instr_end()->getPrevNode()->getDesc().getSize();
       uint64_t JumpAddr = 0;
+
       if (BI->instr_end()->getPrevNode()->getOperand(0).isImm())
         JumpAddr = BI->instr_end()->getPrevNode()->getOperand(0).getImm();
       tempNode->BranchAddress = JumpAddr + InstSize + InstAddr;
@@ -130,22 +128,15 @@ void StrippedDisassembler::functionsIterator(uint64_t Address) {
     Graph->addGraphNode(tempNode);
     Graph->addToList(tempNode);
     ad = DAS->getDebugOffset(BI->instr_end()->getPrevNode()->getDebugLoc());
-
-    /*outs() << "End:\t";
-    outs() << format(Fmt, ad);
-    outs() << "\nOPCODE: " << BI->instr_rbegin()->getOpcode();
-    if (BI->instr_rbegin()->isUnconditionalBranch())
-      outs() << "\nUNCONDITIONAL\n";
-    if (BI->instr_rbegin()->findFirstPredOperandIdx() != -1)
-      outs() << "Condit: " << BI->instr_rbegin()->getOperand(BI->instr_rbegin()->findFirstPredOperandIdx()).getImm();
-    outs() << "\n\n";
-    */
   }
   functionsIterator(DAS->getDebugOffset((--BI)->instr_end()->getPrevNode()->getDebugLoc())
                     + BI->instr_end()->getPrevNode()->getDesc().getSize());
   return;
 }
-// Sets mainAddr to the address of main in a stripped file, arm or x86 elf
+
+// Sets mainAddr to the address of main in a stripped file.
+//   Iterates through the start of .text and finds the call to main using the
+//   standard gcc and clang file preamble.
 void StrippedDisassembler::findStrippedMain() {
 
 

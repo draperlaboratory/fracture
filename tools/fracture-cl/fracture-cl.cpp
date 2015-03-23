@@ -1011,7 +1011,7 @@ int main(int argc, char *argv[]) {
     errs() << ProgramName << ": Could not open the file '"
         << InputFileName.getValue() << "'. " << Err.message() << ".\n";
   }
-
+//If the -stripped flag is set and the file is actually stripped.
   if(DAS->getExecutable()->symbol_begin() == DAS->getExecutable()->symbol_end() 
      && StrippedBinary){
     isStripped = true;
@@ -1019,6 +1019,7 @@ int main(int argc, char *argv[]) {
     SDAS = new StrippedDisassembler(DAS, TripleName);
     SDAS->findStrippedMain();
     SDAS->functionsIterator(SDAS->getStrippedSection(".text"));
+    //Also print stripped graph
     if(printGraph)
       SDAS->getStrippedGraph()->printGraph();
     SDAS->getStrippedGraph()->correctHeadNodes();
