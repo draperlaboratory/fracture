@@ -113,24 +113,24 @@ void StrippedDisassembler::functionsIterator(uint64_t Address) {
     GraphNode *tempNode = new GraphNode;
     tempNode->NodeBlock = BI;
     tempNode->Address = DAS->getDebugOffset(BI->instr_begin()->getDebugLoc());
-    tempNode->End = DAS->getDebugOffset(BI->instr_end()->getPrevNode()->getDebugLoc());
+    tempNode->End = DAS->getDebugOffset(BI->instr_rbegin()->getDebugLoc());
 
-    if (BI->instr_end()->getPrevNode()->isBranch()) {
-      uint64_t InstAddr = DAS->getDebugOffset(BI->instr_end()->getPrevNode()->getDebugLoc());
+    if (BI->instr_rbegin()->isBranch()) {
+      uint64_t InstAddr = DAS->getDebugOffset(BI->instr_rbegin()->getDebugLoc());
       uint64_t InstSize = (TripleName.find("arm") != std::string::npos) ? 8
-                          : BI->instr_end()->getPrevNode()->getDesc().getSize();
+                          : BI->instr_rbegin()->getDesc().getSize();
       uint64_t JumpAddr = 0;
 
-      if (BI->instr_end()->getPrevNode()->getOperand(0).isImm())
-        JumpAddr = BI->instr_end()->getPrevNode()->getOperand(0).getImm();
+      if (BI->instr_rbegin()->getOperand(0).isImm())
+        JumpAddr = BI->instr_rbegin()->getOperand(0).getImm();
       tempNode->BranchAddress = JumpAddr + InstSize + InstAddr;
     }
     Graph->addGraphNode(tempNode);
     Graph->addToList(tempNode);
-    ad = DAS->getDebugOffset(BI->instr_end()->getPrevNode()->getDebugLoc());
+    ad = DAS->getDebugOffset(BI->instr_rbegin()->getDebugLoc());
   }
-  functionsIterator(DAS->getDebugOffset((--BI)->instr_end()->getPrevNode()->getDebugLoc())
-                    + BI->instr_end()->getPrevNode()->getDesc().getSize());
+  functionsIterator(DAS->getDebugOffset((--BI)->instr_rbegin()->getDebugLoc())
+                    + BI->instr_rbegin()->getDesc().getSize());
   return;
 }
 

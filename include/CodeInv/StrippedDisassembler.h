@@ -51,11 +51,14 @@ namespace fracture {
   class StrippedDisassembler {
   public:
     StrippedDisassembler() {}
-    ~StrippedDisassembler() { delete Graph; }
+    ~StrippedDisassembler() {
+      delete Graph;
+      delete DAS;
+    }
     StrippedDisassembler(Disassembler *D, std::string T) {
 
       TripleName = T;
-      DAS = D;
+      DAS = new Disassembler(*D);
       Graph = new StrippedGraph(D, T);
     }
 
