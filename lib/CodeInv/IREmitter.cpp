@@ -497,8 +497,8 @@ Value* IREmitter::visitLOAD(const SDNode *N) {
 
   if (!Addr->getType()->isPointerTy()) {
     Addr = IRB->CreateIntToPtr(Addr, Addr->getType()->getPointerTo(), Name);
-    (dyn_cast<Instruction>(Addr))->setDebugLoc(N->getDebugLoc());
   }
+
   Name = getIndexedValueName(BaseName);
   Instruction *Res = IRB->CreateLoad(Addr, Name);
   Res->setDebugLoc(N->getDebugLoc());
@@ -604,6 +604,8 @@ Value* IREmitter::visitCALL(const SDNode *N) {
 
   // TODO: Look up address in symbol table.
   std::string FName = Dec->getDisassembler()->getFunctionName(Tgt);
+
+  outs() << "\n\nHELLLOOOO!!! " << FName << "\n\n";
 
   Module *Mod = IRB->GetInsertBlock()->getParent()->getParent();
 
