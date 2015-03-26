@@ -236,6 +236,30 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
+    case X86::MOV32mi:{
+    	//FIXME: only using 3 of 7 operands. What are the other 4 doing?
+    	SDValue Chain = N->getOperand(0);
+    	SDValue Reg = N->getOperand(1);
+    	SDValue Imm = N->getOperand(6);
+
+    	const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
+    	MachineMemOperand *MMO = NULL;
+    	if (MN->memoperands_empty()) {
+    	  errs() << "NO MACHINE OPS for MOV32mi!\n";
+    	} else {
+    	  MMO = *(MN->memoperands_begin());
+    	}
+
+    	SDLoc SL(N);
+
+    	SDValue Store = CurDAG->getStore(Chain, SL, Imm, Reg, MMO);
+    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Store);
+
+    	FixChainOp(Store.getNode());
+
+    	return NULL;
+    	break;
+    }
     case X86::CALLpcrel32:{
       /**<
        * CALLpcrel32 notes
