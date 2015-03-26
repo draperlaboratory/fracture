@@ -524,7 +524,7 @@ Value* IREmitter::visitSTORE(const SDNode *N) {
     //errs() << "-----Dump2\n";
     //Addr->dump();
     //N->getDebugLoc().dump(getGlobalContext());
-    (dyn_cast<Instruction>(Addr))->setDebugLoc(N->getDebugLoc());
+    //(dyn_cast<Instruction>(Addr))->setDebugLoc(N->getDebugLoc());
   }
 
   Instruction *Res = IRB->CreateStore(StoreVal, Addr);
@@ -604,8 +604,6 @@ Value* IREmitter::visitCALL(const SDNode *N) {
 
   // TODO: Look up address in symbol table.
   std::string FName = Dec->getDisassembler()->getFunctionName(Tgt);
-
-  outs() << "\n\nHELLLOOOO!!! " << FName << "\n\n";
 
   Module *Mod = IRB->GetInsertBlock()->getParent()->getParent();
 

@@ -237,9 +237,11 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       break;
     }
     case X86::MOV32mi:{
-    	//FIXME: only using 3 of 7 operands. What are the other 4 doing?
+    	//FIXME: only using 4 of 7 operands. What are the other 3 doing?
     	SDValue Chain = N->getOperand(0);
-    	SDValue Reg = N->getOperand(1);
+    	SDValue CFR = N->getOperand(1);
+    	RegisterSDNode *Reg = dyn_cast<RegisterSDNode>(CFR.getNode()->getOperand(1).getNode());
+    	SDValue Addr = N->getOperand(4);
     	SDValue Imm = N->getOperand(6);
 
     	const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
@@ -252,7 +254,13 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
 
     	SDLoc SL(N);
 
-    	SDValue Store = CurDAG->getStore(Chain, SL, Imm, Reg, MMO);
+    	SDValue Store;
+    	if (Reg->getReg() == 0) {
+    		Store = CurDAG->getStore(Chain, SL, Imm, Addr, MMO);
+    	}
+    	else {
+    		Store = CurDAG->getStore(Chain, SL, Imm, CFR, MMO);
+    	}
     	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Store);
 
     	FixChainOp(Store.getNode());
