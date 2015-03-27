@@ -15,7 +15,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "CodeInv/Disassembler.h"
-#include <regex>
 
 using namespace llvm;
 
@@ -158,7 +157,7 @@ unsigned Disassembler::decodeInstruction(unsigned Address,
   }
   outs() << "\n";
 
-  if (!(DA->getInstruction(*Inst, InstSize, Bytes, NewAddr,
+  if (!(DA->getInstruction(*Inst, InstSize, Bytes, Address,
         errs(), errs()))) {
     printError("Unknown instruction encountered, instruction decode failed!");
     return 1;
@@ -518,10 +517,7 @@ const StringRef Disassembler::getFunctionName(unsigned Address) const {
 
 
 void Disassembler::setSection(std::string SectionName) {
-  // let's do this by expression rather than by explicit name
-  // as an attempt to be a bit more flexibility
-  //setSection(getSectionByName(SectionName));
-  setSection(getSectionByExpression(SectionName));
+  setSection(getSectionByName(SectionName));
 }
 
 void Disassembler::setSection(const object::SectionRef Section) {
@@ -572,39 +568,6 @@ std::string Disassembler::rawBytesToString(StringRef Bytes) {
   return Str;
 }
 
-const object::SectionRef Disassembler::getSectionByExpression(StringRef SectionExpression) 
-  const {
-  std::error_code ec;
-  std::string SectionStringExpr = SectionExpression.data();
-  std::regex re(SectionStringExpr);
-
-  for (object::section_iterator si = Executable->section_begin(), se = Executable->section_end();
-       si != se; ++si ) {
-    if (ec) {
-      printError(ec.message());
-      break;
-    }
-
-    StringRef Name;
-    if ( si->getName(Name)) {
-      uint64_t Addr;
-      Addr = si->getAddress();
-      Infos << "Disassembler: Unnamed section encountered at "
-	    << format("%8" PRIx64, Addr) << "\n";
-      continue;
-    }
-
-    // now do a regex rather than a exact match
-    std::string CurrentSectionName = std::string( Name.data() );
-    if ( regex_search( CurrentSectionName, re ) ) {
-      return *si;
-    }
-  }
-
-  printError("Unable to find section name \"" + std::string(SectionExpression.data()) + "\"");
-  return *Executable->section_end();
-}
-
 const object::SectionRef Disassembler::getSectionByName(StringRef SectionName)
   const {
   std::error_code ec;
@@ -623,8 +586,8 @@ const object::SectionRef Disassembler::getSectionByName(StringRef SectionName)
             << format("%8" PRIx64 , Addr) << "\n";
       continue;
     }
-
-    if (Name == SectionName) {
+    
+    if (Name.str().find(SectionName) != std::string::npos) {
       return *si;
     }
   }
