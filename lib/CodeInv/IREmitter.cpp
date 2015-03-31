@@ -496,7 +496,67 @@ Value* IREmitter::visitLOAD(const SDNode *N) {
   StringRef Name = getIndexedValueName(BaseName);
 
   if (!Addr->getType()->isPointerTy()) {
-    Addr = IRB->CreateIntToPtr(Addr, Addr->getType()->getPointerTo(), Name);
+
+	ConstantInt *ConstAddr = dyn_cast<ConstantInt>(Addr);
+	if (ConstAddr) {
+	  uint64_t addrNum = ConstAddr->getLimitedValue();
+	  errs() << "HI! " << addrNum << "\n\n";
+	  StringRef globalName = "";
+	  for (int i = KnownAddrs.size()-1; i >= 0; i--) {
+	    if (addrNum >= std::get<0>(KnownAddrs[i]) && addrNum <= std::get<1>(KnownAddrs[i])) {
+		  globalName = std::get<2>(KnownAddrs[i]);
+	    }
+      }
+	  if (globalName != "") {
+		StringRef gBaseName = getBaseValueName(globalName);
+		StringRef gName = getIndexedValueName(gBaseName);
+		Value *Offset = Dec->getModule()->getGlobalVariable(globalName);
+		Value *NewAddr = IRB->CreateSub(Addr, Offset, gName);
+		//Value *NewAddr = ConstantInt::get(Addr->getType(), addrNum);
+		Addr = IRB->CreateIntToPtr(NewAddr, NewAddr->getType()->getPointerTo(), Name);
+	  }
+	  else {
+		object::SectionRef sect = Dec->getDisassembler()->getSectionByAddress(addrNum);
+		uint64_t sectBeg, sectEnd;
+		sect.getAddress(sectBeg);
+		sect.getSize(sectEnd);
+		sectEnd = sectBeg + sectEnd;
+		StringRef sectName;
+		sect.getName(sectName);
+		StringRef gBaseName = getBaseValueName(sectName);
+		StringRef gName = getIndexedValueName(gBaseName);
+		errs() << sectName << ", " << sectBeg << ", " << sectEnd << "\n\n";
+
+		std::tuple<uint64_t, uint64_t, StringRef> sectInfo (sectBeg, sectEnd, sectName);
+		KnownAddrs.push_back(sectInfo);
+
+		Type* Ty = N->getOperand(0).getNode()->getValueType(0).getTypeForEVT(getGlobalContext());
+		Constant *Initializer = Constant::getNullValue(Ty);
+		Value *global = new GlobalVariable(*Dec->getModule(), // Module
+		                                   Ty,                // Type
+		                                   false,             // isConstant
+		                                   GlobalValue::ExternalLinkage,
+		                                   Initializer,
+		                                   sectName);
+
+		Value *sectSize = ConstantInt::get(Ty,
+			(sectEnd-sectBeg) / Dec->getDisassembler()->getExecutable()->getBytesInAddress());
+		gName = getIndexedValueName(gBaseName);
+		Instruction *alloca = IRB->CreateAlloca(Ty, sectSize, gName);
+		gName = getIndexedValueName(gBaseName);
+		Value *pti = IRB->CreatePtrToInt(alloca, Ty, gName);
+		gName = getIndexedValueName(gBaseName);
+		Value *sub = IRB->CreateSub(Addr, pti, gName);
+		IRB->CreateStore(sub, global);
+
+
+
+		Addr = IRB->CreateIntToPtr(Addr, Addr->getType()->getPointerTo(), Name);
+	  }
+	}
+	else {
+      Addr = IRB->CreateIntToPtr(Addr, Addr->getType()->getPointerTo(), Name);
+	}
   }
 
   Name = getIndexedValueName(BaseName);

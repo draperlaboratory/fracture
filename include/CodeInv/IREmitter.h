@@ -34,6 +34,7 @@
 
 #include <stack>
 #include <map>
+#include <tuple>
 
 using namespace llvm;
 
@@ -85,6 +86,9 @@ protected:
   IndexedMap<Value*> RegMap;
   DenseMap<const SDNode*, Value*> VisitMap;
   StringMap<StringRef> BaseNames;
+
+  std::vector<std::tuple<uint64_t, uint64_t, StringRef > > KnownAddrs;
+
 
   // Visit Functions (Convert SDNode into Instruction/Value)
   virtual Value* visit(const SDNode *N);
