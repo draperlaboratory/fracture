@@ -146,19 +146,16 @@ unsigned Disassembler::decodeInstruction(unsigned Address,
   const MCDisassembler *DA = MC->getMCDisassembler();
   uint64_t InstSize;
   MCInst *Inst = new MCInst();
-  ArrayRef<unsigned char> Bytes(
-      (unsigned char*)CurSectionMemory->getBytes().data(),
+  ArrayRef<uint8_t> Bytes(
+      (uint8_t*)CurSectionMemory->getBytes().data(),
       (size_t)CurSectionMemory->getBytes().size());
-
+  // Chop any bytes off before instuction address that we don't need.
   uint64_t NewAddr = Address - CurSectionMemory->getBase();
-  outs() << "Bytes: ";
-  for (int i = NewAddr, e = NewAddr + 4; i != e; ++i) {
-    outs() << Twine::utohexstr(Bytes[i]) << " ";
-  }
-  outs() << "\n";
-
-  if (!(DA->getInstruction(*Inst, InstSize, Bytes, Address,
-        errs(), errs()))) {
+  ArrayRef<uint8_t> NewBytes(Bytes.data() + NewAddr, 
+                             Bytes.data() + Bytes.size() - NewAddr);
+  // Replace nulls() with outs() for stack tracing
+  if (!(DA->getInstruction(*Inst, InstSize, NewBytes, Address,
+        nulls(), nulls()))) {
     printError("Unknown instruction encountered, instruction decode failed!");
     return 1;
     // Instructions[Address] = NULL;
