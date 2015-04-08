@@ -45,6 +45,12 @@
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Target/TargetRegisterInfo.h"
 
+#include "llvm/Support/Casting.h"
+#include "llvm/Support/MachO.h"
+
+#include "llvm/Object/MachO.h"
+#include "llvm/Object/MachOUniversal.h"
+
 #include <string>
 #include <algorithm>
 #include <map>
@@ -455,6 +461,96 @@ static void runSectionsCommand(std::vector<std::string> &CommandLine) {
   }
 }
 
+static void dumpMachOSymbols( const object::MachOObjectFile * macho, 
+			      unsigned Address )
+{
+  std::error_code ec;
+  std::vector<object::SymbolRef> Syms;
+
+  std::vector<object::SymbolRef> res;
+  for ( object::symbol_iterator si = macho->symbol_begin_impl(), 
+	  se = macho->symbol_end_impl(); si != se; ++si ) {
+    Syms.push_back( *si );
+  }
+
+  for (std::vector<object::SymbolRef>::iterator si = Syms.begin(),
+	 se = Syms.end(); si != se; ++si ) {
+    if ( error(ec) )
+      return;
+
+    StringRef Name;
+    uint64_t Address;
+        object::SymbolRef::Type Type;
+    uint64_t Size;
+    uint32_t Flags = 0;
+    uint64_t SectAddr;
+    uint32_t Value;
+    object::section_iterator Section = macho->section_end();
+    if (error(si->getName(Name)))
+      continue;
+    if (error(si->getAddress(Address)))
+      continue;
+    if (error(si->getAlignment(Value))) // NOTE: This used to be getValue...
+      continue;
+    if (error(si->getSection(Section)))
+      continue;
+
+    // SectAddr = Section->getAddress();
+    //try {
+    //  SectAddr = Section->getAddress();
+    //} catch (...) {
+    //
+    //}
+    if (error(si->getType(Type)))
+      continue;
+    if (error(si->getSize(Size)))
+      continue;
+
+    // Doesn't print symbol information for symbols which aren't in the section
+    // specified by the function parameter
+    //if (SectAddr == Address)
+    //  continue;
+
+    bool Global = Flags & object::SymbolRef::SF_Global;
+    bool Weak = Flags & object::SymbolRef::SF_Weak;
+
+    if ( Address == object::UnknownAddressOrSize )
+      Address = 0;
+    if ( Size == object::UnknownAddressOrSize )
+      Size = 0;
+    char GlobLoc = ' ';
+    if ( Type != object::SymbolRef::ST_Unknown )
+      GlobLoc = Global ? 'g' : 'l';
+    char Debug = 
+      (Type == object::SymbolRef::ST_Debug || Type == object::SymbolRef::ST_File ) ? 'd' : ' ';
+    char FileFunc = ' ';
+    if ( Type == object::SymbolRef::ST_File )
+      FileFunc = 'f';
+    else if ( Type == object::SymbolRef::ST_Function )
+      FileFunc = 'F';
+    
+    const char *Fmt;
+
+    // look up the address
+    Fmt = macho->getBytesInAddress() > 4 ? "%016" PRIx64 : "%08" PRIx64;
+    outs() << format(Fmt,Address) << " "
+	   << GlobLoc
+	   << (Weak ? 'w' : ' ')
+	   << ' ' // Constructor?
+	   << ' ' // not sure
+	   << ' ' // indirect reference to another symbol?
+	   << Debug // debugging (d) or dynamic (D) symbol
+	   << FileFunc
+	   << ' ';
+    outs() << '\t'
+	   << format("%08" PRIx64 " ",Size)
+	   << format("%08" PRIx64 " ",Value)
+	   << Name
+	   << '\n';
+  }  
+
+}
+
 template <class ELFT>
 static void dumpELFSymbols(const object::ELFObjectFile<ELFT>* elf,
   unsigned Address) {
@@ -653,20 +749,24 @@ static void runSymbolsCommand(std::vector<std::string> &CommandLine) {
          << format("%08x", unsigned(Address)) << "\n";
 
   if (const object::COFFObjectFile *coff =
-    dyn_cast<const object::COFFObjectFile>(Executable)) {
+      dyn_cast<const object::COFFObjectFile>(Executable)) {
     dumpCOFFSymbols(coff, Address);
   } else if (const object::ELF32LEObjectFile *elf =
-    dyn_cast<const object::ELF32LEObjectFile>(Executable)) {
+	     dyn_cast<const object::ELF32LEObjectFile>(Executable)) {
     return dumpELFSymbols(elf, Address);
   } else if (const object::ELF32BEObjectFile *elf =
-    dyn_cast<const object::ELF32BEObjectFile>(Executable)) {
+	     dyn_cast<const object::ELF32BEObjectFile>(Executable)) {
     return dumpELFSymbols(elf, Address);
   } else if (const object::ELF64BEObjectFile *elf =
-    dyn_cast<const object::ELF64BEObjectFile>(Executable)) {
+	     dyn_cast<const object::ELF64BEObjectFile>(Executable)) {
     return dumpELFSymbols(elf, Address);
   } else if (const object::ELF64LEObjectFile *elf =
-    dyn_cast<const object::ELF64LEObjectFile>(Executable)) {
+	     dyn_cast<const object::ELF64LEObjectFile>(Executable)) {
     return dumpELFSymbols(elf, Address);
+  } else if (const object::MachOObjectFile * macho = 
+	     dyn_cast<const object::MachOObjectFile>(Executable)) {
+    // will dump the MachOSymbols
+    return dumpMachOSymbols( macho, Address );
   } else {
     errs() << "Unsupported section type.\n";
   }
