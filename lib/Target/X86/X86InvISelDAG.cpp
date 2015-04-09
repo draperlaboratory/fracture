@@ -236,6 +236,60 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
+    case X86::MOV32mi:{
+    	//FIXME: only using 4 of 7 operands. What are the other 3 doing?
+    	SDValue Chain = N->getOperand(0);
+    	SDValue CFR = N->getOperand(1);
+    	RegisterSDNode *Reg = dyn_cast<RegisterSDNode>(CFR.getNode()->getOperand(1).getNode());
+    	SDValue Addr = N->getOperand(4);
+    	SDValue Imm = N->getOperand(6);
+
+    	const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
+    	MachineMemOperand *MMO = NULL;
+    	if (MN->memoperands_empty()) {
+    	  errs() << "NO MACHINE OPS for MOV32mi!\n";
+    	} else {
+    	  MMO = *(MN->memoperands_begin());
+    	}
+
+    	SDLoc SL(N);
+
+    	SDValue Store;
+    	if (Reg->getReg() == 0) {
+    		Store = CurDAG->getStore(Chain, SL, Imm, Addr, MMO);
+    	}
+    	else {
+    		Store = CurDAG->getStore(Chain, SL, Imm, CFR, MMO);
+    	}
+    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Store);
+
+    	FixChainOp(Store.getNode());
+
+    	return NULL;
+    	break;
+    }
+    case X86::MOV32o32a:{
+    	SDValue Chain = N->getOperand(0);
+    	SDValue Addr = N->getOperand(1);
+
+    	unsigned ImmSumLoad = 0;
+    	Value *NullPtr = 0;
+    	MachineMemOperand *MMOLoad =
+    	  new MachineMemOperand(MachinePointerInfo(NullPtr, ImmSumLoad),
+    	    MachineMemOperand::MOLoad, 4, 0);
+
+    	SDLoc SL(N);
+
+    	SDValue LoadAddr = CurDAG->getLoad(Addr.getValueType(), SL, Chain, Addr, MMOLoad);
+
+    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), LoadAddr);
+    	CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), SDValue(LoadAddr.getNode(),1));   //Chain
+
+    	FixChainOp(LoadAddr.getNode());
+
+    	return NULL;
+    	break;
+    }
     case X86::CALLpcrel32:{
       /**<
        * CALLpcrel32 notes
@@ -563,7 +617,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       SDLoc SL(N);
       SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::i32);
 
-      SDValue Node = CurDAG->getNode(ISD::SUB, SL, VTList, Constant, Reg);
+      SDValue Node = CurDAG->getNode(ISD::SUB, SL, VTList, Reg, Constant);
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Node);
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), SDValue(Node.getNode(),1));
 
@@ -924,7 +978,6 @@ Scope
       return NULL;
       break;Decompiler
     }
-    //case X86::MOV32mi:
     //case X86::MOV32rr_REV:
     //case X86::MOV64rr:
     case X86::ADD32rr_REV:{ //Note: no chain, two input, two output

@@ -32,6 +32,10 @@ ARMIREmitter::~ARMIREmitter() {
   // Nothing to do here
 }
 
+bool ARMIREmitter::isStkReg(unsigned reg) {
+    return (reg == ARM::SP);
+}
+
 Value* ARMIREmitter::visit(const SDNode *N) {
   // return the parent if we are in IR only territory
   if (N->getOpcode() <= ISD::BUILTIN_OP_END) return IREmitter::visit(N);

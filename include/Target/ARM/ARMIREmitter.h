@@ -30,6 +30,11 @@ public:
   ARMIREmitter(Decompiler *TheDec, raw_ostream &InfoOut = nulls(),
     raw_ostream &ErrOut = nulls());
   ~ARMIREmitter();
+
+  // returns true if reg is the stack pointer
+  // This function must be implemented for IR to be produced correctly
+  bool isStkReg(unsigned reg);
+
 private:
   virtual Value* visit(const SDNode *N);
   Value* visitWrapper(const SDNode *N);

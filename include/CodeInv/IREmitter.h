@@ -34,6 +34,7 @@
 
 #include <stack>
 #include <map>
+#include <tuple>
 
 using namespace llvm;
 
@@ -69,6 +70,11 @@ public:
   }
 
   void endDAG() { assert(EndHandleDAG && "Reached End of DAG and did not see handle node."); }
+
+  // returns true if reg is the stack pointer
+  // this function must be implemented by each target
+  virtual bool isStkReg(unsigned reg) { return false; }
+
 protected:
   bool EndHandleDAG;
   Decompiler *Dec;
@@ -80,6 +86,9 @@ protected:
   IndexedMap<Value*> RegMap;
   DenseMap<const SDNode*, Value*> VisitMap;
   StringMap<StringRef> BaseNames;
+
+  std::vector<std::tuple<uint64_t, uint64_t, StringRef > > KnownAddrs;
+
 
   // Visit Functions (Convert SDNode into Instruction/Value)
   virtual Value* visit(const SDNode *N);
