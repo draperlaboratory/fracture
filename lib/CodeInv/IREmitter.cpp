@@ -495,14 +495,12 @@ Value* IREmitter::visitLOAD(const SDNode *N) {
   StringRef BaseName = getBaseValueName(Addr->getName());
   StringRef Name = getIndexedValueName(BaseName);
 
-  if (!Addr->getType()->isPointerTy()) {
-	ConstantInt *ConstAddr = dyn_cast<ConstantInt>(Addr);
-	if (ConstAddr) {
-	  Addr = handleGlobal(N, Addr, BaseName, Name);
-	}
-	else {
-      Addr = IRB->CreateIntToPtr(Addr, Addr->getType()->getPointerTo(), Name);
-	}
+  ConstantInt *ConstAddr = dyn_cast<ConstantInt>(Addr);
+  if (ConstAddr) {
+	Addr = handleGlobal(N, Addr, BaseName, Name);
+  }
+  else if (!Addr->getType()->isPointerTy()) {
+    Addr = IRB->CreateIntToPtr(Addr, Addr->getType()->getPointerTo(), Name);
   }
 
   Name = getIndexedValueName(BaseName);
@@ -523,14 +521,14 @@ Value* IREmitter::visitSTORE(const SDNode *N) {
   StringRef BaseName = getBaseValueName(Addr->getName());
   StringRef Name = getIndexedValueName(BaseName);
 
-  if (!Addr->getType()->isPointerTy()) {
-	ConstantInt *ConstAddr = dyn_cast<ConstantInt>(Addr);
-	if (ConstAddr) {
-	  Addr = handleGlobal(N, Addr, BaseName, Name);
-	}
-	else {
-	  Addr = IRB->CreateIntToPtr(Addr, Addr->getType()->getPointerTo(), Name);
-	}
+  //FIXME: handle global StoreVal
+
+  ConstantInt *ConstAddr = dyn_cast<ConstantInt>(Addr);
+  if (ConstAddr) {
+  	Addr = handleGlobal(N, Addr, BaseName, Name);
+  }
+  else if (!Addr->getType()->isPointerTy()) {
+	Addr = IRB->CreateIntToPtr(Addr, Addr->getType()->getPointerTo(), Name);
   }
 
   Name = getIndexedValueName(BaseName);
