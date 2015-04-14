@@ -139,6 +139,7 @@ public:
   object::ObjectFile* getExecutable() { return Executable; };
 
   static std::string rawBytesToString(StringRef Bytes);
+  static unsigned* rawBytesToInts(StringRef Bytes);
 
 
   /// \brief Symbol accessors

@@ -627,6 +627,23 @@ std::string Disassembler::rawBytesToString(StringRef Bytes) {
   return Str;
 }
 
+unsigned* Disassembler::rawBytesToInts(StringRef Bytes) {
+	static const unsigned hex_rep[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
+
+	unsigned* bits = new unsigned[Bytes.size()];
+
+	unsigned hByte1, hByte2;
+	int count = 0;
+	for (StringRef::iterator i = Bytes.begin(), e = Bytes.end(); i != e; ++i) {
+	  hByte1 = hex_rep[(*i & 0xF0) >> 4];
+	  hByte2 = hex_rep[*i & 0xF];
+	  bits[count] = 16*hByte1 + hByte2;
+	  count++;
+	}
+
+	return bits;
+}
+
 const object::SectionRef Disassembler::getSectionByName(StringRef SectionName)
   const {
   std::error_code ec;
