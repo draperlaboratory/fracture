@@ -171,6 +171,8 @@ protected:
   Value* visitRegister(const SDNode *N);
   Value* visitCALL(const SDNode *N);
 
+  Value* handleGlobal(const SDNode *N, Value *Addr, StringRef &BaseName, StringRef &Name);
+
   /// Error printing
   raw_ostream &Infos, &Errs;
   void printInfo(std::string Msg) const {

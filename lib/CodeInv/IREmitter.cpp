@@ -496,120 +496,9 @@ Value* IREmitter::visitLOAD(const SDNode *N) {
   StringRef Name = getIndexedValueName(BaseName);
 
   if (!Addr->getType()->isPointerTy()) {
-
 	ConstantInt *ConstAddr = dyn_cast<ConstantInt>(Addr);
 	if (ConstAddr) {
-	  uint64_t addrNum = ConstAddr->getLimitedValue();
-	  errs() << "HI! " << addrNum << "\n\n";
-	  StringRef globalName = "";
-	  for (int i = KnownAddrs.size()-1; i >= 0; i--) {
-	    if (addrNum >= std::get<0>(KnownAddrs[i]) && addrNum <= std::get<1>(KnownAddrs[i])) {
-		  globalName = std::get<2>(KnownAddrs[i]);
-		  errs() << "Name found\n\n";
-	    }
-      }
-	  if (globalName != "") {
-		errs() << "MADE IT!\n\n";
-		BaseName = getBaseValueName(globalName);
-		Value *Global = Dec->getModule()->getGlobalVariable(globalName);
-		Name = getIndexedValueName(BaseName);
-		Instruction *Offset = IRB->CreateLoad(Global, Name);
-		Offset->setDebugLoc(N->getDebugLoc());
-		Name = getIndexedValueName(BaseName);
-		Value *NewAddr = IRB->CreateSub(Addr, Offset, Name);
-		dyn_cast<Instruction>(NewAddr)->setDebugLoc(N->getDebugLoc());
-		Name = getIndexedValueName(BaseName);
-		Addr = IRB->CreateIntToPtr(NewAddr, NewAddr->getType()->getPointerTo(), Name);
-		dyn_cast<Instruction>(Addr)->setDebugLoc(N->getDebugLoc());
-		errs() << "Through\n\n";
-	  }
-	  else {
-		errs() << "Name not found\n\n";
-		object::SectionRef sect = Dec->getDisassembler()->getSectionByAddress(addrNum);
-		uint64_t sectBeg, sectEnd;
-		sect.getAddress(sectBeg);
-		sect.getSize(sectEnd);
-		sectEnd = sectBeg + sectEnd;
-		StringRef sectName;
-		sect.getName(sectName);
-		BaseName = getBaseValueName(sectName);
-		Name = getIndexedValueName(BaseName);
-		errs() << sectName << ", " << sectBeg << ", " << sectEnd << "\n\n";
-
-		std::tuple<uint64_t, uint64_t, StringRef> sectInfo (sectBeg, sectEnd, sectName);
-		KnownAddrs.push_back(sectInfo);
-
-		Type* Ty = N->getOperand(0).getNode()->getValueType(0).getTypeForEVT(getGlobalContext());
-		Constant *Initializer = Constant::getNullValue(Ty);
-		Value *global = new GlobalVariable(*Dec->getModule(), // Module
-		                                   Ty,                // Type
-		                                   false,             // isConstant
-		                                   GlobalValue::ExternalLinkage,
-		                                   Initializer,
-		                                   sectName);
-
-		unsigned bytesPerWord = Dec->getDisassembler()->getExecutable()->getBytesInAddress();
-		Value *sectSize = ConstantInt::get(Ty, (sectEnd-sectBeg) / bytesPerWord);
-		Value *sectAddr = ConstantInt::get(Ty, sectBeg);
-		Name = getIndexedValueName(BaseName);
-		Instruction *alloca = IRB->CreateAlloca(Ty, sectSize, Name);
-		alloca->setDebugLoc(N->getDebugLoc());
-		Name = getIndexedValueName(BaseName);
-		Value *pti = IRB->CreatePtrToInt(alloca, Ty, Name);
-		dyn_cast<Instruction>(pti)->setDebugLoc(N->getDebugLoc());
-		Name = getIndexedValueName(BaseName);
-		Value *sub = IRB->CreateSub(sectAddr, pti, Name);
-		dyn_cast<Instruction>(sub)->setDebugLoc(N->getDebugLoc());
-		IRB->CreateStore(sub, global)->setDebugLoc(N->getDebugLoc());
-
-		StringRef sBytes;
-		std::error_code err = sect.getContents(sBytes);
-		unsigned numBytes = sBytes.size();
-		errs() << "size: " << numBytes << "\n\n";
-		unsigned* bytes = Dec->getDisassembler()->rawBytesToInts(sBytes);
-		errs() << "ints:  ";
-		for (unsigned i = 0; i < numBytes; i++) {
-			//int dumb = bits[i];
-			errs() << bytes[i] << " ";
-		}
-		std::string poop = Dec->getDisassembler()->rawBytesToString(sBytes);
-		errs() << "\n\n" << "bytes: " << poop << "\n\n";
-
-		unsigned numWords = numBytes/bytesPerWord;
-		unsigned words[numWords];
-		for (unsigned i = 0; i <numWords; i++) {
-			words[i] = 0;
-			for (unsigned j = 0; j < 4; j++) {
-				words[i] += bytes[i*bytesPerWord + j] * pow(16, j*2);
-			}
-		}
-		errs() << "words: ";
-		for (unsigned i = 0; i < numWords; i++) {
-			errs() << words[i] << "  ";
-		}
-		errs() << "\n\n";
-
-		for (unsigned i = 0; i < numWords; i++) {
-			Name = getIndexedValueName(BaseName);
-			Value *add = IRB->CreateAdd(pti, ConstantInt::get(Ty, i*bytesPerWord), Name);
-			dyn_cast<Instruction>(add)->setDebugLoc(N->getDebugLoc());
-			Name = getIndexedValueName(BaseName);
-			Value *itp = IRB->CreateIntToPtr(add, Ty->getPointerTo(), Name);
-			dyn_cast<Instruction>(itp)->setDebugLoc(N->getDebugLoc());
-			IRB->CreateStore(ConstantInt::get(Ty, words[i]), itp)->setDebugLoc(N->getDebugLoc());
-		}
-		delete bytes;
-
-		Name = getIndexedValueName(BaseName);
-		Instruction *Offset = IRB->CreateLoad(global, Name);
-		Offset->setDebugLoc(N->getDebugLoc());
-		Name = getIndexedValueName(BaseName);
-		Value *NewAddr = IRB->CreateSub(Addr, Offset, Name);
-		dyn_cast<Instruction>(NewAddr)->setDebugLoc(N->getDebugLoc());
-		Name = getIndexedValueName(BaseName);
-		Addr = IRB->CreateIntToPtr(NewAddr, NewAddr->getType()->getPointerTo(), Name);
-		dyn_cast<Instruction>(Addr)->setDebugLoc(N->getDebugLoc());
-	  }
+	  Addr = handleGlobal(N, Addr, BaseName, Name);
 	}
 	else {
       Addr = IRB->CreateIntToPtr(Addr, Addr->getType()->getPointerTo(), Name);
@@ -631,23 +520,140 @@ Value* IREmitter::visitSTORE(const SDNode *N) {
   // Operand 3 - Chain (ignored)
   Value* StoreVal = visit(N->getOperand(0).getNode());
   Value* Addr = visit(N->getOperand(1).getNode());
-  StringRef Name = getIndexedValueName(getBaseValueName(Addr->getName()));
+  StringRef BaseName = getBaseValueName(Addr->getName());
+  StringRef Name = getIndexedValueName(BaseName);
 
   if (!Addr->getType()->isPointerTy()) {
-    //errs() << "-----Dump1\n";
-    //Addr->dump();
-    //N->getDebugLoc().dump(getGlobalContext());
-    Addr = IRB->CreateIntToPtr(Addr, Addr->getType()->getPointerTo(), Name);
-    //errs() << "-----Dump2\n";
-    //Addr->dump();
-    //N->getDebugLoc().dump(getGlobalContext());
-    //(dyn_cast<Instruction>(Addr))->setDebugLoc(N->getDebugLoc());
+	ConstantInt *ConstAddr = dyn_cast<ConstantInt>(Addr);
+	if (ConstAddr) {
+	  Addr = handleGlobal(N, Addr, BaseName, Name);
+	}
+	else {
+	  Addr = IRB->CreateIntToPtr(Addr, Addr->getType()->getPointerTo(), Name);
+	}
   }
 
+  Name = getIndexedValueName(BaseName);
   Instruction *Res = IRB->CreateStore(StoreVal, Addr);
   Res->setDebugLoc(N->getDebugLoc());
   VisitMap[N] = Res;
   return Res;
+}
+
+Value* IREmitter::handleGlobal(const SDNode *N, Value *Addr, StringRef &BaseName, StringRef &Name) {
+  uint64_t addrNum = dyn_cast<ConstantInt>(Addr)->getLimitedValue();
+  errs() << "HI! " << addrNum << "\n\n";
+  StringRef globalName = "";
+  for (int i = KnownAddrs.size()-1; i >= 0; i--) {
+    if (addrNum >= std::get<0>(KnownAddrs[i]) && addrNum <= std::get<1>(KnownAddrs[i])) {
+	  globalName = std::get<2>(KnownAddrs[i]);
+	  errs() << "Name found\n\n";
+    }
+  }
+  if (globalName != "") {
+	errs() << "MADE IT!\n\n";
+	BaseName = getBaseValueName(globalName);
+	Value *Global = Dec->getModule()->getGlobalVariable(globalName);
+	Name = getIndexedValueName(BaseName);
+	Instruction *Offset = IRB->CreateLoad(Global, Name);
+	Offset->setDebugLoc(N->getDebugLoc());
+	Name = getIndexedValueName(BaseName);
+	Value *NewAddr = IRB->CreateSub(Addr, Offset, Name);
+	dyn_cast<Instruction>(NewAddr)->setDebugLoc(N->getDebugLoc());
+	Name = getIndexedValueName(BaseName);
+	Addr = IRB->CreateIntToPtr(NewAddr, NewAddr->getType()->getPointerTo(), Name);
+	dyn_cast<Instruction>(Addr)->setDebugLoc(N->getDebugLoc());
+	errs() << "Through\n\n";
+	return Addr;
+  }
+  else {
+	errs() << "Name not found\n\n";
+	object::SectionRef sect = Dec->getDisassembler()->getSectionByAddress(addrNum);
+	uint64_t sectBeg, sectEnd;
+	sect.getAddress(sectBeg);
+	sect.getSize(sectEnd);
+	sectEnd = sectBeg + sectEnd;
+	StringRef sectName;
+	sect.getName(sectName);
+	BaseName = getBaseValueName(sectName);
+	Name = getIndexedValueName(BaseName);
+	errs() << sectName << ", " << sectBeg << ", " << sectEnd << "\n\n";
+
+	std::tuple<uint64_t, uint64_t, StringRef> sectInfo (sectBeg, sectEnd, sectName);
+	KnownAddrs.push_back(sectInfo);
+
+	Type* Ty = N->getOperand(0).getNode()->getValueType(0).getTypeForEVT(getGlobalContext());
+	Constant *Initializer = Constant::getNullValue(Ty);
+	Value *global = new GlobalVariable(*Dec->getModule(), // Module
+	                                   Ty,                // Type
+	                                   false,             // isConstant
+	                                   GlobalValue::ExternalLinkage,
+	                                   Initializer,
+	                                   sectName);
+
+	unsigned bytesPerWord = Dec->getDisassembler()->getExecutable()->getBytesInAddress();
+	Value *sectSize = ConstantInt::get(Ty, (sectEnd-sectBeg) / bytesPerWord);
+	Value *sectAddr = ConstantInt::get(Ty, sectBeg);
+	Name = getIndexedValueName(BaseName);
+	Instruction *alloca = IRB->CreateAlloca(Ty, sectSize, Name);
+	alloca->setDebugLoc(N->getDebugLoc());
+	Name = getIndexedValueName(BaseName);
+	Value *pti = IRB->CreatePtrToInt(alloca, Ty, Name);
+	dyn_cast<Instruction>(pti)->setDebugLoc(N->getDebugLoc());
+	Name = getIndexedValueName(BaseName);
+	Value *sub = IRB->CreateSub(sectAddr, pti, Name);
+	dyn_cast<Instruction>(sub)->setDebugLoc(N->getDebugLoc());
+	IRB->CreateStore(sub, global)->setDebugLoc(N->getDebugLoc());
+
+	StringRef sBytes;
+	std::error_code err = sect.getContents(sBytes);
+	unsigned numBytes = sBytes.size();
+	errs() << "size: " << numBytes << "\n\n";
+	unsigned* bytes = Dec->getDisassembler()->rawBytesToInts(sBytes);
+	errs() << "ints:  ";
+	for (unsigned i = 0; i < numBytes; i++) {
+	  //int dumb = bits[i];
+	  errs() << bytes[i] << " ";
+	}
+	std::string poop = Dec->getDisassembler()->rawBytesToString(sBytes);
+	errs() << "\n\n" << "bytes: " << poop << "\n\n";
+
+	unsigned numWords = numBytes/bytesPerWord;
+	unsigned words[numWords];
+	for (unsigned i = 0; i <numWords; i++) {
+	  words[i] = 0;
+	  for (unsigned j = 0; j < 4; j++) {
+		words[i] += bytes[i*bytesPerWord + j] * pow(16, j*2);
+	  }
+	}
+	errs() << "words: ";
+	for (unsigned i = 0; i < numWords; i++) {
+	  errs() << words[i] << "  ";
+	}
+	errs() << "\n\n";
+
+	for (unsigned i = 0; i < numWords; i++) {
+	  Name = getIndexedValueName(BaseName);
+	  Value *add = IRB->CreateAdd(pti, ConstantInt::get(Ty, i*bytesPerWord), Name);
+	  dyn_cast<Instruction>(add)->setDebugLoc(N->getDebugLoc());
+	  Name = getIndexedValueName(BaseName);
+	  Value *itp = IRB->CreateIntToPtr(add, Ty->getPointerTo(), Name);
+	  dyn_cast<Instruction>(itp)->setDebugLoc(N->getDebugLoc());
+	  IRB->CreateStore(ConstantInt::get(Ty, words[i]), itp)->setDebugLoc(N->getDebugLoc());
+	}
+	delete bytes;
+
+	Name = getIndexedValueName(BaseName);
+	Instruction *Offset = IRB->CreateLoad(global, Name);
+	Offset->setDebugLoc(N->getDebugLoc());
+	Name = getIndexedValueName(BaseName);
+	Value *NewAddr = IRB->CreateSub(Addr, Offset, Name);
+	dyn_cast<Instruction>(NewAddr)->setDebugLoc(N->getDebugLoc());
+	Name = getIndexedValueName(BaseName);
+	Addr = IRB->CreateIntToPtr(NewAddr, NewAddr->getType()->getPointerTo(), Name);
+	dyn_cast<Instruction>(Addr)->setDebugLoc(N->getDebugLoc());
+	return Addr;
+  }
 }
 
 Value* IREmitter::visitINSERT_VECTOR_ELT(const SDNode *N) { llvm_unreachable("visitINSERT_VECTOR_ELT Unimplemented visit..."); return NULL; }
