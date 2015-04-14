@@ -495,6 +495,8 @@ Value* IREmitter::visitLOAD(const SDNode *N) {
   StringRef BaseName = getBaseValueName(Addr->getName());
   StringRef Name = getIndexedValueName(BaseName);
 
+  // If the address is a constant value, it must be the address of a
+  // global variable
   ConstantInt *ConstAddr = dyn_cast<ConstantInt>(Addr);
   if (ConstAddr) {
 	Addr = handleGlobal(N, Addr, BaseName, Name);
@@ -521,8 +523,27 @@ Value* IREmitter::visitSTORE(const SDNode *N) {
   StringRef BaseName = getBaseValueName(Addr->getName());
   StringRef Name = getIndexedValueName(BaseName);
 
-  //FIXME: handle global StoreVal
+  // If the value being stored is a constant value pointing to a data section
+  // or BSS section, assume that it is the address of a global variable and
+  // process it as such
+  ConstantInt *ConstVal = dyn_cast<ConstantInt>(StoreVal);
+  if (ConstVal) {
+	Type *Ty = StoreVal->getType();
+	uint64_t val = ConstVal->getLimitedValue();
+	object::SectionRef sect = Dec->getDisassembler()->getSectionByAddress(val);
+	bool isData, isBSS;
+	sect.isData(isData); sect.isBSS(isBSS);
+	if (isData || isBSS) {
+	  StringRef gBaseName, gName;
+	  StoreVal = handleGlobal(N, StoreVal, gBaseName, gName);
+	  gName = getIndexedValueName(gBaseName);
+	  StoreVal = IRB->CreatePtrToInt(StoreVal, Ty, gName);
+	  dyn_cast<Instruction>(StoreVal)->setDebugLoc(N->getDebugLoc());
+	}
+  }
 
+  // If the address is a constant value, it must be the address of a
+  // global variable
   ConstantInt *ConstAddr = dyn_cast<ConstantInt>(Addr);
   if (ConstAddr) {
   	Addr = handleGlobal(N, Addr, BaseName, Name);
@@ -590,7 +611,8 @@ Value* IREmitter::handleGlobal(const SDNode *N, Value *Addr, StringRef &BaseName
 	                                   sectName);
 
 	unsigned bytesPerWord = Dec->getDisassembler()->getExecutable()->getBytesInAddress();
-	Value *sectSize = ConstantInt::get(Ty, (sectEnd-sectBeg) / bytesPerWord);
+	unsigned numWords = std::ceil((double)(sectEnd-sectBeg) / (double)(bytesPerWord));
+	Value *sectSize = ConstantInt::get(Ty, numWords);
 	Value *sectAddr = ConstantInt::get(Ty, sectBeg);
 	Name = getIndexedValueName(BaseName);
 	Instruction *alloca = IRB->CreateAlloca(Ty, sectSize, Name);
@@ -604,7 +626,7 @@ Value* IREmitter::handleGlobal(const SDNode *N, Value *Addr, StringRef &BaseName
 	IRB->CreateStore(sub, global)->setDebugLoc(N->getDebugLoc());
 
 	StringRef sBytes;
-	std::error_code err = sect.getContents(sBytes);
+	sect.getContents(sBytes);
 	unsigned numBytes = sBytes.size();
 	errs() << "size: " << numBytes << "\n\n";
 	unsigned* bytes = Dec->getDisassembler()->rawBytesToInts(sBytes);
@@ -616,12 +638,14 @@ Value* IREmitter::handleGlobal(const SDNode *N, Value *Addr, StringRef &BaseName
 	std::string poop = Dec->getDisassembler()->rawBytesToString(sBytes);
 	errs() << "\n\n" << "bytes: " << poop << "\n\n";
 
-	unsigned numWords = numBytes/bytesPerWord;
-	unsigned words[numWords];
+	//unsigned numWords = numBytes/bytesPerWord;
+	unsigned *words = new unsigned[numWords];
 	for (unsigned i = 0; i <numWords; i++) {
 	  words[i] = 0;
 	  for (unsigned j = 0; j < 4; j++) {
-		words[i] += bytes[i*bytesPerWord + j] * pow(16, j*2);
+		if (i*bytesPerWord + j < numBytes) {
+		  words[i] += bytes[i*bytesPerWord + j] * pow(16, j*2);
+		}
 	  }
 	}
 	errs() << "words: ";
@@ -639,6 +663,7 @@ Value* IREmitter::handleGlobal(const SDNode *N, Value *Addr, StringRef &BaseName
 	  dyn_cast<Instruction>(itp)->setDebugLoc(N->getDebugLoc());
 	  IRB->CreateStore(ConstantInt::get(Ty, words[i]), itp)->setDebugLoc(N->getDebugLoc());
 	}
+	delete words;
 	delete bytes;
 
 	Name = getIndexedValueName(BaseName);

@@ -650,8 +650,6 @@ const object::SectionRef Disassembler::getSectionByName(StringRef SectionName)
   for (object::section_iterator si = Executable->section_begin(), se =
          Executable->section_end(); si != se; ++si) {
 
-
-
     if (ec) {
       printError(ec.message());
       break;
@@ -700,6 +698,7 @@ const object::SectionRef Disassembler::getSectionByAddress(unsigned Address)
     }
   }
 
+  printError("Unable to find section at " + std::to_string(Address));
   return *Executable->section_end();
 }   
 
