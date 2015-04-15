@@ -67,6 +67,7 @@
 #include "DummyObjectFile.h"
 #include "CodeInv/Decompiler.h"
 #include "CodeInv/Disassembler.h"
+#include "CodeInv/StrippedDisassembler.h"
 //#include "CodeInv/InvISelDAG.h"
 //#include "CodeInv/MCDirector.h"
 #include "Commands/Commands.h"
@@ -81,7 +82,7 @@ using namespace llvm;
 using namespace fracture;
 		using std::string;  //new
 
-static uint64_t findStrippedMain();
+
 //===----------------------------------------------------------------------===//
 // Global Variables and Parameters
 //===----------------------------------------------------------------------===//
@@ -91,7 +92,9 @@ static Commands CommandParser;
 MCDirector *MCD = 0;
 Disassembler *DAS = 0;
 Decompiler *DEC = 0;
+StrippedDisassembler *SDAS = 0;
 std::unique_ptr<object::ObjectFile> TempExecutable;
+bool isStripped = false;
 
 //Command Line Options
 cl::opt<std::string> TripleName("triple",
@@ -111,6 +114,13 @@ static cl::opt<bool> ViewMachineDAGs("view-machine-dags", cl::Hidden,
 
 static cl::opt<bool> ViewIRDAGs("view-ir-dags", cl::Hidden,
     cl::desc("Pop up a window to show dags after Inverse DAG Select."));
+
+static cl::opt<bool> StrippedBinary("stripped", cl::Hidden,
+    cl::desc("Run stripped disassembler to locate functions in stripped binary."));
+
+static cl::opt<bool> printGraph("print-graph", cl::Hidden,
+    cl::desc("Print graph for stripped file, must also enable stripped command"));
+
 
 static bool error(std::error_code ec) {
   if (!ec)
@@ -190,7 +200,7 @@ static std::error_code loadBinary(StringRef FileName) {
   delete MCD;
 
   MCD = new MCDirector(TripleName, "generic", FeaturesStr,
-    TargetOptions(), Reloc::Default, CodeModel::Default, CodeGenOpt::Default,
+    TargetOptions(), Reloc::DynamicNoPIC, CodeModel::Default, CodeGenOpt::Default,
     outs(), errs());
   DAS = new Disassembler(MCD, TempExecutable.release(), NULL, outs(), outs());
   DEC = new Decompiler(DAS, NULL, outs(), outs());
@@ -203,6 +213,11 @@ static std::error_code loadBinary(StringRef FileName) {
   return std::error_code();
 }
 
+// Hasher for using strings in switch statements
+constexpr unsigned int str2int(const char* str, int h = 0) {
+  return !str[h] ? 5381 : (str2int(str, h + 1) * 33) ^ str[h];
+}
+
 ///===---------------------------------------------------------------------===//
 /// printHelp       - Prints the possible commands
 /// TODO: Expand this to print descriptions of the commands.
@@ -211,12 +226,74 @@ static std::error_code loadBinary(StringRef FileName) {
 static void printHelp(std::vector<std::string> &CommandLine) {
   std::map<std::string, void (*)(std::vector<std::string> &)> Commands =
       CommandParser.getCmdMap();
+  outs() << "\n--COMMANDS--\n\n";
   for (std::map<std::string, void (*)(std::vector<std::string> &)>::iterator
       CmdIt = Commands.begin(), CmdEnd = Commands.end(); CmdIt != CmdEnd;
       ++CmdIt) {
-    if (CmdIt != Commands.begin())
-      outs() << ",";
-    outs() << CmdIt->first;
+    switch(str2int(CmdIt->first.c_str())) {
+      case  str2int("?") :
+        outs() << "? - Displays usable commands and descriptions "
+               << "of their uses\n\n\n";
+        break;
+      case  str2int("decompile") :
+        outs() << "decompile - Decompile a given function\n"
+               << "USAGE:\n"
+               << "\tdec [FUNCNAME] or dec [FUNCADDRESS]\n"
+               << "DESCRIPTION:\n"
+               << "\tDecompile a machine function into LLVM IR given a "
+               << "function name or\n\tfunction address\n\n\n";
+        break;
+      case  str2int("disassemble") :
+        outs() << "disassemble - Disassemble a given function\n"
+               << "USAGE:\n"
+               << "\tdis [FUNCNAME] or dis [FUNCADDRESS]\n"
+               << "DESCRIPTION:\n"
+               << "\tDisassemble a machine function into architecture-specific"
+               << " assembly\n\tlanguage given a function name or function "
+               << "address\n\n\n";
+        break;
+      case  str2int("dump") :
+        outs() << "dump - Fill me in...\n\n\n";
+        break;
+      case  str2int("help") :
+        outs() << "help - Displays usable commands and descriptions "
+               << "of their uses\n\n\n";
+        break;
+      case  str2int("load") :
+        outs() << "load - Load a binary into Fracture\n"
+               << "USAGE:\n"
+               << "\tload [FILENAME]\n"
+               << "DESCRIPTION:\n"
+               << "\tLoad a given binary into Fracture while Fracture is "
+               << "already running\n\n\n";
+        break;
+      case  str2int("quit") :
+        outs() << "quit - Terminate the application\n\n\n";
+        break;
+      case  str2int("save") :
+        outs() << "save - Save LLVM IR to a file\n"
+               << "USAGE:\n"
+               << "\tsave [FILENAME]\n"
+               << "DESCRIPTION:\n"
+               << "\tSave decompiled LLVM IR to a file using the specified file"
+               << "name.\n\tThe decompile command must be run before running "
+               << "the save command.\n\tDecompiled LLVM IR should be saved as a"
+               << " .ll file, which can then be\n\trun using the lli command"
+               << " outside of fracture.\n\n\n";
+               break;
+      case  str2int("sections") :
+        outs() << "sections - Print the names of all sections contained"
+               << " in the binary\n\n\n";
+        break;
+      case  str2int("symbols") :
+        outs() << "symbols - Print section symbols\n"
+               << "USAGE:\n"
+               << "\tsym [SECTIONNAME]\n"
+               << "DESCRIPTION:\n"
+               << "\tPrint all symbols contained in a given section, sorted by"
+               << " address.\n\n";
+               break;
+    }
   }
   outs() << "\n";
 }
@@ -246,41 +323,57 @@ static bool lookupELFName(const object::ELFObjectFile<ELFT>* elf,
   StringRef funcName, uint64_t &Address ) {
   bool retVal = false;
   std::error_code ec;
-  std::vector<object::SymbolRef> Syms;
+  std::vector<FractureSymbol *> Syms;
+
   Address = 0;
   for (object::symbol_iterator si = elf->symbols().begin(), se =
          elf->symbols().end(); si != se; ++si) {
-    Syms.push_back(*si);
+    Syms.push_back(new FractureSymbol(*si));
   }
-  // for (object::symbol_iterator si = elf->begin_dynamic_symbols(), se =
-  //        elf->end_dynamic_symbols(); si != se; ++si) {
-  //   Syms.push_back(*si);
-  // }
+  for (object::symbol_iterator si = elf->dynamic_symbol_begin(), se =
+          elf->dynamic_symbol_end(); si != se; ++si) {
+    FractureSymbol *temp = new FractureSymbol(*si);
+    Syms.push_back(temp);
+  }
+  if (isStripped)
+      for (auto &it : SDAS->getStrippedGraph()->getHeadNodes()) {
+        StringRef name = (SDAS->getMain() == it->Address ?
+                                  "main" : DAS->getFunctionName(it->Address));
+        FractureSymbol tempSym(it->Address, name,
+                               0, object::SymbolRef::Type::ST_Function, 0);
+        Syms.push_back(new FractureSymbol(tempSym));
+      }
 
-  for (std::vector<object::SymbolRef>::iterator si = Syms.begin(),
+  for (std::vector<FractureSymbol *>::iterator si = Syms.begin(),
       se = Syms.end();
       si != se; ++si) {
-
-    if (error(ec))
+    if (error(ec)){
+      for(auto &it : Syms)
+        delete it;
       return retVal;
+    }
 
     StringRef Name;
 
-    if (error(si->getName(Name)))
+    if (error((*si)->getName(Name)))
       continue;
-    if (error(si->getAddress(Address)))
+    if (error((*si)->getAddress(Address)))
       continue;
 
-    if (Address == object::UnknownAddressOrSize){
+    if (Address == object::UnknownAddressOrSize) {
       retVal = false;
       Address = 0;
     }
 
-    if(funcName.str() == Name.str()){
+    if (funcName.str() == Name.str()) {
       retVal = true;
+      for(auto &it : Syms)
+        delete it;
       return retVal;
     }
   }
+  for (auto &it : Syms)
+    delete it;
   return retVal;
 }
 
@@ -294,20 +387,8 @@ static bool nameLookupAddr(StringRef funcName, uint64_t &Address) {
   bool retVal = false;
   const object::ObjectFile* Executable = DAS->getExecutable();
 
-  Address = 0;
-  char buff[300];
-  std::string result;
-  string f = "file ";
-  string cmd = InputFileName;
-  string check = "not stripped";
-   cmd.insert (0, f);
-  FILE* fp = popen(cmd.c_str(), "r");
-  while ( fgets( buff, 300, fp ) !=NULL) {
-    result +=buff;
-  }
-  pclose(fp);
 
-  if (result.find(check) != std::string::npos){
+
     //Binary is not stripped, return address based on symbol name
     if (//const object::COFFObjectFile *coff =
       dyn_cast<const object::COFFObjectFile>(Executable)) {
@@ -329,19 +410,10 @@ static bool nameLookupAddr(StringRef funcName, uint64_t &Address) {
       errs() << "Unsupported section type.\n";
     }
     return retVal;
-  }
-
-  else {
-    errs() << "Binary is Stripped, attempting to find main\n";
-    //Search for Main by function call
-    Address = findStrippedMain();
-    if(Address == 0)
-    	return false;
-    else
-    	return Address;
-  }
-
 }
+
+
+
 
 ///===---------------------------------------------------------------------===//
 /// runDecompileCommand - Decompile a basic block at a given memory address.
@@ -412,13 +484,10 @@ static void runDisassembleCommand(std::vector<std::string> &CommandLine) {
       return;
     }
   }
-<<<<<<< Updated upstream
-=======
   //Set section to section containing address
   StringRef SectionName;
   object::SectionRef Section = DAS->getSectionByAddress(Address);
   DAS->setSection(Section);
->>>>>>> Stashed changes
 
 //  Commenting this out so raw binaries can be disassembled at 0x0
 //  if (Address == 0) {
@@ -462,8 +531,6 @@ static void runSectionsCommand(std::vector<std::string> &CommandLine) {
   }
 }
 
-<<<<<<< Updated upstream
-=======
 bool symbolSorter(FractureSymbol *symOne, FractureSymbol *symTwo) {
   uint64_t addrOne = 0, addrTwo = 0;
   symOne->getAddress(addrOne);
@@ -519,59 +586,81 @@ static void dumpELFRelocSymbols(const object::ELFObjectFile<ELFT>* elf,
   }
 }
 
->>>>>>> Stashed changes
 template <class ELFT>
 static void dumpELFSymbols(const object::ELFObjectFile<ELFT>* elf,
   unsigned Address) {
   std::error_code ec;
-  std::vector<object::SymbolRef> Syms;
+  std::vector<FractureSymbol *> Syms;
+  std::map<StringRef, uint64_t> RelocOrigins = DAS->getRelocOrigins();
+
   for (object::symbol_iterator si = elf->symbols().begin(), se =
          elf->symbols().end(); si != se; ++si) {
-    Syms.push_back(*si);
+    Syms.push_back(new FractureSymbol(*si));
   }
-  for (std::vector<object::SymbolRef>::iterator si = Syms.begin(),
+
+  for (object::symbol_iterator si = elf->dynamic_symbol_begin(), se =
+       elf->dynamic_symbol_end(); si != se; ++si) {
+    FractureSymbol *temp = new FractureSymbol(*si);
+    temp->matchAddress(RelocOrigins);
+    Syms.push_back(temp);
+  }
+  if (isStripped)
+    for (auto &it : SDAS->getStrippedGraph()->getHeadNodes()) {
+      StringRef name = (SDAS->getMain() == it->Address ?
+                                "main" : DAS->getFunctionName(it->Address));
+      FractureSymbol tempSym(it->Address, name,
+                             0, object::SymbolRef::Type::ST_Function, 0);
+      Syms.push_back(new FractureSymbol(tempSym));
+    }
+
+  // Sort symbols by address
+  sort(Syms.begin(), Syms.end(), symbolSorter);
+
+  for (std::vector<FractureSymbol *>::iterator si = Syms.begin(),
          se = Syms.end();
        si != se; ++si) {
-    if (error(ec))
+    if (error(ec)) {
+      for(auto &it : Syms)
+        delete it;
       return;
+    }
     StringRef Name;
-    uint64_t Address;
+    StringRef SectionName;
+    object::SectionRef Section;
+    uint64_t Addr = 0;
     object::SymbolRef::Type Type;
     uint64_t Size;
     uint32_t Flags = 0;
     uint64_t SectAddr;
     uint32_t Value;
-    object::section_iterator Section = elf->section_end();
-    if (error(si->getName(Name)))
+    if (error((*si)->getName(Name)))
       continue;
-    if (error(si->getAddress(Address)))
+    if(Name == "$d" || Name == "$a" || Name == "$t")
       continue;
-    if (error(si->getAlignment(Value))) // NOTE: This used to be getValue...
+    if (error((*si)->getAddress(Addr)))
       continue;
-<<<<<<< Updated upstream
-    if (error(si->getSection(Section)))
+    if (error((*si)->getAlignment(Value))) // NOTE: This used to be getValue...
       continue;
-    SectAddr = Section->getAddress();
-    if (error(si->getType(Type)))
-=======
     Section = DAS->getSectionByAddress(Addr);
     SectAddr = Section.getAddress();
     if (error((*si)->getType(Type)))
->>>>>>> Stashed changes
       continue;
-    if (error(si->getSize(Size)))
+    if (error((*si)->getSize(Size)))
       continue;
 
     // Doesn't print symbol information for symbols which aren't in the section
     // specified by the function parameter
-    if (SectAddr == Address)
+    if (SectAddr != Address)
+      continue;
+    Section.getName(SectionName);
+    if (Name == SectionName)
       continue;
 
     bool Global = Flags & object::SymbolRef::SF_Global;
     bool Weak = Flags & object::SymbolRef::SF_Weak;
 
-    if (Address == object::UnknownAddressOrSize)
-      Address = 0;
+    if (Addr == object::UnknownAddressOrSize)
+      Addr = 0;
     if (Size == object::UnknownAddressOrSize)
       Size = 0;
     char GlobLoc = ' ';
@@ -592,7 +681,7 @@ static void dumpELFSymbols(const object::ELFObjectFile<ELFT>* elf,
     Fmt = elf->getBytesInAddress() > 4 ? "%016" PRIx64 :
       "%08" PRIx64;
 
-    outs() << format(Fmt, Address) << " "
+    outs() << format(Fmt, Addr) << " "
            << GlobLoc  // Local -> 'l', Global -> 'g', Neither -> ' '
            << (Weak ? 'w' : ' ')      // Weak?
            << ' '      // Constructor. Not supported yet.
@@ -607,6 +696,10 @@ static void dumpELFSymbols(const object::ELFObjectFile<ELFT>* elf,
            << Name
            << '\n';
   }
+  dumpELFRelocSymbols(elf, Address);
+
+  for(auto &it : Syms)
+    delete it;
 }
 
 static void dumpCOFFSymbols(const object::COFFObjectFile *coff,
@@ -944,6 +1037,7 @@ static void initializeCommands() {
   // CommandParser.registerCommand("functions", &runFunctionsCommand);
 }
 
+
 int main(int argc, char *argv[]) {
   ProgramName = argv[0];
   if(ProgramName.find("./")==0){
@@ -984,211 +1078,23 @@ int main(int argc, char *argv[]) {
     errs() << ProgramName << ": Could not open the file '"
         << InputFileName.getValue() << "'. " << Err.message() << ".\n";
   }
+//If the -stripped flag is set and the file is actually stripped.
+  if(DAS->getExecutable()->symbol_begin() == DAS->getExecutable()->symbol_end()
+     && StrippedBinary){
+    isStripped = true;
+    outs() << "File is Stripped\n";
+    SDAS = new StrippedDisassembler(DAS, TripleName);
+    SDAS->findStrippedMain();
+    SDAS->functionsIterator(SDAS->getStrippedSection(".text"));
+    //Also print stripped graph
+    if(printGraph)
+      SDAS->getStrippedGraph()->printGraph();
+    SDAS->getStrippedGraph()->correctHeadNodes();
+  }
+
+
 
   CommandParser.runShell(ProgramName);
-
+  delete SDAS;
   return 0;
-}
-//===---------------------------------------------------------------------===//
-/// findStrippedMain - Point the Disassembler to main
-///
-/// @param Executable - The executable under analysis.
-///
-static uint64_t findStrippedMain()  {
-
-	int offset = 0x14;
-	int toAdd;
-	char tArr[100];
-	std::string word, dis, prev, line, tmpAddress, bits, bitA, bitB;
-	//For all files, this retrieves the start location of .text
-
-	freopen( "file.txt", "w", stdout );
-	std::vector<std::string> CommandLine;
-	std::string sym = ".text";
-	CommandLine.push_back (sym);
-	CommandLine.push_back (sym);
-	runSymbolsCommand(CommandLine);
-	std::ifstream in ("file.txt");
-
-	uint64_t address = 0;
-	while(in.good()) {
-		in >> word;
-	//finding the x at the end of the line right past the address
-		if((word[0] == '0') && (word[1] == 'x'))
-				dis = word;
-		}
-	CommandLine.clear();
-	CommandLine.push_back (dis);
-	CommandLine.push_back (dis);
-
-	//Divide cases based on triple
-	//Search will default to gcc-s, look for out of place LDR is clang.
-	if(TripleName.find("arm") != std::string::npos){
-
-	//Searching for arm
-
-		runDisassembleCommand(CommandLine);
-		in.clear();
-		while(in.good()){
-			std::getline(in, line);
-			errs() << line << '\n';
-			if(line.find("ldr") != std::string::npos){
-				errs() <<"Found ldr\n";
-				break;
-			}
-		}
-		std::getline(in, line);
-		std::getline(in, line);
-		if(line.find("str") != std::string::npos){
-	//We are just searching here by the order of the _start section.
-	//gcc and clang have different patterns
-
-	//__________________ARM-GCC_____________________________________
-
-			while(in.good()){
-			std::getline(in, line);
-				if((line.find("ldr") != std::string::npos) && (prev.find("ldr") != std::string::npos)){
-					line = prev;
-					break;
-				}
-				prev = line;
-			}
-
-			tmpAddress = line.substr(4,4);
-			//errs() << "Temp address " << tmpAddress << '\n';
-			tmpAddress.insert(0,"0x");
-			std::istringstream buffer(tmpAddress);
-			buffer >> std::hex >> toAdd;
-			toAdd += offset;
-			sprintf(tArr, "%X", toAdd);
-			//errs() << "Now in hex " << tArr << "\n";
-
-			while(in.good()){
-				std::getline(in, line);errs() << line << '\n';
-				if(line.find(tArr) !=std::string::npos){
-					bitA = line.substr(12,2);
-					bitB = line.substr(15,2);
-					bits = bitB + bitA;
-					std::istringstream buffer2(bits);
-					buffer2 >> std::hex >> address;
-	//Here we take in the binary representation of the offset and flip the bits, this gives us the address.
-					break;
-				}
-			}
-			freopen( "/dev/tty", "a", stdout );
-			return address;
-		}
-
-
-
-
-		else if(line.find("ldr") != std::string::npos){
-	//_________________ARM-CLANG________________________________
-
-			while(in.good()){
-				std::getline(in, line);
-				if((line.find("bl") != std::string::npos) && (line.find("r8") != std::string::npos)){
-					line = prev;
-					break;
-				}
-				prev = line;
-			}
-			tmpAddress = line.substr(4,4);
-			//errs() << "Temp address " << tmpAddress << '\n';
-			tmpAddress.insert(0,"0x");
-			std::istringstream buffer(tmpAddress);
-			buffer >> std::hex >> toAdd;
-			toAdd += offset;
-			sprintf(tArr, "%X", toAdd);
-			//errs() << "Now in hex " << tArr << "\n";
-			while(in.good()){
-				std::getline(in, line);errs() << line << '\n';
-				if(line.find(tArr) !=std::string::npos){
-					bitA = line.substr(12,2);
-					bitB = line.substr(15,2);
-					bits = bitB + bitA;
-					std::istringstream buffer2(bits);
-					buffer2 >> std::hex >> address;
-					break;
-				}
-			}
-			freopen( "/dev/tty", "a", stdout );
-			return address;
-	//turn first 8 chars into an int and add 14h
-	//grab the two sets of bits, reverse them and combine them. then return
-		}
-		else{
-			errs() << "Unknown ARM strip\n";
-			return 0;
-		}
-
-
-
-	}
-	else if((TripleName.find("i386") != std::string::npos) ||(TripleName.find("x86_64") !=std::string::npos)) {
-	//Searching for i386
-
-		runDisassembleCommand(CommandLine);
-	//This positions us on the common xorl instruction in order for us to look forward to determine compiler
-		in.clear();
-		while(in.good()){
-			std::getline(in, line);
-			if((line.find("xorl") != std::string::npos) && (line.find("ebp") != std::string::npos)){
-				break;
-			}
-		}
-			std::getline(in, line);
-			if(line.find("popl") != std::string::npos){
-	//_________________x86-CLANG________________________________
-
-				while(in.good()){
-					std::getline(in, line);
-					if((line.find("calll") != std::string::npos) && (prev.find("pushl") != std::string::npos)){
-						line = prev;
-						break;
-					}
-					prev = line;
-				}
-				//grab address of main
-				tmpAddress = line.substr(50,7);
-				std::stringstream ss;
-				ss << std::hex << tmpAddress;
-				ss >> address;
-				freopen( "/dev/tty", "a", stdout );
-				return address;
-			}
-
-			else if(line.find("movq") != std::string::npos){
-	//_________________x86-GCC________________________________
-
-				while(in.good()) {
-					in >> word;
-					if (word == "%rdi") {
-						break;
-					}
-					else {
-						prev = word;
-					}
-				}
-				in.close();
-				prev.erase (0,1);
-				prev.erase ((prev.size())-1,1);
-				errs() << "Address of main located: " << prev << "\n";
-				std::stringstream ss;
-				ss << std::hex << prev;
-				ss >> address;
-				freopen( "/dev/tty", "a", stdout );
-				errs() << "Address return value = " << address << "\n";
-					return address;
-			}
-
-			else{
-			errs() << "Unknown i386 strip\n";
-			return 0;
-			}
-	}
-	else {
-		errs() << "Unsupported architecture for stripped searching\n";
-		return 0;
-	}
 }
