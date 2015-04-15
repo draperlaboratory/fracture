@@ -151,12 +151,14 @@ unsigned Disassembler::decodeInstruction(unsigned Address,
       (size_t)CurSectionMemory->getBytes().size());
   // Chop any bytes off before instuction address that we don't need.
   uint64_t NewAddr = Address - CurSectionMemory->getBase();
-  ArrayRef<uint8_t> NewBytes(Bytes.data() + NewAddr, 
-                             Bytes.data() + Bytes.size() - NewAddr);
+  ArrayRef<uint8_t> NewBytes((uint8_t*)(Bytes.data() + NewAddr), 
+                             //Bytes.data() + Bytes.size() - NewAddr);
+                             (size_t)(Bytes.size() - NewAddr));
   // Replace nulls() with outs() for stack tracing
   if (!(DA->getInstruction(*Inst, InstSize, NewBytes, Address,
         nulls(), nulls()))) {
-    printError("Unknown instruction encountered, instruction decode failed!");
+    printError("Unknown instruction encountered, instruction decode failed! ");
+    
     return 1;
     // Instructions[Address] = NULL;
     // Block->push_back(NULL);
@@ -396,6 +398,26 @@ void Disassembler::printInstruction(formatted_raw_ostream &Out,
   for (unsigned i = 0, e = ((Size > 8) ? 8 : Size); i != e; ++i)
     Out << format("%02" PRIX8 " ", Bytes[i]);
   Out.PadToColumn(40);        // 8 bytes (2 char) + 1 space each + 2 spaces
+  // Calculate function address for printing function names in disassembly
+  int64_t Tgt = 0, DestInt = 0;
+  StringRef FuncName;
+  if (Inst->isCall()) {
+    Size != 5 ? Size = 8 : Size; // Instruction size is 8 for ARM
+    for (MachineInstr::mop_iterator MII = Inst->operands_begin(); MII !=
+         Inst->operands_end(); ++MII)
+    if (MII->isImm())
+      DestInt = MII->getImm();
+    Tgt = Address + Size + DestInt;
+    FuncName = getFunctionName(Tgt);
+    if (FuncName.startswith("func")) {
+      StringRef SectionName;
+      object::SectionRef Section = getSectionByAddress(Tgt);
+      setSection(Section);
+      getRelocFunctionName(Tgt, FuncName);
+      Section = getSectionByAddress(Address);
+      setSection(Section);
+    }
+  }
 
   // Print instruction
   // NOTE: We could print the "Full" machine instruction version here instead
@@ -406,7 +428,6 @@ void Disassembler::printInstruction(formatted_raw_ostream &Out,
     MC->getMCInstPrinter()->printInst(Instructions[Address], Out, "");
     Out << "\n";
   }
-
   // Print the rest of the instruction bytes
   unsigned ColCnt = 8;
   for (unsigned i = 8, e = Size; i < e; ++i) {
@@ -449,6 +470,60 @@ std::string Disassembler::getSymbolName(unsigned Address) {
     }
   }
   return "";
+}
+// getRelocFunctionName() pairs function call addresses with dynamically relocated
+// library function addresses and sets the function name to the actual name 
+// rather than the function address
+void Disassembler::getRelocFunctionName(unsigned Address, StringRef &NameRef) {
+  MachineFunction *MF = disassemble(Address);
+  MachineBasicBlock *MBB = &(MF->front());
+  uint64_t JumpAddr = 0;
+  StringRef RelName;
+  std::error_code ec;
+  bool isOffsetJump = false;
+
+  // Iterate through the operands, checking for immediates and grabbing them
+  MachineInstr *JumpInst = &*MBB->instr_rbegin();
+  for (MachineInstr::mop_iterator MII = JumpInst->operands_begin();
+       MII != JumpInst->operands_end(); ++MII) {
+    if (MII->isImm()) {
+      if ( MBB->size() > 1) {
+        JumpAddr = MII->getImm();
+        break;
+      }
+      JumpAddr = MII->getImm();
+    }
+  }
+  // If the Jump address of the instruction is smaller than the instruction address
+  // then it must be an offset from the instruction address. In this case, we
+  // add the jump address to the original address plus the instruction size.
+  if (JumpAddr < Address) isOffsetJump = true;
+  if (MBB->size() > 1) JumpAddr += (Address + 32768 + 8);
+  else if (isOffsetJump) JumpAddr += Address + JumpInst->getDesc().getSize();
+
+  // Check if address matches relocation symbol address and if so
+  // grab the symbol name
+  for (object::section_iterator seci = Executable->section_begin(); seci !=
+      Executable->section_end(); ++seci)
+    for (object::relocation_iterator ri = seci->relocation_begin(); ri != 
+         seci->relocation_end(); ++ri) {
+      uint64_t RelocAddr;
+      if ((ec = ri->getAddress(RelocAddr))) {
+        errs() << ec.message() << "\n";
+        continue;
+      }
+      if (JumpAddr == RelocAddr) {
+        if ((ec = ri->getSymbol()->getName(RelName))) {
+          errs() << ec.message() << "\n";
+          continue;
+        }
+        RelocOrigins[RelName] = Address;
+      }
+    }
+  // NameRef is passed by reference, so if relocation doesn't match,
+  // we don't want to modify the StringRef
+  if (!RelName.empty())
+    NameRef = RelName;
 }
 
 const StringRef Disassembler::getFunctionName(unsigned Address) const {
@@ -568,16 +643,15 @@ std::string Disassembler::rawBytesToString(StringRef Bytes) {
 const object::SectionRef Disassembler::getSectionByName(StringRef SectionName)
   const {
   std::error_code ec;
+  StringRef Name;
+  uint64_t Addr;
   for (object::section_iterator si = Executable->section_begin(), se =
          Executable->section_end(); si != se; ++si) {
     if (ec) {
       printError(ec.message());
       break;
     }
-
-    StringRef Name;
     if (si->getName(Name)) {
-      uint64_t Addr;
       Addr = si->getAddress();
       Infos << "Disassembler: Unnamed section encountered at "
             << format("%8" PRIx64 , Addr) << "\n";
@@ -586,7 +660,15 @@ const object::SectionRef Disassembler::getSectionByName(StringRef SectionName)
     
     if (Name.str().find(SectionName) != std::string::npos) {
       return *si;
+  }
+  for (object::section_iterator si = Executable->section_begin(), se =
+         Executable->section_end(); si != se; ++si) {
+    if (si->getName(Name)) {
+      Addr = si->getAddress();
+      continue;
     }
+    if (Name.str().find(SectionName) != std::string::npos)
+      return *si;
   }
 
   printError("Unable to find section named \"" + std::string(SectionName.data())
@@ -606,12 +688,10 @@ const object::SectionRef Disassembler::getSectionByAddress(unsigned Address)
     }
 
     uint64_t SectionAddr;
-    if ((SectionAddr = si->getAddress()))
-      break;
+    SectionAddr = si->getAddress();
 
     uint64_t SectionSize;
-    if ((SectionSize = si->getSize()))
-      break;
+    SectionSize = si->getSize();
 
     if (SectionAddr <= Address && Address < SectionAddr + SectionSize) {
       return *si;

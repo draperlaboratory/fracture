@@ -412,6 +412,13 @@ static void runDisassembleCommand(std::vector<std::string> &CommandLine) {
       return;
     }
   }
+<<<<<<< Updated upstream
+=======
+  //Set section to section containing address
+  StringRef SectionName;
+  object::SectionRef Section = DAS->getSectionByAddress(Address);
+  DAS->setSection(Section);
+>>>>>>> Stashed changes
 
 //  Commenting this out so raw binaries can be disassembled at 0x0
 //  if (Address == 0) {
@@ -430,7 +437,7 @@ static void runDisassembleCommand(std::vector<std::string> &CommandLine) {
 
 static void runSectionsCommand(std::vector<std::string> &CommandLine) {
   outs() << "Sections:\n"
-         << "Idx Name          Size      Address          Type\n";
+         << "Idx Name               Size      Address          Type\n";
   std::error_code ec;
   unsigned i = 1;
   for (object::section_iterator si = DAS->getExecutable()->section_begin(),
@@ -449,12 +456,70 @@ static void runSectionsCommand(std::vector<std::string> &CommandLine) {
     std::string Type =
       (std::string(Text ? "TEXT " : "") + (Data ? "DATA " : "")
         + (BSS ? "BSS" : ""));
-    outs() << format("%3d %-13s %08" PRIx64 " %016" PRIx64 " %s\n",
+    outs() << format("%3d %-18s %08" PRIx64 " %016" PRIx64 " %s\n",
       i, Name.str().c_str(), Size, Address, Type.c_str());
     ++i;
   }
 }
 
+<<<<<<< Updated upstream
+=======
+bool symbolSorter(FractureSymbol *symOne, FractureSymbol *symTwo) {
+  uint64_t addrOne = 0, addrTwo = 0;
+  symOne->getAddress(addrOne);
+  symTwo->getAddress(addrTwo);
+  return addrOne < addrTwo;
+}
+
+template <class ELFT>
+static void dumpELFRelocSymbols(const object::ELFObjectFile<ELFT>* elf,
+  unsigned Address) {
+  std::error_code ec;
+
+  // Grab symbols only for the current section so that relocation entries
+  // actually print in proper sections, i.e .rel.dyn and .rel.plt
+  object::SectionRef CurrentSection = DAS->getSectionByAddress(Address);
+  for (object::relocation_iterator ri = CurrentSection.relocation_begin(); ri !=
+      CurrentSection.relocation_end(); ++ri) {
+    if (error(ec))
+      return;
+    uint64_t Addr = 0;
+    uint64_t SectAddr = 0;
+    uint64_t Offset = 0;
+    uint64_t Type = 0;
+    SmallVector<char, 25> TypeName;
+    SmallVector<char, 25> Value;
+    StringRef Name;
+    StringRef SectionName;
+
+    ri->getSymbol()->getName(Name);
+    if (error(ri->getAddress(Addr)))
+      continue;
+    //if (error(ri->getOffset(Offset))) // FIXME: Maybe getOffset only 
+    //  continue;                       // works for a certain reloc type?
+    if (error(ri->getType(Type)))
+      continue;
+    if (error(ri->getTypeName(TypeName)))
+      continue;
+    if (error(ri->getValueString(Value)))
+      continue;
+
+    object::SectionRef Section = DAS->getSectionByAddress(Addr);
+    SectAddr = Section.getAddress();
+
+    const char *Fmt;
+    Fmt = elf->getBytesInAddress() > 4 ? "%016" PRIx64 :
+      "%08" PRIx64;
+    SmallVectorImpl<char>::iterator ti= TypeName.begin();
+    outs() << format(Fmt, Addr) << " "
+           << format(Fmt, Offset) << " " // FIXME: Should be Info section
+           << ti << "\t"
+           << format(Fmt, Offset) << " " // FIXME: Should be Symbol Value
+           << Name << "\n";
+  }
+}
+
+>>>>>>> Stashed changes
 template <class ELFT>
 static void dumpELFSymbols(const object::ELFObjectFile<ELFT>* elf,
   unsigned Address) {
@@ -483,10 +548,16 @@ static void dumpELFSymbols(const object::ELFObjectFile<ELFT>* elf,
       continue;
     if (error(si->getAlignment(Value))) // NOTE: This used to be getValue...
       continue;
+<<<<<<< Updated upstream
     if (error(si->getSection(Section)))
       continue;
     SectAddr = Section->getAddress();
     if (error(si->getType(Type)))
+=======
+    Section = DAS->getSectionByAddress(Addr);
+    SectAddr = Section.getAddress();
+    if (error((*si)->getType(Type)))
+>>>>>>> Stashed changes
       continue;
     if (error(si->getSize(Size)))
       continue;
@@ -573,6 +644,87 @@ static void dumpCOFFSymbols(const object::COFFObjectFile *coff,
     outs() << "No section found with that name or containing that address\n";
     return;
   }
+/*
+  for (object::import_directory_iterator idi = coff->import_directory_begin();
+       idi != coff->import_directory_end(); ++idi) {
+    for (object::imported_symbol_iterator isi = idi->imported_symbol_begin();
+         isi != idi->imported_symbol_end(); ++isi) {
+      StringRef symName;
+      uint16_t ordinal;
+      isi->getSymbolName(symName);
+      isi->getOrdinal(ordinal);
+      outs() << "Ordinal: " << ordinal << "\t";
+      outs() << "SYMNAME: " << symName << "\n";
+    }
+  }
+  outs() << "\n\nDelay import directories \n\n";
+  for (object::delay_import_directory_iterator didi = coff->delay_import_directory_begin();
+       didi != coff->delay_import_directory_end(); ++didi) {
+    for (object::imported_symbol_iterator isi = didi->imported_symbol_begin();
+         isi != didi->imported_symbol_end(); ++isi) {
+      StringRef symName;
+      uint16_t ordinal;
+      isi->getSymbolName(symName);
+      isi->getOrdinal(ordinal);
+      outs() << "Ordinal: " << ordinal << "\t";
+      outs() << "SYMNAME: " << symName << "\n";
+    }
+  }
+  outs() << "\n\nEXPORT DIRECTORY STUFF\n\n"; 
+  for (object::export_directory_iterator edi = coff->export_directory_begin();
+       edi != coff->export_directory_end(); ++edi) {
+    StringRef dllName, symName;
+    uint32_t ordinalBase, ordinal, exportRVA;
+    edi->getDllName(dllName);
+    edi->getOrdinalBase(ordinalBase);
+    edi->getOrdinal(ordinal);
+    edi->getExportRVA(exportRVA);
+    edi->getSymbolName(symName);
+    outs() << "DLLNAME: " << dllName << "\n"
+           << "ORDBASE: " << ordinalBase << "\n"
+           << "ORDINAL: " << ordinal << "\n"
+           << "EXPTRVA: " << exportRVA << "\n"
+           << "SYMNAME: " << symName << "\n\n";
+  }
+
+  outs() << "\n\n BASE RELOCS \n\n";
+  for (object::base_reloc_iterator bri = coff->base_reloc_begin();
+       bri != coff->base_reloc_end(); ++bri) {
+    uint8_t type;
+    uint32_t RVA;
+    bri->getType(type);
+    bri->getRVA(RVA);
+    auto coffSymbol = coff->getSymbol(RVA);
+    if (coffSymbol.getError())
+      outs() << "ERROR!\n";
+    outs() << "TYP: " << type << "\n"
+           << "RVA: " << format("%08x", RVA) << "\n";
+  }
+
+  outs() << "SYMSIZE: " << coff->getSymbolTableEntrySize() << "\n";
+  outs() << "NUMSYMS: " << coff->getNumberOfSymbols() << "\n";
+  outs() << coff->getSymbolTable();
+  for (object::basic_symbol_iterator bsi = coff->symbol_begin_impl();
+       bsi != coff->symbol_end_impl(); ++bsi) {
+    bsi->printName(outs());
+    outs() << "\n";
+  }
+
+  for (object::section_iterator si = coff->section_begin();
+       si != coff->section_end(); ++si) {
+    const object::coff_section *coffsec = coff->getCOFFSection(*si);
+      for (object::relocation_iterator ri = si->relocation_begin();
+         ri != si->relocation_end(); ++ri) {
+      uint64_t add;
+      ri->getAddress(add);
+      outs() << "ADDR" << add << "\n";
+      outs() << "BLAH";
+    }
+    outs() << "NUMRELOCS" << coffsec->NumberOfRelocations << "\n";
+    outs() << "NAME: " << coffsec->Name << "\n";
+    outs() << "POINTER: " << coffsec->PointerToRelocations << "\n";
+  }
+
 
   int aux_count = 0;
   for (int i = 0, e = coff->getNumberOfSymbols(); i != e; ++i) {
@@ -617,7 +769,7 @@ static void dumpCOFFSymbols(const object::COFFObjectFile *coff,
       aux_count = symbol->getNumberOfAuxSymbols();
     }
   }
-
+*/
 }
 
 static void runSymbolsCommand(std::vector<std::string> &CommandLine) {

@@ -146,7 +146,7 @@ public:
   const object::SectionRef getSectionByName(StringRef SectionName) const;
   const object::SectionRef getSectionByExpression(StringRef SectionExpression) const;
   const object::SectionRef getSectionByAddress(unsigned Address) const;
-
+  FractureMemoryObject* getCurSectionMemory() const { return CurSectionMemory; }
   object::ObjectFile* getExecutable() const { return Executable; }
   MCDirector* getMCDirector() const { return MC; }
   Module* getModule() const { return TheModule; }

@@ -551,6 +551,17 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
+    case X86::INC32r_alt:{
+
+      SDValue Reg = N->getOperand(0);
+      EVT ValType = Reg->getValueType(0);
+      SDLoc SL(N);
+
+      SDValue Node = CurDAG->getNode(X86ISD::INC, SL, ValType, Reg);
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Node);
+      return NULL;
+      break;
+    }
     case X86::SUB32ri8:{
       /**<
        * 2 i32 in (Reg, Const) -> 2 i32 out

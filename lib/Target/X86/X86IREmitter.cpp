@@ -47,7 +47,7 @@ Value* X86IREmitter::visit(const SDNode *N) {
   DEBUG(Infos << "Visiting X86 specific Opcode.\n");
   switch (N->getOpcode()) {
     default:{
-      errs() << "OpCode: " << N->getOpcode() << "\n";
+      errs() << "OpCode: " << N->getOpcode();
       N->dump();
       llvm_unreachable("X86IREmitter::visit - Every X86 visit should be implemented...");
       return NULL;
