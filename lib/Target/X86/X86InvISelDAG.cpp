@@ -285,8 +285,8 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
         Store = CurDAG->getStore(Chain, SL, Imm, Offset, MMO);
       }
       else {
-    	//SDValue Add = CurDAG->getNode(ISD::ADD, SL, CFR.getValueType(), CFR, Offset);
-    	Store = CurDAG->getStore(Chain, SL, Imm, CFR, MMO);
+    	SDValue Add = CurDAG->getNode(ISD::ADD, SL, CFR.getValueType(), Offset, CFR);
+    	Store = CurDAG->getStore(Chain, SL, Imm, Add, MMO);
       }
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Store);
 
