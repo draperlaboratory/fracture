@@ -529,7 +529,7 @@ Value* IREmitter::visitSTORE(const SDNode *N) {
   ConstantInt *ConstVal = dyn_cast<ConstantInt>(StoreVal);
   if (ConstVal) {
 	Type *Ty = StoreVal->getType();
-	uint64_t val = ConstVal->getLimitedValue();
+	uint64_t val = ConstVal->getSExtValue();
 	object::SectionRef sect = Dec->getDisassembler()->getSectionByAddress(val);
 	bool isData, isBSS;
 	sect.isData(isData); sect.isBSS(isBSS);
@@ -560,17 +560,17 @@ Value* IREmitter::visitSTORE(const SDNode *N) {
 }
 
 Value* IREmitter::handleGlobal(const SDNode *N, Value *Addr, StringRef &BaseName, StringRef &Name) {
-  uint64_t addrNum = dyn_cast<ConstantInt>(Addr)->getLimitedValue();
-  errs() << "HI! " << addrNum << "\n\n";
+  uint64_t addrNum = dyn_cast<ConstantInt>(Addr)->getSExtValue();
+  //errs() << "HI! " << addrNum << "\n\n";
   StringRef globalName = "";
   for (int i = KnownAddrs.size()-1; i >= 0; i--) {
     if (addrNum >= std::get<0>(KnownAddrs[i]) && addrNum <= std::get<1>(KnownAddrs[i])) {
 	  globalName = std::get<2>(KnownAddrs[i]);
-	  errs() << "Name found\n\n";
+	  //errs() << "Name found\n\n";
     }
   }
   if (globalName != "") {
-	errs() << "MADE IT!\n\n";
+	//errs() << "MADE IT!\n\n";
 	BaseName = getBaseValueName(globalName);
 	Value *Global = Dec->getModule()->getGlobalVariable(globalName);
 	Name = getIndexedValueName(BaseName);
@@ -582,11 +582,11 @@ Value* IREmitter::handleGlobal(const SDNode *N, Value *Addr, StringRef &BaseName
 	Name = getIndexedValueName(BaseName);
 	Addr = IRB->CreateIntToPtr(NewAddr, NewAddr->getType()->getPointerTo(), Name);
 	dyn_cast<Instruction>(Addr)->setDebugLoc(N->getDebugLoc());
-	errs() << "Through\n\n";
+	//errs() << "Through\n\n";
 	return Addr;
   }
   else {
-	errs() << "Name not found\n\n";
+	//errs() << "Name not found\n\n";
 	object::SectionRef sect = Dec->getDisassembler()->getSectionByAddress(addrNum);
 	uint64_t sectBeg, sectEnd;
 	sect.getAddress(sectBeg);
@@ -596,7 +596,7 @@ Value* IREmitter::handleGlobal(const SDNode *N, Value *Addr, StringRef &BaseName
 	sect.getName(sectName);
 	BaseName = getBaseValueName(sectName);
 	Name = getIndexedValueName(BaseName);
-	errs() << sectName << ", " << sectBeg << ", " << sectEnd << "\n\n";
+	//errs() << sectName << ", " << sectBeg << ", " << sectEnd << "\n\n";
 
 	std::tuple<uint64_t, uint64_t, StringRef> sectInfo (sectBeg, sectEnd, sectName);
 	KnownAddrs.push_back(sectInfo);
@@ -628,15 +628,15 @@ Value* IREmitter::handleGlobal(const SDNode *N, Value *Addr, StringRef &BaseName
 	StringRef sBytes;
 	sect.getContents(sBytes);
 	unsigned numBytes = sBytes.size();
-	errs() << "size: " << numBytes << "\n\n";
+	//errs() << "size: " << numBytes << "\n\n";
 	unsigned* bytes = Dec->getDisassembler()->rawBytesToInts(sBytes);
-	errs() << "ints:  ";
+	/*errs() << "ints:  ";
 	for (unsigned i = 0; i < numBytes; i++) {
 	  //int dumb = bits[i];
 	  errs() << bytes[i] << " ";
 	}
 	std::string poop = Dec->getDisassembler()->rawBytesToString(sBytes);
-	errs() << "\n\n" << "bytes: " << poop << "\n\n";
+	errs() << "\n\n" << "bytes: " << poop << "\n\n";*/
 
 	//unsigned numWords = numBytes/bytesPerWord;
 	unsigned *words = new unsigned[numWords];
@@ -648,11 +648,11 @@ Value* IREmitter::handleGlobal(const SDNode *N, Value *Addr, StringRef &BaseName
 		}
 	  }
 	}
-	errs() << "words: ";
+	/*errs() << "words: ";
 	for (unsigned i = 0; i < numWords; i++) {
 	  errs() << words[i] << "  ";
 	}
-	errs() << "\n\n";
+	errs() << "\n\n";*/
 
 	for (unsigned i = 0; i < numWords; i++) {
 	  Name = getIndexedValueName(BaseName);
@@ -750,6 +750,7 @@ Value* IREmitter::visitCALL(const SDNode *N) {
 
   // TODO: Look up address in symbol table.
   std::string FName = Dec->getDisassembler()->getFunctionName(Tgt);
+  errs() << "Function Name: " << FName << "\n\n";
 
   Module *Mod = IRB->GetInsertBlock()->getParent()->getParent();
 
