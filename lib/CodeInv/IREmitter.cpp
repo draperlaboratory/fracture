@@ -746,27 +746,70 @@ Value* IREmitter::visitCALL(const SDNode *N) {
   unsigned InstrSize =
       Dec->getDisassembler()->getMachineInstr(PC)->getDesc().Size;
   // Note: This handles variable and fixed width pipelines
-  int64_t Tgt = PC + InstrSize + DestInt;
+  uint64_t Tgt = PC + InstrSize + DestInt;
 
   // TODO: Look up address in symbol table.
-  std::string FName = Dec->getDisassembler()->getFunctionName(Tgt);
+  StringRef FName = Dec->getDisassembler()->getFunctionName(Tgt);
+
   errs() << "Function Name: " << FName << "\n\n";
 
   Module *Mod = IRB->GetInsertBlock()->getParent()->getParent();
 
-  FunctionType *FT =
-      FunctionType::get(Type::getPrimitiveType(Mod->getContext(),
-          Type::VoidTyID), false);
-
+  Type* Ty = N->getOperand(0).getNode()->getValueType(0).getTypeForEVT(getGlobalContext());
+  std::vector<Type*> ParamTs;
+  std::vector<Value*> ParamVs;
+  //Params.push_back(Ty);
+  //ArrayRef<Type*> Pars(Params);
   Twine TgtAddr(Tgt);
 
   AttributeSet AS;
   AS = AS.addAttribute(Mod->getContext(), AttributeSet::FunctionIndex,
       "Address", TgtAddr.str());
-  Value* Proto = Mod->getOrInsertFunction(FName, FT, AS);
+  FunctionType *FT;
 
-  // CallInst* Call =
-  IRB->CreateCall(dyn_cast<Value>(Proto));
+  const object::SectionRef CurSect = Dec->getDisassembler()->getCurrentSection();
+  uint64_t SectStart, SectEnd;
+  CurSect.getAddress(SectStart);
+  CurSect.getSize(SectEnd);
+  SectEnd += SectStart;
+  if (Tgt < SectStart || Tgt > SectEnd) {
+    errs() << "Address out of bounds for section (printf?): "
+           << format("%1" PRIx64, Tgt) << "\n";
+    const SDNode *Parent = N->getOperand(1).getNode();
+    while(Parent != DAG->getEntryNode().getNode()) {
+    	std::string test = Parent->getOperationName();
+    	errs() << test << " ";
+    	int isParam = checkIfParam(Parent, ParamVs);
+    	if (isParam > 0) {
+    		ParamTs.push_back(Ty);
+    	}
+    	else if (isParam < 0) {
+    		break;
+    	}
+    	for (unsigned i = 0; i < Parent->getNumOperands(); ++i) {
+    		errs() << Parent->getOperand(i).getValueType().getEVTString() << " ";
+    		if (Parent->getOperand(i).getValueType() == MVT::Other) {
+    			Parent = Parent->getOperand(i).getNode();
+    			errs() << "!";
+    			break;
+    		}
+    	}
+    	/*if(i == Parent->getNumOperands()) {
+    		errs() << "Couldn't find chain!\n";
+    		break;
+    	}*/
+    	errs() << "\n";
+    }
+    FT = FunctionType::get(Ty, ParamTs, false);
+    Value* Proto = Mod->getOrInsertFunction(FName, FT, AS);
+    CallInst* Call = IRB->CreateCall(dyn_cast<Value>(Proto), ParamVs);
+  }
+  else {
+	FT = FunctionType::get(Type::getPrimitiveType(Mod->getContext(),
+	    Type::VoidTyID), false);
+	Value* Proto = Mod->getOrInsertFunction(FName, FT, AS);
+	IRB->CreateCall(dyn_cast<Value>(Proto));
+  }
 
   // TODO: Technically visitCall sets the LR to IP+8. We should return that.
   VisitMap[N] = NULL;

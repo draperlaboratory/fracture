@@ -36,6 +36,10 @@ bool X86IREmitter::isStkReg(unsigned reg) {
     return (reg == X86::SP || reg == X86::ESP || reg == X86::RSP);
 }
 
+int X86IREmitter::checkIfParam(const SDNode *N, std::vector<Value*> ParamVals) {
+	return -1;
+}
+
 Value* X86IREmitter::visit(const SDNode *N) {
   // return the parent if we are in IR only territory
   if (N->getOpcode() <= ISD::BUILTIN_OP_END){

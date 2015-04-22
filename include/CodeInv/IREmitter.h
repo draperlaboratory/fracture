@@ -172,6 +172,7 @@ protected:
   Value* visitCALL(const SDNode *N);
 
   Value* handleGlobal(const SDNode *N, Value *Addr, StringRef &BaseName, StringRef &Name);
+  virtual int checkIfParam(const SDNode *N, std::vector<Value*> ParamVals) { return -1; };
 
   /// Error printing
   raw_ostream &Infos, &Errs;

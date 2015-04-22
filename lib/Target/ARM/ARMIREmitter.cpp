@@ -36,6 +36,10 @@ bool ARMIREmitter::isStkReg(unsigned reg) {
     return (reg == ARM::SP);
 }
 
+int ARMIREmitter::checkIfParam(const SDNode *N, std::vector<Value*> ParamVals) {
+	return -1;
+}
+
 Value* ARMIREmitter::visit(const SDNode *N) {
   // return the parent if we are in IR only territory
   if (N->getOpcode() <= ISD::BUILTIN_OP_END) return IREmitter::visit(N);

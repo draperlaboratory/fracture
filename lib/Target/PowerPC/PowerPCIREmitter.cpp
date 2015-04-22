@@ -37,6 +37,10 @@ bool PowerPCIREmitter::isStkReg(unsigned reg) {
     return false;
 }
 
+int PowerPCIREmitter::checkIfParam(const SDNode *N, std::vector<Value*> ParamVals) {
+	return -1;
+}
+
 Value* PowerPCIREmitter::visit(const SDNode *N) {
   // return the parent if we are in IR only territory
   if (N->getOpcode() <= ISD::BUILTIN_OP_END){

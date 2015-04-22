@@ -36,6 +36,8 @@ public:
   bool isStkReg(unsigned reg);
 
 private:
+  int checkIfParam(const SDNode *N, std::vector<Value*> ParamVals);
+
   virtual Value* visit(const SDNode *N);
   Value* visitWrapper(const SDNode *N);
   Value* visitWrapperPIC(const SDNode *N);
