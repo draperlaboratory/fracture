@@ -36,8 +36,67 @@ bool X86IREmitter::isStkReg(unsigned reg) {
     return (reg == X86::SP || reg == X86::ESP || reg == X86::RSP);
 }
 
-int X86IREmitter::checkIfParam(const SDNode *N, std::vector<Value*> ParamVals) {
-	return -1;
+int X86IREmitter::checkIfParam(const SDNode *N, std::vector<Value*> &ParamVals, DebugLoc DL) {
+	static int offset = 0;
+	unsigned op = N->getOpcode();
+	errs() << "a";
+	if (op == ISD::STORE) {
+		errs() << "b";
+		SDNode *Add = N->getOperand(1).getNode();
+		if (Add->getOpcode() == ISD::ADD) {
+			errs() << "c";
+			ConstantSDNode *Const = dyn_cast<ConstantSDNode>(Add->getOperand(1).getNode());
+			if (Const) {
+				errs() << "z";
+			}
+			if (Const && Const->getSExtValue() == offset) {
+				errs() << "d\n";
+				offset += Dec->getDisassembler()->getExecutable()->getBytesInAddress();
+				Value *Param = visit(N->getOperand(0).getNode());
+				ConstantInt *ConstParam = dyn_cast<ConstantInt>(Param);
+				if (ConstParam) {
+				  uint64_t val = ConstParam->getSExtValue();
+				  StringRef globalName = "";
+				  for (int i = KnownAddrs.size()-1; i >= 0; i--) {
+				    if (val >= std::get<0>(KnownAddrs[i]) && val <= std::get<1>(KnownAddrs[i])) {
+					  globalName = std::get<2>(KnownAddrs[i]);
+				    }
+				  }
+				  if (globalName != "") {
+					StringRef BaseName = getBaseValueName(globalName);
+					Value *Global = Dec->getModule()->getGlobalVariable(globalName);
+					StringRef Name = getIndexedValueName(BaseName);
+					Instruction *Offset = IRB->CreateLoad(Global, Name);
+					Offset->setDebugLoc(DL);
+					Name = getIndexedValueName(BaseName);
+					Param = IRB->CreateSub(Param, Offset, Name);
+					dyn_cast<Instruction>(Param)->setDebugLoc(DL);
+				  }
+				}
+				ParamVals.push_back(Param);
+				return 1;
+			}
+			else {
+				errs() << "e\n";
+				offset = 0;
+				return -1;
+			}
+		}
+		else {
+			errs() << "f\n";
+			offset = 0;
+			return -1;
+		}
+	}
+	else if (op == ISD::LOAD || op == ISD::CopyFromReg || op == ISD::CopyToReg) {
+		errs() << "g\n";
+		return 0;
+	}
+	else {
+		errs() << "h\n";
+		offset = 0;
+		return -1;
+	}
 }
 
 Value* X86IREmitter::visit(const SDNode *N) {

@@ -773,13 +773,10 @@ Value* IREmitter::visitCALL(const SDNode *N) {
   CurSect.getSize(SectEnd);
   SectEnd += SectStart;
   if (Tgt < SectStart || Tgt > SectEnd) {
-    errs() << "Address out of bounds for section (printf?): "
-           << format("%1" PRIx64, Tgt) << "\n";
+    DebugLoc DL = N->getDebugLoc();
     const SDNode *Parent = N->getOperand(1).getNode();
     while(Parent != DAG->getEntryNode().getNode()) {
-    	std::string test = Parent->getOperationName();
-    	errs() << test << " ";
-    	int isParam = checkIfParam(Parent, ParamVs);
+    	int isParam = checkIfParam(Parent, ParamVs, DL);
     	if (isParam > 0) {
     		ParamTs.push_back(Ty);
     	}
@@ -787,18 +784,11 @@ Value* IREmitter::visitCALL(const SDNode *N) {
     		break;
     	}
     	for (unsigned i = 0; i < Parent->getNumOperands(); ++i) {
-    		errs() << Parent->getOperand(i).getValueType().getEVTString() << " ";
     		if (Parent->getOperand(i).getValueType() == MVT::Other) {
     			Parent = Parent->getOperand(i).getNode();
-    			errs() << "!";
     			break;
     		}
     	}
-    	/*if(i == Parent->getNumOperands()) {
-    		errs() << "Couldn't find chain!\n";
-    		break;
-    	}*/
-    	errs() << "\n";
     }
     FT = FunctionType::get(Ty, ParamTs, false);
     Value* Proto = Mod->getOrInsertFunction(FName, FT, AS);

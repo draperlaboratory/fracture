@@ -37,7 +37,7 @@ bool PowerPCIREmitter::isStkReg(unsigned reg) {
     return false;
 }
 
-int PowerPCIREmitter::checkIfParam(const SDNode *N, std::vector<Value*> ParamVals) {
+int PowerPCIREmitter::checkIfParam(const SDNode *N, std::vector<Value*> &ParamVals, DebugLoc DL) {
 	return -1;
 }
 
