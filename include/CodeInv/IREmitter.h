@@ -172,8 +172,11 @@ protected:
   Value* visitCALL(const SDNode *N);
 
   Value* handleGlobal(const SDNode *N, Value *Addr, StringRef &BaseName, StringRef &Name);
-  virtual int checkIfParam(const SDNode *N, std::vector<Value*> &ParamVals, DebugLoc DL) {
-    return -1;
+  virtual bool checkIfNotParam(const SDNode *N, std::vector<Value*> &ParamVals, DebugLoc DL) {
+    return true;
+  };
+  virtual Value* getReturnReg() {
+	  return NULL;
   };
 
   /// Error printing

@@ -36,21 +36,18 @@ bool X86IREmitter::isStkReg(unsigned reg) {
     return (reg == X86::SP || reg == X86::ESP || reg == X86::RSP);
 }
 
-int X86IREmitter::checkIfParam(const SDNode *N, std::vector<Value*> &ParamVals, DebugLoc DL) {
+bool X86IREmitter::checkIfNotParam(const SDNode *N, std::vector<Value*> &ParamVals, DebugLoc DL) {
 	static int offset = 0;
 	unsigned op = N->getOpcode();
-	errs() << "a";
+	//errs() << "a";
 	if (op == ISD::STORE) {
-		errs() << "b";
+		//errs() << "b";
 		SDNode *Add = N->getOperand(1).getNode();
 		if (Add->getOpcode() == ISD::ADD) {
-			errs() << "c";
+			//errs() << "c";
 			ConstantSDNode *Const = dyn_cast<ConstantSDNode>(Add->getOperand(1).getNode());
-			if (Const) {
-				errs() << "z";
-			}
 			if (Const && Const->getSExtValue() == offset) {
-				errs() << "d\n";
+				//errs() << "d\n";
 				offset += Dec->getDisassembler()->getExecutable()->getBytesInAddress();
 				Value *Param = visit(N->getOperand(0).getNode());
 				ConstantInt *ConstParam = dyn_cast<ConstantInt>(Param);
@@ -74,29 +71,45 @@ int X86IREmitter::checkIfParam(const SDNode *N, std::vector<Value*> &ParamVals, 
 				  }
 				}
 				ParamVals.push_back(Param);
-				return 1;
+				return false;
 			}
 			else {
-				errs() << "e\n";
+				//errs() << "e\n";
 				offset = 0;
-				return -1;
+				return true;
 			}
 		}
 		else {
-			errs() << "f\n";
+			//errs() << "f\n";
 			offset = 0;
-			return -1;
+			return true;
 		}
 	}
 	else if (op == ISD::LOAD || op == ISD::CopyFromReg || op == ISD::CopyToReg) {
-		errs() << "g\n";
-		return 0;
+		//errs() << "g\n";
+		return false;
 	}
 	else {
-		errs() << "h\n";
+		//errs() << "h\n";
 		offset = 0;
-		return -1;
+		return true;
 	}
+}
+
+Value* X86IREmitter::getReturnReg() {
+	unsigned wordSize = Dec->getDisassembler()->getExecutable()->getBytesInAddress();
+	SDValue Reg;
+	SDLoc Loc;
+	if (wordSize == 4) {
+		Reg = DAG->getRegister(X86::EAX, MVT::i32);
+	}
+	else if (wordSize == 2){
+		Reg = DAG->getRegister(X86::AX, MVT::i16);
+	}
+	else {
+		Reg = DAG->getRegister(X86::RAX, MVT::i64);
+	}
+	return visitRegister(Reg.getNode());
 }
 
 Value* X86IREmitter::visit(const SDNode *N) {

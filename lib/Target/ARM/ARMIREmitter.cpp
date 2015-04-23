@@ -36,8 +36,12 @@ bool ARMIREmitter::isStkReg(unsigned reg) {
     return (reg == ARM::SP);
 }
 
-int ARMIREmitter::checkIfParam(const SDNode *N, std::vector<Value*> &ParamVals, DebugLoc DL) {
-	return -1;
+bool ARMIREmitter::checkIfNotParam(const SDNode *N, std::vector<Value*> &ParamVals, DebugLoc DL) {
+	return true;
+}
+
+Value* ARMIREmitter::getReturnReg() {
+	return NULL;
 }
 
 Value* ARMIREmitter::visit(const SDNode *N) {

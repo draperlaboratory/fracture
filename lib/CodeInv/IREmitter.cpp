@@ -751,21 +751,18 @@ Value* IREmitter::visitCALL(const SDNode *N) {
   // TODO: Look up address in symbol table.
   StringRef FName = Dec->getDisassembler()->getFunctionName(Tgt);
 
-  errs() << "Function Name: " << FName << "\n\n";
+  //errs() << "Function Name: " << FName << "\n\n";
 
   Module *Mod = IRB->GetInsertBlock()->getParent()->getParent();
 
   Type* Ty = N->getOperand(0).getNode()->getValueType(0).getTypeForEVT(getGlobalContext());
-  std::vector<Type*> ParamTs;
   std::vector<Value*> ParamVs;
-  //Params.push_back(Ty);
-  //ArrayRef<Type*> Pars(Params);
   Twine TgtAddr(Tgt);
 
+  FunctionType *FT;
   AttributeSet AS;
   AS = AS.addAttribute(Mod->getContext(), AttributeSet::FunctionIndex,
       "Address", TgtAddr.str());
-  FunctionType *FT;
 
   const object::SectionRef CurSect = Dec->getDisassembler()->getCurrentSection();
   uint64_t SectStart, SectEnd;
@@ -776,11 +773,8 @@ Value* IREmitter::visitCALL(const SDNode *N) {
     DebugLoc DL = N->getDebugLoc();
     const SDNode *Parent = N->getOperand(1).getNode();
     while(Parent != DAG->getEntryNode().getNode()) {
-    	int isParam = checkIfParam(Parent, ParamVs, DL);
-    	if (isParam > 0) {
-    		ParamTs.push_back(Ty);
-    	}
-    	else if (isParam < 0) {
+    	bool notParam = checkIfNotParam(Parent, ParamVs, DL);
+    	if (notParam) {
     		break;
     	}
     	for (unsigned i = 0; i < Parent->getNumOperands(); ++i) {
@@ -790,15 +784,20 @@ Value* IREmitter::visitCALL(const SDNode *N) {
     		}
     	}
     }
-    FT = FunctionType::get(Ty, ParamTs, false);
-    Value* Proto = Mod->getOrInsertFunction(FName, FT, AS);
-    CallInst* Call = IRB->CreateCall(dyn_cast<Value>(Proto), ParamVs);
+
+    FT = FunctionType::get(Ty, true);
+    Value *Proto = Mod->getOrInsertFunction(FName, FT, AS);
+    Value *RetReg = getReturnReg();
+    StringRef BaseName = getBaseValueName(RetReg->getName());
+    StringRef Name = getIndexedValueName(BaseName);
+    CallInst* Call = IRB->CreateCall(Proto, ParamVs, Name);
+    IRB->CreateStore(Call, RetReg);
   }
   else {
 	FT = FunctionType::get(Type::getPrimitiveType(Mod->getContext(),
 	    Type::VoidTyID), false);
 	Value* Proto = Mod->getOrInsertFunction(FName, FT, AS);
-	IRB->CreateCall(dyn_cast<Value>(Proto));
+	IRB->CreateCall(Proto);
   }
 
   // TODO: Technically visitCall sets the LR to IP+8. We should return that.

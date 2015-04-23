@@ -36,7 +36,8 @@ public:
   bool isStkReg(unsigned reg);
 
 private:
-  int checkIfParam(const SDNode *N, std::vector<Value*> &ParamVals, DebugLoc DL);
+  bool checkIfNotParam(const SDNode *N, std::vector<Value*> &ParamVals, DebugLoc DL);
+  Value* getReturnReg();
 
   virtual Value* visit(const SDNode *N);
   //Value* visitRET(const SDNode *N);
