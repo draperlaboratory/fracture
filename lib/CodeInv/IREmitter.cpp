@@ -552,7 +552,8 @@ Value* IREmitter::visitRegister(const SDNode *N) {
     // Regname is %regname when printed this way.
     std::string RegName;
     raw_string_ostream RP(RegName);
-    RP << PrintReg(R->getReg(), DAG ? DAG->getTarget().getRegisterInfo() : 0);
+    RP << PrintReg(R->getReg(),
+      DAG ? DAG->getTarget().getSubtargetImpl()->getRegisterInfo() : 0);
     RegName = RP.str().substr(1, RegName.size());
 
     Type* Ty = R->getValueType(0).getTypeForEVT(getGlobalContext());

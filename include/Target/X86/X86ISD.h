@@ -186,11 +186,16 @@ namespace fracture {
       /// PSIGN - Copy integer sign.
       PSIGN,
 
-      /// BLENDV - Blend where the selector is a register.
-      BLENDV,
-
       /// BLENDI - Blend where the selector is an immediate.
       BLENDI,
+
+      /// SHRUNKBLEND - Blend where the condition has been shrunk.
+      /// This is used to emphasize that the condition mask is
+      /// no more valid for generic VSELECT optimizations.
+      SHRUNKBLEND,
+
+      /// ADDSUB - Combined add and sub on an FP vector.
+      ADDSUB,
 
       // SUBUS - Integer sub with unsigned saturation.
       SUBUS,
@@ -300,6 +305,13 @@ namespace fracture {
 
       UMUL, // LOW, HI, FLAGS = umul LHS, RHS
 
+      // 8-bit SMUL/UMUL - AX, FLAGS = smul8/umul8 AL, RHS
+      SMUL8, UMUL8,
+
+      // 8-bit divrem that zero-extend the high result (AH).
+      UDIVREM8_ZEXT_HREG,
+      SDIVREM8_SEXT_HREG,
+
       // MUL_IMM - X86 specific multiply by immediate.
       MUL_IMM,
 
@@ -319,7 +331,10 @@ namespace fracture {
       // Several flavors of instructions with vector shuffle behaviors.
       PACKSS,
       PACKUS,
+      // Intra-lane alignr
       PALIGNR,
+      // AVX512 inter-lane alignr
+      VALIGN,
       PSHUFD,
       PSHUFHW,
       PSHUFLW,
@@ -336,7 +351,8 @@ namespace fracture {
       MOVSS,
       UNPCKL,
       UNPCKH,
-      VPERMILP,
+      VPERMILPV,
+      VPERMILPI,
       VPERMV,
       VPERMV3,
       VPERMIV3,
@@ -349,9 +365,9 @@ namespace fracture {
       VINSERT,
       VEXTRACT,
 
-      // PMULUDQ - Vector multiply packed unsigned doubleword integers
+      // Vector multiply packed unsigned doubleword integers
       PMULUDQ,
-      // PMULUDQ - Vector multiply packed signed doubleword integers
+      // Vector multiply packed signed doubleword integers
       PMULDQ,
 
       // FMA nodes
@@ -362,20 +378,23 @@ namespace fracture {
       FMADDSUB,
       FMSUBADD,
 
-      // VASTART_SAVE_XMM_REGS - Save xmm argument registers to the stack,
-      // according to %al. An operator is needed so that this can be expanded
-      // with control flow.
+      // Compress and expand
+      COMPRESS,
+      EXPAND,
+
+      // Save xmm argument registers to the stack, according to %al. An operator
+      // is needed so that this can be expanded with control flow.
       VASTART_SAVE_XMM_REGS,
 
-      // WIN_ALLOCA - Windows's _chkstk call to do stack probing.
+      // Windows's _chkstk call to do stack probing.
       WIN_ALLOCA,
 
-      // SEG_ALLOCA - For allocating variable amounts of stack space when using
+      // For allocating variable amounts of stack space when using
       // segmented stacks. Check if the current stacklet has enough space, and
       // falls back to heap allocation if not.
       SEG_ALLOCA,
 
-      // WIN_FTOL - Windows's _ftol2 runtime routine to do fptoui.
+      // Windows's _ftol2 runtime routine to do fptoui.
       WIN_FTOL,
 
       // Memory barrier
@@ -384,38 +403,40 @@ namespace fracture {
       SFENCE,
       LFENCE,
 
-      // FNSTSW16r - Store FP status word into i16 register.
+      // Store FP status word into i16 register.
       FNSTSW16r,
 
-      // SAHF - Store contents of %ah into %eflags.
+      // Store contents of %ah into %eflags.
       SAHF,
 
-      // RDRAND - Get a random integer and indicate whether it is valid in CF.
+      // Get a random integer and indicate whether it is valid in CF.
       RDRAND,
 
-      // RDSEED - Get a NIST SP800-90B & C compliant random integer and
+      // Get a NIST SP800-90B & C compliant random integer and
       // indicate whether it is valid in CF.
       RDSEED,
 
-      // PCMP*STRI
       PCMPISTRI,
       PCMPESTRI,
 
-      // XTEST - Test if in transactional execution.
+      // Test if in transactional execution.
       XTEST,
 
-      // LCMPXCHG_DAG, LCMPXCHG8_DAG, LCMPXCHG16_DAG - Compare and swap.
+      // ERI instructions
+      RSQRT28, RCP28, EXP2,
+
+      // Compare and swap.
       LCMPXCHG_DAG = ISD::FIRST_TARGET_MEMORY_OPCODE,
       LCMPXCHG8_DAG,
       LCMPXCHG16_DAG,
 
-      // VZEXT_LOAD - Load, scalar_to_vector, and zero extend.
+      // Load, scalar_to_vector, and zero extend.
       VZEXT_LOAD,
 
-      // FNSTCW16m - Store FP control world into i16 memory.
+      // Store FP control world into i16 memory.
       FNSTCW16m,
 
-      /// FP_TO_INT*_IN_MEM - This instruction implements FP_TO_SINT with the
+      /// This instruction implements FP_TO_SINT with the
       /// integer destination in memory and a FP reg source.  This corresponds
       /// to the X86::FIST*m instructions and the rounding mode change stuff. It
       /// has two inputs (token chain and address) and two outputs (int value
@@ -424,7 +445,7 @@ namespace fracture {
       FP_TO_INT32_IN_MEM,
       FP_TO_INT64_IN_MEM,
 
-      /// FILD, FILD_FLAG - This instruction implements SINT_TO_FP with the
+      /// This instruction implements SINT_TO_FP with the
       /// integer source in memory and FP reg result.  This corresponds to the
       /// X86::FILD*m instructions. It has three inputs (token chain, address,
       /// and source type) and two outputs (FP value and token chain). FILD_FLAG
@@ -432,19 +453,19 @@ namespace fracture {
       FILD,
       FILD_FLAG,
 
-      /// FLD - This instruction implements an extending load to FP stack slots.
+      /// This instruction implements an extending load to FP stack slots.
       /// This corresponds to the X86::FLD32m / X86::FLD64m. It takes a chain
       /// operand, ptr to load from, and a ValueType node indicating the type
       /// to load to.
       FLD,
 
-      /// FST - This instruction implements a truncating store to FP stack
+      /// This instruction implements a truncating store to FP stack
       /// slots. This corresponds to the X86::FST32m / X86::FST64m. It takes a
       /// chain operand, value to store, address, and a ValueType to store it
       /// as.
       FST,
 
-      /// VAARG_64 - This instruction grabs the address of the next argument
+      /// This instruction grabs the address of the next argument
       /// from a va_list. (reads and modifies the va_list in memory)
       VAARG_64
 

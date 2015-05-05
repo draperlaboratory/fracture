@@ -29,6 +29,7 @@
 #include "llvm/IR/TypeBuilder.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/CFG.h"
+#include "llvm/Target/TargetSubtargetInfo.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Utils/PromoteMemToReg.h"
 #include "llvm/PassManager.h"
@@ -93,9 +94,9 @@ private:
   bool ViewIRDAGs;
   IREmitter *Emitter;
 
-  static void printSDNode(std::map<SDValue, std::string> &OpMap,
+  void printSDNode(std::map<SDValue, std::string> &OpMap,
     std::stack<SDNode *> &NodeStack, SDNode *CurNode, SelectionDAG *DAG);
-  static void printDAG(SelectionDAG *DAG);
+  void printDAG(SelectionDAG *DAG);
 
   /// Error printing
   raw_ostream &Infos, &Errs;

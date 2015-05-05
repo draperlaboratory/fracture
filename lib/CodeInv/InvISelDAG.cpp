@@ -50,7 +50,7 @@ InvISelDAG* getTargetInvISelDAG(const TargetMachine *T, const Decompiler *TheDec
 
 InvISelDAG::InvISelDAG(const TargetMachine &TMC,
   CodeGenOpt::Level OL, const Decompiler *TheDec) {
-  TLI = TMC.getTargetLowering();
+  TLI = TMC.getSubtargetImpl()->getTargetLowering();
   TM = &TMC;
   Dec = TheDec;
 }

@@ -169,21 +169,23 @@ MachineInstr *StrippedGraph::bypassNops(GraphNode *Node) {
     unsigned opcode = MI->getOpcode();
     if (Triple.find("i386") != std::string::npos ||
         Triple.find("x86_64") != std::string::npos) {
-      if (opcode >= 1778 && opcode <= 1780) // NOOP
+
+      if (opcode >= 1817 && opcode <= 1819) // NOOP
         continue;
-      if (opcode >= 5709 && opcode <= 5721) // XCH
+      if (opcode >= 8451 && opcode <= 8463) // XCH
         continue;
-      if (opcode >= 1178 && opcode <= 1181) // LEA
+      if (opcode >= 1213 && opcode <= 1216) // LEA
         continue;
     }
     if (Triple.find("arm") != std::string::npos) {
-      if (opcode >= 39 && opcode <= 42 &&  // ANDEQ
+      if (opcode >= 42 && opcode <= 45 &&  // ANDEQ
           MI->getOperand(MI->findFirstPredOperandIdx()).getImm() == 0)
         continue;
-      if (opcode >= 237 && opcode <= 238 &&  // MULEQ
+      if (opcode >= 244 && opcode <= 245 &&  // MULEQ
           MI->getOperand(MI->findFirstPredOperandIdx()).getImm() == 0)
         continue;
-      if (opcode >= 150 && opcode <= 193 &&  // LDREQ
+      if (opcode >= 155 && opcode <= 198 &&  // LDREQ
+
           MI->getOperand(MI->findFirstPredOperandIdx()).getImm() == 0)
         continue;
     }
@@ -217,14 +219,14 @@ bool StrippedGraph::isConditionalTerminator(GraphNode *Node) {
 bool StrippedGraph::isFunctionBegin(GraphNode *Node) {
   MachineInstr *begin = bypassNops(Node);
   if (Triple.find("arm") != std::string::npos)
-    if (begin->getOpcode() >= 404 && begin->getOpcode() <= 411)
+    if (begin->getOpcode() >= 412 && begin->getOpcode() <= 417)
       for (MachineInstr::mop_iterator mop = begin->operands_begin();
            mop != begin->operands_end(); ++mop)
         if (mop->isReg() && mop->getReg() == 10)
           return true;
   if (Triple.find("i386") != std::string::npos ||
       Triple.find("x86_64") != std::string::npos)
-    if (begin->getOpcode() >= 2186 && begin->getOpcode() <= 2220)
+    if (begin->getOpcode() >= 2227 && begin->getOpcode() <= 2261)
       for (MachineInstr::mop_iterator mop = begin->operands_begin();
            mop != begin->operands_end(); ++mop)
         if (mop->isReg() && (mop->getReg() == 20 || mop->getReg() == 36)

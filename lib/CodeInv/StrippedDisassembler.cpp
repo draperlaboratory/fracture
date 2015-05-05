@@ -42,9 +42,7 @@ uint64_t StrippedDisassembler::getStrippedSection(std::string section) {
     return 0;
   }
 
-  if (std::error_code(Section.getAddress(Address)))
-      return 0;
-
+  Address = Section.getAddress();
   return Address;
 }
 
@@ -57,7 +55,7 @@ uint64_t StrippedDisassembler::getHexAddress(MachineBasicBlock::iterator II) {
   unsigned Address = DAS->getDebugOffset(II->getDebugLoc());
   unsigned Size = II->getDesc().getSize();
   uint8_t *Bytes = new uint8_t(Size);
-  DAS->getCurSectionMemory()->readBytes(Address, Size, Bytes);
+  DAS->getCurSectionMemory()->readBytes(Bytes, Address, Size);
   for (unsigned i = (Size/2); i >= 1; --i) {
     sin << std::uppercase << std::hex << static_cast<int>(Bytes[i-1]);
     mn.append(sin.str());
@@ -86,7 +84,7 @@ void StrippedDisassembler::functionsIterator(uint64_t Address) {
     ++BI;
   }
   if (BI == BE) {
-    outs() << "End of file\n";
+    //outs() << "End of file\n";
     return;
   }
   MachineBasicBlock::iterator II = BI->instr_begin(), IE = BI->instr_end();
@@ -128,6 +126,10 @@ void StrippedDisassembler::functionsIterator(uint64_t Address) {
     Graph->addGraphNode(tempNode);
     Graph->addToList(tempNode);
     ad = DAS->getDebugOffset(BI->instr_rbegin()->getDebugLoc());
+    if(DAS->getDebugOffset(BI->instr_rbegin()->getDebugLoc())
+      + BI->instr_rbegin()->getDesc().getSize() >= Section.getAddress() 
+      + Section.getSize() - BI->instr_rbegin()->getDesc().getSize())
+      return;
   }
   functionsIterator(DAS->getDebugOffset((--BI)->instr_rbegin()->getDebugLoc())
                     + BI->instr_rbegin()->getDesc().getSize());
@@ -141,7 +143,10 @@ void StrippedDisassembler::findStrippedMain() {
 
 
   uint64_t Address = 0, pre = 0;
-  uint64_t symbAddr = getStrippedSection(".text");
+  //uint64_t symbAddr = getStrippedSection(".text");
+  object::SectionRef curSection = DAS->getSectionByName("text");
+  uint64_t symbAddr = curSection.getAddress();
+  DAS->setSection(curSection);
   std::ostringstream sin;
   sin << std::hex << symbAddr;
   std::string dis(sin.str());
@@ -151,8 +156,8 @@ void StrippedDisassembler::findStrippedMain() {
   // duplicate using MC
   formatted_raw_ostream Out(outs(), false);
   MachineFunction *MF = DAS->disassemble(symbAddr);
-  object::SectionRef Section = DAS->getSectionByAddress(symbAddr);
-  DAS->setSection(Section);
+  //object::SectionRef Section = DAS->getSectionByAddress(symbAddr);
+  //DAS->setSection(Section);
 
 
   MachineFunction::iterator BI = MF->begin(), BE = MF->end();
@@ -186,12 +191,12 @@ void StrippedDisassembler::findStrippedMain() {
   }
   if(TripleName.find("arm") != std::string::npos){
     while (BI != BE) {
-      if(II->getOpcode() == 187 || II->getOpcode() == 147){
+      if(II->getOpcode() == 192 || II->getOpcode() == 152){
         ++II;
         ++II;
-        if(II->getOpcode() == 441 || II->getOpcode() == 407) {
+        if(II->getOpcode() == 449 || II->getOpcode() == 415) {
           while (BI != BE) {
-            if(II->getOpcode() == 192 && pre == 192){
+            if(II->getOpcode() == 197 && pre == 197){
               for(int x = 0; x < 4; x++)
                 ++II;
               Address = getHexAddress(II);
@@ -218,7 +223,7 @@ void StrippedDisassembler::findStrippedMain() {
 
   else if((TripleName.find("i386") != std::string::npos) || (TripleName.find("x86") != std::string::npos)) {
     while(BI != BE) {
-      if(II->getOpcode() >= 5730 && II->getOpcode() <= 5767)
+      if(II->getOpcode() >= 8472 && II->getOpcode() <= 8511)
         break;
       ++II;
       if (II == IE) {
@@ -228,8 +233,7 @@ void StrippedDisassembler::findStrippedMain() {
       }
     }
     while(BI != BE) {
-      if(II->getOpcode() >= 344 && II->getOpcode() <= 352) {
-          outs() << DAS->getDebugOffset(II->getDebugLoc());
+      if(II->getOpcode() >= 353 && II->getOpcode() <= 361) {
           outs() << "Intel main address is: " << pre << "\n";
           mainAddr = pre;
           return;

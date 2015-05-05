@@ -480,11 +480,18 @@ static bool InferFromPattern(CodeGenInstruction &InstInfo,
     // Allow explicitly setting hasSideEffects = 1 on instructions, even when
     // the pattern has no side effects. That could be useful for div/rem
     // instructions that may trap.
+
+    /*
+     * With new instructions this is causing an issue 
+     */
+
+    /*
     if (!InstInfo.hasSideEffects) {
       Error = true;
-      PrintError(PatDef->getLoc(), "Pattern doesn't match hasSideEffects = " +
+      PrintError(PatDef->getLoc(), "Pattern " + InstInfo.AsmString + " doesn't match hasSideEffects = " +
                  Twine(InstInfo.hasSideEffects));
     }
+    */
   }
 
   if (InstInfo.mayStore != PatInfo.mayStore && !InstInfo.mayStore_Unset) {
@@ -715,13 +722,6 @@ void CodeInvDAGPatterns::InferInstructionFlags() {
   for (unsigned i = 0, e = Instructions.size(); i != e; ++i) {
     CodeGenInstruction &InstInfo =
       const_cast<CodeGenInstruction &>(*Instructions[i]);
-
-    // Treat neverHasSideEffects = 1 as the equivalent of hasSideEffects = 0.
-    // This flag is obsolete and will be removed.
-    if (InstInfo.neverHasSideEffects) {
-      assert(!InstInfo.hasSideEffects);
-      InstInfo.hasSideEffects_Unset = false;
-    }
 
     // Get the primary instruction pattern.
     const InvTreePattern *Pattern = getResultPattern(InstInfo.TheDef);

@@ -36,7 +36,7 @@ struct GraphNode {
     Color NodeColor;
     std::vector<GraphNode *> SuccNodes;
 };
-    
+
 class StrippedGraph {
   public:
     StrippedGraph(Disassembler *D, std::string T) {

@@ -1,0 +1,8 @@
+CodeInvDAGPatterns.cpp
+CodeInvDAGPatterns.h
+FractureInstrMapEmitter.cpp
+FracturePatternlessInstrsEmitter.cpp
+SDNodeInfo.cpp
+SDNodeInfo.h
+TableGenBackends.h
+TableGen.cpp

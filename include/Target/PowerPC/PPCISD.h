@@ -57,6 +57,9 @@ namespace llvm {
       ///
       VPERM,
 
+      /// The CMPB instruction (takes two operands of i32 or i64).
+      CMPB,
+
       /// Hi/Lo - These represent the high and low 16-bit parts of a global
       /// address respectively.  These nodes have two operands, the first of
       /// which must be a TargetGlobalAddress, and the second of which must be a
@@ -66,19 +69,14 @@ namespace llvm {
 
       TOC_ENTRY,
 
-      /// The following three target-specific nodes are used for calls through
+      /// The following two target-specific nodes are used for calls through
       /// function pointers in the 64-bit SVR4 ABI.
-
-      /// Restore the TOC from the TOC save area of the current stack frame.
-      /// This is basically a hard coded load instruction which additionally
-      /// takes/produces a flag.
-      TOC_RESTORE,
 
       /// Like a regular LOAD but additionally taking/producing a flag.
       LOAD,
 
-      /// LOAD into r2 (also taking/producing a flag). Like TOC_RESTORE, this is
-      /// a hard coded load instruction.
+      /// Like LOAD (taking/producing a flag), but using r2 as hard-coded
+      /// destination.
       LOAD_TOC,
 
       /// OPRC, CHAIN = DYNALLOC(CHAIN, NEGSIZE, FRAME_INDEX)
@@ -95,10 +93,20 @@ namespace llvm {
       /// code.
       SRL, SRA, SHL,
 
+      /// The combination of sra[wd]i and addze used to implemented signed
+      /// integer division by a power of 2. The first operand is the dividend,
+      /// and the second is the constant shift amount (representing the
+      /// divisor).
+      SRA_ADDZE,
+
       /// CALL - A direct function call.
       /// CALL_NOP is a call with the special NOP which follows 64-bit
       /// SVR4 calls.
       CALL, CALL_NOP,
+
+      /// CALL_TLS and CALL_NOP_TLS - Versions of CALL and CALL_NOP used
+      /// to access TLS variables.
+      CALL_TLS, CALL_NOP_TLS,
 
       /// CHAIN,FLAG = MTCTR(VAL, CHAIN[, INFLAG]) - Directly corresponds to a
       /// MTCTR instruction.
@@ -108,6 +116,10 @@ namespace llvm {
       /// BCTRL instruction.
       BCTRL,
 
+      /// CHAIN,FLAG = BCTRL(CHAIN, ADDR, INFLAG) - The combination of a bctrl
+      /// instruction and the TOC reload required on SVR4 PPC64.
+      BCTRL_LOAD_TOC,
+
       /// Return with a flag operand, matched by 'blr'
       RET_FLAG,
 
@@ -115,6 +127,16 @@ namespace llvm {
       /// This copies the bits corresponding to the specified CRREG into the
       /// resultant GPR.  Bits corresponding to other CR regs are undefined.
       MFOCRF,
+
+      // FIXME: Remove these once the ANDI glue bug is fixed:
+      /// i1 = ANDIo_1_[EQ|GT]_BIT(i32 or i64 x) - Represents the result of the
+      /// eq or gt bit of CR0 after executing andi. x, 1. This is used to
+      /// implement truncation of i32 or i64 to i1.
+      ANDIo_1_EQ_BIT, ANDIo_1_GT_BIT,
+
+      // READ_TIME_BASE - A read of the 64-bit time-base register on a 32-bit
+      // target (returns (Lo, Hi)). It takes a chain operand.
+      READ_TIME_BASE,
 
       // EH_SJLJ_SETJMP - SjLj exception handling setjmp.
       EH_SJLJ_SETJMP,
@@ -176,6 +198,10 @@ namespace llvm {
       /// on PPC32.
       PPC32_GOT,
 
+      /// GPRC = address of _GLOBAL_OFFSET_TABLE_. Used by general dynamic and
+      /// local dynamic TLS  on PPC32.
+      PPC32_PICGOT,
+
       /// G8RC = ADDIS_GOT_TPREL_HA %X2, Symbol - Used by the initial-exec
       /// TLS model, produces an ADDIS8 instruction that adds the GOT
       /// base to sym\@got\@tprel\@ha.
@@ -205,10 +231,6 @@ namespace llvm {
       /// sym\@got\@tlsgd\@l.
       ADDI_TLSGD_L,
 
-      /// G8RC = GET_TLS_ADDR %X3, Symbol - For the general-dynamic TLS
-      /// model, produces a call to __tls_get_addr(sym\@tlsgd).
-      GET_TLS_ADDR,
-
       /// G8RC = ADDIS_TLSLD_HA %X2, Symbol - For the local-dynamic TLS
       /// model, produces an ADDIS8 instruction that adds the GOT base
       /// register to sym\@got\@tlsld\@ha.
@@ -218,10 +240,6 @@ namespace llvm {
       /// model, produces an ADDI8 instruction that adds G8RReg to
       /// sym\@got\@tlsld\@l.
       ADDI_TLSLD_L,
-
-      /// G8RC = GET_TLSLD_ADDR %X3, Symbol - For the local-dynamic TLS
-      /// model, produces a call to __tls_get_addr(sym\@tlsld).
-      GET_TLSLD_ADDR,
 
       /// G8RC = ADDIS_DTPREL_HA %X3, Symbol, Chain - For the
       /// local-dynamic TLS model, produces an ADDIS8 instruction
@@ -244,6 +262,13 @@ namespace llvm {
       /// CHAIN = SC CHAIN, Imm128 - System call.  The 7-bit unsigned
       /// operand identifies the operating system entry point.
       SC,
+
+      /// VSRC, CHAIN = XXSWAPD CHAIN, VSRC - Occurs only for little
+      /// endian.  Maps to an xxswapd instruction that corrects an lxvd2x
+      /// or stxvd2x instruction.  The chain is necessary because the
+      /// sequence replaces a load and needs to provide the same number
+      /// of outputs.
+      XXSWAPD,
 
       /// CHAIN = STBRX CHAIN, GPRC, Ptr, Type - This is a
       /// byte-swapping store instruction.  It byte-swaps the low "Type" bits of
@@ -284,7 +309,17 @@ namespace llvm {
       /// G8RC = ADDI_TOC_L G8RReg, Symbol - For medium code model, produces
       /// an ADDI8 instruction that adds G8RReg to sym\@toc\@l.
       /// Preceded by an ADDIS_TOC_HA to form a full 32-bit offset.
-      ADDI_TOC_L
+      ADDI_TOC_L,
+
+      /// VSRC, CHAIN = LXVD2X_LE CHAIN, Ptr - Occurs only for little endian.
+      /// Maps directly to an lxvd2x instruction that will be followed by
+      /// an xxswapd.
+      LXVD2X,
+
+      /// CHAIN = STXVD2X CHAIN, VSRC, Ptr - Occurs only for little endian.
+      /// Maps directly to an stxvd2x instruction that will be preceded by
+      /// an xxswapd.
+      STXVD2X
     };
   }
 }
