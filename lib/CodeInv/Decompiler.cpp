@@ -84,22 +84,11 @@ void Decompiler::decompile(unsigned Address) {
         // relocated function and then set function name accordingly
         StringRef SectionName;
         object::SectionRef Section = Dis->getSectionByAddress(Addr);
-<<<<<<< HEAD
-        Section.getName(SectionName);
-        Dis->setSection(SectionName);
-        Dis->getRelocFunctionName(Addr, FName);
-        Section = Dis->getSectionByAddress(Address);
-        Section.getName(SectionName);
-        Dis->setSection(SectionName);
-        CI->getCalledFunction()->setName(FName);
-
-=======
         Dis->setSection(Section);
         Dis->getRelocFunctionName(Addr, FName);
         Section = Dis->getSectionByAddress(Address);
         Dis->setSection(Section);
         CI->getCalledFunction()->setName(FName);
->>>>>>> origin/llvm_trunk
         Function *NF = Mod->getFunction(FName);
         if (Addr != 0 && (NF == NULL || NF->empty())) {
           Children.push_back(Addr);
