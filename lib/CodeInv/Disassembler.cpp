@@ -398,29 +398,6 @@ void Disassembler::printInstruction(formatted_raw_ostream &Out,
   for (unsigned i = 0, e = ((Size > 8) ? 8 : Size); i != e; ++i)
     Out << format("%02" PRIX8 " ", Bytes[i]);
   Out.PadToColumn(40);        // 8 bytes (2 char) + 1 space each + 2 spaces
-  
-  // Calculate function address for printing function names in disassembly
-  int64_t Tgt = 0, DestInt = 0;
-  StringRef FuncName;
-  if (Inst->isCall()) {
-    Size != 5 ? Size = 8 : Size; // Instruction size is 8 for ARM
-    for (MachineInstr::mop_iterator MII = Inst->operands_begin(); MII !=
-         Inst->operands_end(); ++MII)
-    if (MII->isImm())
-      DestInt = MII->getImm();
-    Tgt = Address + Size + DestInt;
-    FuncName = getFunctionName(Tgt);
-    if (FuncName.startswith("func")) {
-      StringRef SectionName;
-      object::SectionRef Section = getSectionByAddress(Tgt);
-      Section.getName(SectionName);
-      setSection(SectionName);
-      getRelocFunctionName(Tgt, FuncName);
-      Section = getSectionByAddress(Address);
-      Section.getName(SectionName);
-      setSection(SectionName);
-    }
-  }
 
   // Calculate function address for printing function names in disassembly
   int64_t Tgt = 0, DestInt = 0;
