@@ -1,6 +1,6 @@
-CC = arm-linux-gnueabi-gcc-4.4
-LLC = ecc -target arm-ellcc-linux
-LLC_Path = /opt/x-tools/ellcc/bin
+CC = arm-linux-gnueabi-gcc-4.7
+LLC = clang -target arm-eabi-linux
+LLC_Path = /opt/llvm-release/bin
 
 FNAME = fib
 
