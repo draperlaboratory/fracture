@@ -66,11 +66,22 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
+    case X86::POP64r:
     case X86::POP32r:{
       /**<
        * POP32r Pseudo code
        * DEST ← SS:ESP; (* Copy a doubleword *)
        * ESP ← ESP + 4;
+       *
+       *POP64r Pseudo code
+       *IF OperandSize = 64
+       *   THEN
+       *     DEST ← SS:RSP; (* Copy quadword *)
+       *     RSP ← RSP + 8;
+       *   ELSE (* OperandSize = 16*)
+       *     DEST ← SS:RSP; (* Copy a word *)
+       *     RSP ← RSP + 2;
+       *FI;
        */
 
       //Get the arguments
@@ -81,27 +92,37 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
       MachineMemOperand *MMO = NULL;        //Basically a NOP
       if (MN->memoperands_empty()) {
-        errs() << "NO MACHINE OPS for POP32r!\n";
+        errs() << "NO MACHINE OPS for " <<
+        (TargetOpc == X86::POP32r ? "POP32r!\n" : "POP64r!\n");
       } else {
         MMO = *(MN->memoperands_begin());
       }
+      MachineMemOperand *newMMO;
+      if (TargetOpc == X86::POP64r)
+        newMMO = new MachineMemOperand(MMO->getPointerInfo(),
+                                       MMO->getFlags(),
+                                       8,
+                                       MMO->getBaseAlignment(),
+                                       MMO->getAAInfo(),
+                                       MMO->getRanges());
 
       SDLoc SL(N);
-      SDValue Load = CurDAG->getLoad(LdType, SL, Chain, ESP, MMO);  //Load from ESP
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Load);       //Store EBP
+      SDValue Load = CurDAG->getLoad(LdType, SL, Chain, ESP,
+                                     (TargetOpc == X86::POP32r ? MMO : newMMO));  //Load from ESP/RSP
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Load);       //Store EBP/RBP
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 2), SDValue(Load.getNode(), 1));
 
-      SDValue Width = CurDAG->getConstant(4, LdType);                       //Update ESP
+      SDValue Width = CurDAG->getConstant((TargetOpc == X86::POP32r ? 4 : 8), LdType); //Update ESP/RSP
       SDValue NewESP = CurDAG->getNode(ISD::ADD, SL, LdType, ESP, Width);   //ESP += 4;
 
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), NewESP);             //Store ESP
+      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), NewESP);             //Store ESP/RSP
 
       FixChainOp(Load.getNode());
 
       return NULL;
       break;
     }
-
+    case X86::PUSH64r:
     case X86::PUSH32r:{
       /**<
        * PUSH32r Pseudo code
@@ -113,25 +134,35 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       SDValue Chain = N->getOperand(0);
       SDValue EBP = N->getOperand(1);
       SDValue ESP = N->getOperand(2);
+      EVT LdType = N->getValueType(0);
 
       const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
       MachineMemOperand *MMO = NULL;
       if (MN->memoperands_empty()) {
-        errs() << "NO MACHINE OPS for PUSH32r!\n";
+        errs() << "NO MACHINE OPS for " <<
+        (TargetOpc == X86::PUSH32r ? "PUSH32r!\n" : "PUSH64r!\n");
       } else {
         MMO = *(MN->memoperands_begin());
       }
+      MachineMemOperand *newMMO;
+      if (TargetOpc == X86::PUSH64r)
+        newMMO = new MachineMemOperand(MMO->getPointerInfo(),
+                                       MMO->getFlags(),
+                                       8,
+                                       MMO->getBaseAlignment(),
+                                       MMO->getAAInfo(),
+                                       MMO->getRanges());
 
       SDLoc SL(N);
-      SDVTList SubVTList = CurDAG->getVTList(MVT::i32);
-      SDValue Width = CurDAG->getConstant(4, MVT::i32);
-      SDValue NewESP = CurDAG->getNode(ISD::SUB, SL, SubVTList, ESP, Width); //ESP -= 4;
-
+      SDVTList SubVTList = CurDAG->getVTList(TargetOpc == X86::PUSH32r ? MVT::i32 : MVT::i64);
+      SDValue Width = CurDAG->getConstant((TargetOpc == X86::PUSH32r ? 4 : 8), LdType);
+      SDValue NewESP = CurDAG->getNode(ISD::SUB, SL, SubVTList, ESP, Width); //ESP -= 4 or
+                                                                             //RSP -= 8
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), NewESP);
 
 
       //Store
-      SDValue Store = CurDAG->getStore(Chain, SL, EBP, NewESP, MMO);
+      SDValue Store = CurDAG->getStore(Chain, SL, EBP, NewESP, (TargetOpc == X86::PUSH32r ? MMO : newMMO));
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Store);
 
       FixChainOp(Store.getNode());
@@ -165,6 +196,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       /**<
        *
        */
+    case X86::MOV64rr:
     case X86::MOV32rr:{
       /**<
        * MOV32rr notes
@@ -236,6 +268,7 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
+    case X86::CALL64pcrel32:
     case X86::CALLpcrel32:{
       /**<
        * CALLpcrel32 notes
@@ -562,17 +595,23 @@ SDNode* X86InvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
       break;
     }
+    case X86::SUB64ri8:
     case X86::SUB32ri8:{
       /**<
        * 2 i32 in (Reg, Const) -> 2 i32 out
        * dec fastfib_v2 (O1 gcc)
+       *
+       * 64-bit
+       * i64, i32 (Reg, Const) -> i64, i32
        */
       SDValue Reg = N->getOperand(0);
       SDValue Constant = N->getOperand(1);
+      outs() << "REGTYPE: " << Reg->getValueType(0).getSizeInBits() << "\n";
+      outs() << "CONTYPE: " << Constant->getValueType(0).getSizeInBits() << "\n";
       //uint64_t C1val = N->getConstantOperandVal(1);
       //SDValue Constant = CurDAG->getConstant(C1val, MVT::i32);
       SDLoc SL(N);
-      SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::i32);
+      SDVTList VTList = CurDAG->getVTList(/*(TargetOpc == X86::SUB32ri8 ? MVT::i32 : MVT::i64)*/MVT::i32, MVT::i32);
 
       SDValue Node = CurDAG->getNode(ISD::SUB, SL, VTList, Constant, Reg);
       CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Node);
