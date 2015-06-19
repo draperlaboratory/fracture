@@ -259,7 +259,7 @@ Value* IREmitter::visitCopyToReg(const SDNode *N) {
   // Operand 1 - Register Destination
   // Operand 2 - Source
   Value *RegVal = visitRegister(N->getOperand(1).getNode());
-  Value* V = visit(N->getOperand(2).getNode());
+  Value *V = visit(N->getOperand(2).getNode());
 
   if (V == NULL || RegVal == NULL) {
     errs() << "Null values on CopyToReg, skipping!\n";
@@ -316,6 +316,8 @@ Value* IREmitter::visitSUB(const SDNode *N) {
   // Operand 0 and 1 are values to sub
   Value *Op0 = visit(N->getOperand(0).getNode());
   Value *Op1 = visit(N->getOperand(1).getNode());
+  Value *TruncOp;
+  bool Op0Changed = false, Op1Changed = false;
   StringRef BaseName = getInstructionName(N);
   if (BaseName.empty()) {
     BaseName = getBaseValueName(Op0->getName());
@@ -323,9 +325,20 @@ Value* IREmitter::visitSUB(const SDNode *N) {
   if (BaseName.empty()) {
     BaseName = getBaseValueName(Op1->getName());
   }
+  unsigned Op0Size = Op0->getType()->getPrimitiveSizeInBits();
+  unsigned Op1Size = Op1->getType()->getPrimitiveSizeInBits();
+  if ((Op0Size == 64 || Op1Size == 64) && Op0Size != Op1Size) {
+    if (Op0Size != 64) {
+      TruncOp = IRB->CreateSExt(Op0, Type::getInt64Ty(Op0->getContext()));
+      Op0Changed = true;
+    }
+    if (Op1Size != 64) {
+      TruncOp = IRB->CreateSExt(Op1, Type::getInt64Ty(Op1->getContext()));
+      Op1Changed = true;
+    }
+  }
   StringRef Name = getIndexedValueName(BaseName);
-  //outs() << "IREmitter::visitSUB: " << Name.str() << " op0 op1 " << Op0 << " "<< Op1 << "\n";
-  Instruction *Res = dyn_cast<Instruction>(IRB->CreateSub(Op0, Op1, Name));
+  Instruction *Res = dyn_cast<Instruction>(IRB->CreateSub((Op0Changed ? TruncOp : Op0), (Op1Changed ? TruncOp : Op1), Name));
   Res->setDebugLoc(N->getDebugLoc());
   VisitMap[N] = Res;
   return Res;
