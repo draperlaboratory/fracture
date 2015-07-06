@@ -1,0 +1,5 @@
+#!/bin/bash
+
+csmith --max-funcs 2 --no-pointers --no-volatiles --no-structs --no-unions --max-expr-complexity 3 --no-inline-function --no-arrays --no-bitfields --output $@
+
+
