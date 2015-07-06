@@ -1,5 +1,5 @@
 #!/bin/bash
 
-csmith --max-funcs 2 --ccomp --no-pointers --no-volatiles --no-structs --no-unions --max-expr-complexity 3 --no-inline-function --no-arrays --no-bitfields --output $@
+#csmith --max-funcs 2 --ccomp --no-pointers --no-volatiles --no-structs --no-unions --max-expr-complexity 3 --no-inline-function --no-arrays --no-bitfields --output $@
 
-
+csmith --max-funcs 1 --ccomp --no-pointers --no-volatiles --no-structs --no-unions --max-expr-complexity 1 --no-inline-function --no-arrays --no-bitfields --no-jumps --max-block-size 2 --no-builtins --output --no-checksum $@
