@@ -3,8 +3,8 @@
  *
  * Generator: csmith 2.2.1
  * Git version: 5aedf4b
- * Options:   --max-funcs 1 --ccomp --no-pointers --no-volatiles --no-structs --no-unions --max-expr-complexity 1 --no-inline-function --no-arrays --no-bitfields --no-jumps --max-block-size 4 --no-builtins --no-argc --max-funcs 1 --no-float --no-divs --no-embedded-assigns --no-muls --no-checksum --max-block-depth 1 --output ten.c
- * Seed:      3695890712
+ * Options:   --max-funcs 1 --ccomp --no-pointers --no-volatiles --no-structs --no-unions --max-expr-complexity 1 --no-inline-function --no-arrays --no-bitfields --no-jumps --max-block-size 4 --no-builtins --no-argc --max-funcs 1 --no-float --no-divs --no-embedded-assigns --no-muls --no-checksum --max-block-depth 1 --output tiny100.c
+ * Seed:      3922865584
  */
 
 #include "csmith.h"
@@ -15,45 +15,35 @@ static long __undefined;
 
 /* --- Struct/Union Declarations --- */
 /* --- GLOBAL VARIABLES --- */
-static uint64_t g_3 = 0x0398070ADE2167FALL;
-static uint16_t g_5 = 1U;
-static uint64_t g_6 = 1U;
+static uint64_t g_3 = 0x38ECF54C3C69AED2LL;
+static uint8_t g_6 = 0x8C;
 
 
 /* --- FORWARD DECLARATIONS --- */
-static int16_t  func_1(void);
+static const uint64_t  func_1(void);
 
 
 /* --- FUNCTIONS --- */
 /* ------------------------------------------ */
 /* 
- * reads : g_3 g_5 g_6
- * writes: g_5 g_6
+ * reads : g_3 g_6
+ * writes: g_3 g_6
  */
-static int16_t  func_1(void)
+static const uint64_t  func_1(void)
 { /* block id: 0 */
-    uint16_t l_2 = 0U;
-    uint16_t l_7 = 0x1E3F;
+    int64_t l_2 = 0;
+    l_2 = 0;
+    g_3++;
     if (l_2)
-    { /* block id: 1 */
-        return g_3;
-    }
-    else
     { /* block id: 3 */
-        uint64_t l_4 = 0x6A756A3367F5ED9ALL;
-        g_5 &= l_4;
-        g_6 |= 7;
-    }
-    if (g_5)
-    { /* block id: 7 */
-        ++l_7;
+        g_6 = 0x26FF23B1;
     }
     else
-    { /* block id: 9 */
-        uint16_t l_10 = 65532U;
-        l_10 = g_3;
+    { /* block id: 5 */
+        int8_t l_7 = 0xC5;
+        l_7 = l_2;
     }
-    return l_2;
+    return g_6;
 }
 
 
@@ -66,7 +56,6 @@ int main (void)
     platform_main_begin();
     func_1();
     csmith_sink_ = g_3;
-    csmith_sink_ = g_5;
     csmith_sink_ = g_6;
     platform_main_end(0,0);
     return 0;
@@ -75,16 +64,16 @@ int main (void)
 /************************ statistics *************************
 XXX max struct depth: 0
 breakdown:
-   depth: 0, occurrence: 7
+   depth: 0, occurrence: 4
 XXX total union variables: 0
 
 XXX max expression depth: 1
 breakdown:
-   depth: 1, occurrence: 12
+   depth: 1, occurrence: 10
 
 XXX total number of pointers: 0
 
-XXX times a non-volatile is read: 6
+XXX times a non-volatile is read: 3
 XXX times a non-volatile is write: 4
 XXX times a volatile is read: 0
 XXX    times read thru a pointer: 0
@@ -96,13 +85,13 @@ XXX percentage of non-volatile access: 100
 XXX forward jumps: 0
 XXX backward jumps: 0
 
-XXX stmts: 8
+XXX stmts: 6
 XXX max block depth: 1
 breakdown:
-   depth: 0, occurrence: 3
-   depth: 1, occurrence: 5
+   depth: 0, occurrence: 4
+   depth: 1, occurrence: 2
 
-XXX percentage a fresh-made variable is used: 70
-XXX percentage an existing variable is used: 30
+XXX percentage a fresh-made variable is used: 57.1
+XXX percentage an existing variable is used: 42.9
 ********************* end of statistics **********************/
 
