@@ -1365,7 +1365,8 @@ SDNode* InvISelDAG::InvertCodeCommon(SDNode *NodeToMatch,
         if (ResSlot & 128)
           ResSlot = GetVBR(ResSlot, MatcherTable, MatcherIndex);
 
-        assert(ResSlot < RecordedNodes.size() && "Invalid CheckSame");
+        //ANTI-DEBUG
+        //assert(ResSlot < RecordedNodes.size() && "Invalid CheckSame");
         SDValue Res = RecordedNodes[ResSlot].first;
  
         assert(i < NodeToMatch->getNumValues() &&
