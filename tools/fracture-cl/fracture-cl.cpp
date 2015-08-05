@@ -253,7 +253,14 @@ static void printHelp(std::vector<std::string> &CommandLine) {
                << "address\n\n\n";
         break;
       case  str2int("dump") :
-        outs() << "dump - Fill me in...\n\n\n";
+        outs() << "dump - Dumps hex from a given address, function, or section name\n"
+               << "USAGE:\n"
+               << "dump [FUNCNAME] [NUMLINES] or dump [FUNCADDRESS] [NUMLINES]\n"
+               << "DESCRIPTION:\n"
+               << "\tDumps hex from a specific address, function name,"
+               << " or section name\n\tfor a given number of lines"
+               << " or until the end of the section. If the\n\tnumber of lines is"
+               << " not given, it will default to 10 lines.\n\n\n";
         break;
       case  str2int("help") :
         outs() << "help - Displays usable commands and descriptions "
@@ -947,17 +954,26 @@ static void runQuitCommand(std::vector<std::string> &CommandLine) {
 
 static void runDumpCommand(std::vector<std::string> &CommandLine) {
   uint64_t NumLinesToDump, Address;
-  StringRef NumLinesRef;
+  StringRef NumLinesRef, FunctionName;
 
   if (CommandLine.size() < 2) {
     errs() << "dump <address> [numlines]\n";
     return;
   }
 
-  StringRef AddrRef = CommandLine[1];
+  /*StringRef AddrRef = CommandLine[1];
   if (!AddrRef.getAsInteger(0, Address)) {
     errs() << "Invalid address!\n";
     return;
+  }*/
+
+  // Get function name or address and print them
+  if (StringRef(CommandLine[1]).getAsInteger(0, Address)) {
+    FunctionName = CommandLine[1];
+    if(nameLookupAddr(FunctionName, Address) == false){
+      errs() << "Error retrieving address based on function name.\n";
+      return;
+    }
   }
 
   if (CommandLine.size() >= 3) {
@@ -968,6 +984,8 @@ static void runDumpCommand(std::vector<std::string> &CommandLine) {
   NumLinesRef.getAsInteger(0, NumLinesToDump);
 
   object::SectionRef Section = DAS->getSectionByAddress(Address);
+  DAS->setSection(Section);
+
   StringRef Name;
   StringRef Contents;
   uint64_t BaseAddr;
@@ -979,10 +997,11 @@ static void runDumpCommand(std::vector<std::string> &CommandLine) {
   BaseAddr = Section.getAddress();
   BSS = Section.isBSS();
 
-  if (Section == *DAS->getExecutable()->section_end()) {
+  outs() << "SECTIONNAME: " << Name << "\n";
+  /*if (Section == *DAS->getExecutable()->section_end()) {
     outs() << "No section found with that name or containing that address\n";
     return;
-  }
+  }*/
 
   outs() << "Contents of section " << Name << ":\n";
   if (BSS) {
